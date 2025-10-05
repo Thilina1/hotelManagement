@@ -34,6 +34,8 @@ const getPageTitle = (pathname: string) => {
             return 'Menu Management';
         case '/dashboard/table-management':
             return 'Table Management';
+        case '/dashboard/inventory-management':
+            return 'Inventory Management';
         default:
             return 'Dashboard';
     }

@@ -115,9 +115,13 @@ export default function UserManagementPage() {
         }
         setIsDialogOpen(false);
         setEditingUser(null);
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error saving user:", error);
-        alert(`Failed to save user. ${error}`);
+        if (error.code === 'auth/email-already-in-use') {
+            alert('This email address is already in use by another account.');
+        } else {
+            alert(`Failed to save user. ${error.message}`);
+        }
     }
   };
 

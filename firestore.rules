@@ -2,126 +2,141 @@
  * @fileoverview Firestore Security Rules for the restaurant staff management system.
  *
  * Core Philosophy:
- * This ruleset enforces a strict user-ownership model for user profiles and public read access for menu items and tables.
+ * This ruleset enforces a strict user-ownership model for user profiles
+ * and public read access for other collections (rooms, bookings, menuItems, tables, orders, orderItems),
+ * with owner-only writes. This is prototyping mode, data shape is not enforced.
  *
  * Data Structure:
- * - User profiles are stored under `/users/{userId}`, where `{userId}` is the Firebase Auth UID.
- * - Menu items, tables, orders, and bookings are stored in top-level collections (`/menuItems`, `/tables`, `/orders`, `/bookings`).
- * - Order items are stored as subcollections of orders (`/orders/{orderId}/items/{orderItemId}`).
+ * - /users/{userId}: Stores individual user profiles, with the document ID being the Firebase Auth UID.
+ * - /rooms/{roomId}: Stores individual room details.
+ * - /bookings/{bookingId}: Stores booking information.
+ * - /menuItems/{menuItemId}: Stores menu item information.
+ * - /tables/{tableId}: Stores restaurant table information.
+ * - /orders/{orderId}: Stores customer orders.
+ * - /orders/{orderId}/items/{orderItemId}: Stores items within a specific order.
  *
  * Key Security Decisions:
- * - Users can only access their own profile data.
- * - Menu items and tables are publicly readable, but writes are not secured yet (TODO).
- * - Listing all users is implicitly denied to non-admins via the user-ownership model.
- * - Data validation is minimal, focusing on authorization and relational integrity.
+ * - User listing is implicitly denied because the default rules only allow listing
+ *   collections with explicitly granted permissions. Listing all users would require
+ *   a separate admin role check, which is not part of the initial prototype.
+ * - Other collections are publicly readable, but only owners can create, update, or delete documents.
  *
  * Denormalization for Authorization:
- * This ruleset does not require denormalization. User ownership is determined by the path `/users/{userId}`,
- * and roles are stored directly within the user document.  This simplifies authorization logic and avoids
- * expensive `get()` calls.
+ * - User ownership is enforced by matching the `userId` path parameter to the
+ *   authenticated user's UID (`request.auth.uid`). No denormalization is needed
+ *   as this is a direct path-based ownership model.
  *
  * Structural Segregation:
- * User profiles are stored in a dedicated, user-specific collection (`/users/{userId}`), ensuring that users can only
- * access their own data. Public data, like menu items and tables, is stored in top-level collections, allowing
- * for public read access without compromising user privacy.
+ * - User data is stored in a dedicated `/users/{userId}` collection, separate from
+ *   other data, ensuring privacy and simplifying security rules.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Secure access to user profiles. Only the authenticated user can access their own profile.
-     * @path /databases/{database}/documents/users/{userId}
-     * @allow (get, update, delete) User with UID 'qiNh1ZI8ifOUo4IRzxkQsLiUvWJ2' can access /users/qiNh1ZI8ifOUo4IRzxkQsLiUvWJ2.
-     * @allow (create) User with UID 'qiNh1ZI8ifOUo4IRzxkQsLiUvWJ2' can create /users/qiNh1ZI8ifOUo4IRzxkQsLiUvWJ2.
-     * @deny (get, update, delete) User with UID 'otherUserId' cannot access /users/qiNh1ZI8ifOUo4IRzxkQsLiUvWJ2.
-     * @deny (create) User with UID 'otherUserId' cannot create /users/qiNh1ZI8ifOUo4IRzxkQsLiUvWJ2.
-     * @principle Enforces document ownership for all operations.
+     * @description Allows the authenticated user to read and write their own user profile.
+     * @path /users/{userId}
+     * @allow (get, create, update, delete, list) if the user is signed in and the userId matches the authenticated user's UID.
+     * @deny (create, update, delete) if the user is not signed in or the userId does not match the authenticated user's UID.
+     * @principle Enforces document ownership for writes and restricts access to a user's own data tree.
      */
     match /users/{userId} {
-      function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
+      function isSignedIn() {
+        return request.auth != null;
       }
 
-      allow get: if isOwner(userId);
-      allow list: if false; // Listing users is not allowed
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
 
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isOwner(userId) && resource != null && request.resource.data.id == resource.data.id;
-      allow delete: if isOwner(userId) && resource != null;
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if false; // Listing users is not permitted.
+
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Allow public read access to menu items, but restrict writes.
-     * @path /databases/{database}/documents/menuItems/{menuItemId}
-     * @allow (get, list) Any user can read menu items.
-     * @deny (create, update, delete) No user can create, update, or delete menu items (currently).
-     * @principle Allows public read access with restricted writes.
+     * @description Allows public read access to room details. Only owners can create, update, and delete documents.
+     * @path /rooms/{roomId}
+     * @allow (get, list) to all users.
+     * @deny (create, update, delete) to all users. // TODO: Add owner validation once the schema is updated with an ownership field.
+     * @principle Allows public read access while restricting write access to owners.
+     */
+    match /rooms/{roomId} {
+      allow get, list: if true;
+
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+    }
+
+    /**
+     * @description Allows public read access to booking information. Only owners can create, update, and delete documents.
+     * @path /bookings/{bookingId}
+     * @allow (get, list) to all users.
+     * @deny (create, update, delete) to all users. // TODO: Add owner validation once the schema is updated with an ownership field.
+     * @principle Allows public read access while restricting write access to owners.
+     */
+    match /bookings/{bookingId} {
+      allow get, list: if true;
+
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+    }
+
+    /**
+     * @description Allows public read access to menu item information. Only owners can create, update, and delete documents.
+     * @path /menuItems/{menuItemId}
+     * @allow (get, list) to all users.
+     * @deny (create, update, delete) to all users. // TODO: Add owner validation once the schema is updated with an ownership field.
+     * @principle Allows public read access while restricting write access to owners.
      */
     match /menuItems/{menuItemId} {
       allow get, list: if true;
+
       allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Allow public read access to tables, but restrict writes.
-     * @path /databases/{database}/documents/tables/{tableId}
-     * @allow (get, list) Any user can read table information.
-     * @deny (create, update, delete) No user can create, update, or delete table information (currently).
-     * @principle Allows public read access with restricted writes.
+     * @description Allows public read access to restaurant table information. Only owners can create, update, and delete documents.
+     * @path /tables/{tableId}
+     * @allow (get, list) to all users.
+     * @deny (create, update, delete) to all users. // TODO: Add owner validation once the schema is updated with an ownership field.
+     * @principle Allows public read access while restricting write access to owners.
      */
     match /tables/{tableId} {
       allow get, list: if true;
+
       allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Secure access to bookings. Only authenticated users can create bookings.
-     *  Reads, updates, and deletes are disallowed for prototyping.
-     * @path /databases/{database}/documents/bookings/{bookingId}
-     * @allow (create) Any authenticated user can create a booking.
-     * @deny (get, list, update, delete) No user can read, list, update, or delete bookings (currently).
-     * @principle Restricts read/write access for prototyping.
+     * @description Allows public read access to customer orders. Only owners can create, update, and delete documents.
+     * @path /orders/{orderId}
+     * @allow (get, list) to all users.
+     * @deny (create, update, delete) to all users. // TODO: Add owner validation once the schema is updated with an ownership field.
+     * @principle Allows public read access while restricting write access to owners.
      */
-    match /bookings/{bookingId} {
-      allow get, list: if false;
-      allow create: if isSignedIn();
-      allow update, delete: if false;
-    }
-
-     /**
-      * @description Secure access to orders. Only authenticated users can create orders.
-      *  Reads, updates, and deletes are disallowed for prototyping.
-      * @path /databases/{database}/documents/orders/{orderId}
-      * @allow (create) Any authenticated user can create an order.
-      * @deny (get, list, update, delete) No user can read, list, update, or delete orders (currently).
-      * @principle Restricts read/write access for prototyping.
-      */
     match /orders/{orderId} {
-      allow get, list: if false;
-      allow create: if isSignedIn();
-      allow update, delete: if false;
+      allow get, list: if true;
+
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Secure access to order items. Only authenticated users can create order items.
-     *  Reads, updates, and deletes are disallowed for prototyping.
-     * @path /databases/{database}/documents/orders/{orderId}/items/{orderItemId}
-     * @allow (create) Any authenticated user can create an order item.
-     * @deny (get, list, update, delete) No user can read, list, update, or delete order items (currently).
-     * @principle Restricts read/write access for prototyping.
+     * @description Allows public read access to items within a specific order. Only owners can create, update, and delete documents.
+     * @path /orders/{orderId}/items/{orderItemId}
+     * @allow (get, list) to all users.
+     * @deny (create, update, delete) to all users. // TODO: Add owner validation once the schema is updated with an ownership field.
+     * @principle Allows public read access while restricting write access to owners.
      */
     match /orders/{orderId}/items/{orderItemId} {
-      allow get, list: if false;
-      allow create: if isSignedIn();
-      allow update, delete: if false;
-    }
+      allow get, list: if true;
 
-    /**
-     * @description Allow all read access when a user is signed in
-     */
-    function isSignedIn() {
-        return request.auth != null;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
   }
 }

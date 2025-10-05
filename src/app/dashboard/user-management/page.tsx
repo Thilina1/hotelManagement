@@ -34,6 +34,8 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from '@/hooks/use-toast';
 import { useUserContext } from '@/context/user-context';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 const roleColors: Record<UserRole, string> = {
     admin: 'bg-primary text-primary-foreground',
@@ -72,20 +74,27 @@ export default function UserManagementPage() {
   const handleDeleteUser = async (id: string) => {
     if(!firestore) return;
     if(confirm('Are you sure you want to delete this user? This cannot be undone.')) {
-      try {
-        await deleteDoc(doc(firestore, 'users', id));
-        toast({
-            title: 'User Deleted',
-            description: 'The user has been successfully removed.',
+      const userDocRef = doc(firestore, 'users', id);
+      deleteDoc(userDocRef)
+        .then(() => {
+            toast({
+                title: 'User Deleted',
+                description: 'The user has been successfully removed.',
+            });
+        })
+        .catch(error => {
+            console.error("Error deleting user: ", error);
+            const permissionError = new FirestorePermissionError({
+              path: userDocRef.path,
+              operation: 'delete',
+            });
+            errorEmitter.emit('permission-error', permissionError);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Failed to delete user.",
+            });
         });
-      } catch (error) {
-        console.error("Error deleting user: ", error);
-        toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Failed to delete user.",
-        });
-      }
     }
   };
 

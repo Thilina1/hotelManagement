@@ -19,6 +19,8 @@ import { collection, doc, updateDoc, serverTimestamp, query, where } from 'fireb
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useUserContext } from '@/context/user-context';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 type SortKey = keyof Pick<MenuItemType, 'name' | 'category' | 'stock'>;
 
@@ -97,26 +99,30 @@ export default function InventoryManagementPage() {
     }
 
     const itemDocRef = doc(firestore, 'menuItems', itemId);
-    try {
-      await updateDoc(itemDocRef, { 
+    const updateData = { 
         stock: Number(newStock),
         updatedAt: serverTimestamp(),
-      });
-      toast({
-        title: "Stock Updated",
-        description: `The stock level has been successfully updated.`,
-      });
-      // Clear the input for this item
-      setStockLevels(prev => ({...prev, [itemId]: ''}));
-
-    } catch (error) {
-      console.error("Error updating stock:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to update stock level.",
-      });
-    }
+      };
+    
+    updateDoc(itemDocRef, updateData)
+        .then(() => {
+          toast({
+            title: "Stock Updated",
+            description: `The stock level has been successfully updated.`,
+          });
+          // Clear the input for this item
+          setStockLevels(prev => ({...prev, [itemId]: ''}));
+        })
+        .catch(error => {
+          console.error("Error updating stock:", error);
+          const permissionError = new FirestorePermissionError({ path: itemDocRef.path, operation: 'update', requestResourceData: updateData });
+          errorEmitter.emit('permission-error', permissionError);
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to update stock level.",
+          });
+        });
   };
   
   if (!currentUser) {

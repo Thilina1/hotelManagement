@@ -9,6 +9,8 @@ import {
   QuerySnapshot,
   CollectionReference,
 } from 'firebase/firestore';
+import { errorEmitter } from '../error-emitter';
+import { FirestorePermissionError } from '../errors';
 
 /** Utility type to add an 'id' field to a given type T. */
 export type WithId<T> = T & { id: string };
@@ -83,8 +85,12 @@ export function useCollection<T = any>(
         setIsLoading(false);
       },
       (err: FirestoreError) => {
-        console.error("useCollection error:", err);
-        setError(err);
+        const permissionError = new FirestorePermissionError({
+          path: (memoizedTargetRefOrQuery as InternalQuery)._query.path.canonicalString(),
+          operation: 'list',
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        setError(permissionError); // Also set local error state
         setData(null);
         setIsLoading(false);
       }
@@ -92,6 +98,7 @@ export function useCollection<T = any>(
 
     return () => unsubscribe();
   }, [memoizedTargetRefOrQuery]); // Re-run if the target query/reference changes.
+  
   if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
     throw new Error('The query was not properly memoized using useMemoFirebase. This can lead to infinite loops and excessive Firestore reads.');
   }

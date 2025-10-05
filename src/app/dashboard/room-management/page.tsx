@@ -33,6 +33,8 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from '@/hooks/use-toast';
 import { useUserContext } from '@/context/user-context';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 const statusColors: Record<RoomStatus, string> = {
     available: 'bg-green-500 text-white',
@@ -80,26 +82,33 @@ export default function RoomManagementPage() {
   const handleDeleteRoom = async (id: string) => {
     if(!firestore) return;
     if(confirm('Are you sure you want to delete this room? This cannot be undone.')) {
-      try {
-        await deleteDoc(doc(firestore, 'rooms', id));
-        toast({
-            title: 'Room Deleted',
-            description: 'The room has been successfully removed.',
+      const roomDocRef = doc(firestore, 'rooms', id);
+      deleteDoc(roomDocRef)
+        .then(() => {
+            toast({
+                title: 'Room Deleted',
+                description: 'The room has been successfully removed.',
+            });
+        })
+        .catch(error => {
+            console.error("Error deleting room: ", error);
+            const permissionError = new FirestorePermissionError({
+                path: roomDocRef.path,
+                operation: 'delete',
+            });
+            errorEmitter.emit('permission-error', permissionError);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Failed to delete room.",
+            });
         });
-      } catch (error) {
-        console.error("Error deleting room: ", error);
-        toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Failed to delete room.",
-        });
-      }
     }
   };
 
   const handleFormSubmit = async (values: Omit<Room, 'id'>) => {
     if (!firestore || !currentUser) return;
-  
+
     try {
       if (editingRoom) {
         // Update existing room
@@ -114,15 +123,27 @@ export default function RoomManagementPage() {
         });
       } else {
         // Create new room
-        await addDoc(collection(firestore, 'rooms'), {
+        const dataToSave = {
             ...values,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
-        });
-        toast({
-          title: "Room Created",
-          description: "A new room has been successfully added.",
-        });
+        };
+        const collectionRef = collection(firestore, 'rooms');
+        addDoc(collectionRef, dataToSave)
+          .then(() => {
+              toast({
+                title: "Room Created",
+                description: "A new room has been successfully added.",
+              });
+          })
+          .catch(error => {
+              const permissionError = new FirestorePermissionError({
+                  path: collectionRef.path,
+                  operation: 'create',
+                  requestResourceData: dataToSave,
+              });
+              errorEmitter.emit('permission-error', permissionError);
+          });
       }
       setIsDialogOpen(false);
       setEditingRoom(null);

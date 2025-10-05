@@ -34,6 +34,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useUserContext } from '@/context/user-context';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from '@/components/ui/switch';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 
 const menuCategories: MenuCategory[] = ['Sri Lankan', 'Western', 'Bar'];
@@ -68,85 +70,97 @@ export default function MenuManagementPage() {
   const handleDeleteItem = async (id: string) => {
     if(!firestore) return;
     if(confirm('Are you sure you want to delete this menu item? This cannot be undone.')) {
-      try {
-        await deleteDoc(doc(firestore, 'menuItems', id));
-        toast({
-            title: 'Menu Item Deleted',
-            description: 'The item has been successfully removed from the menu.',
-        });
-      } catch (error) {
-        console.error("Error deleting menu item: ", error);
-        toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Failed to delete menu item.",
-        });
-      }
+        const itemDocRef = doc(firestore, 'menuItems', id);
+        deleteDoc(itemDocRef)
+            .then(() => {
+                toast({
+                    title: 'Menu Item Deleted',
+                    description: 'The item has been successfully removed from the menu.',
+                });
+            })
+            .catch(error => {
+                const permissionError = new FirestorePermissionError({ path: itemDocRef.path, operation: 'delete' });
+                errorEmitter.emit('permission-error', permissionError);
+                toast({
+                    variant: "destructive",
+                    title: "Error",
+                    description: "Failed to delete menu item.",
+                });
+            });
     }
   };
 
   const handleFormSubmit = async (values: Omit<MenuItemType, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (!firestore || !currentUser) return;
   
-    try {
-      const dataToSave: Partial<Omit<MenuItemType, 'id' | 'createdAt' | 'updatedAt'>> = { ...values };
-      if (dataToSave.stockType === 'Non-Inventoried') {
-        // Use a partial type or delete the property safely
+    const dataToSave: Partial<Omit<MenuItemType, 'id' | 'createdAt' | 'updatedAt'>> = { ...values };
+    if (dataToSave.stockType === 'Non-Inventoried') {
         delete (dataToSave as Partial<MenuItemType>).stock;
-      }
+    }
 
-      if (editingItem) {
+    if (editingItem) {
         // Update existing item
         const itemDocRef = doc(firestore, 'menuItems', editingItem.id);
-        await updateDoc(itemDocRef, {
+        const updateData = {
           ...dataToSave,
           updatedAt: serverTimestamp(),
-        });
-        toast({
-          title: "Menu Item Updated",
-          description: "The item details have been updated.",
-        });
-      } else {
+        };
+        updateDoc(itemDocRef, updateData)
+            .then(() => {
+                toast({
+                  title: "Menu Item Updated",
+                  description: "The item details have been updated.",
+                });
+            })
+            .catch(error => {
+                const permissionError = new FirestorePermissionError({ path: itemDocRef.path, operation: 'update', requestResourceData: updateData });
+                errorEmitter.emit('permission-error', permissionError);
+            });
+
+    } else {
         // Create new item
-        await addDoc(collection(firestore, 'menuItems'), {
+        const createData = {
             ...dataToSave,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
-        });
-        toast({
-          title: "Menu Item Created",
-          description: "A new item has been successfully added to the menu.",
-        });
-      }
-      setIsDialogOpen(false);
-      setEditingItem(null);
-    } catch (error: any) {
-      console.error("Error saving menu item:", error);
-       toast({
-        variant: "destructive",
-        title: "Uh oh! Something went wrong.",
-        description: `Failed to save menu item. ${error.message}`,
-      });
+        };
+        const collectionRef = collection(firestore, 'menuItems');
+        addDoc(collectionRef, createData)
+            .then(() => {
+                toast({
+                  title: "Menu Item Created",
+                  description: "A new item has been successfully added to the menu.",
+                });
+            })
+            .catch(error => {
+                 const permissionError = new FirestorePermissionError({ path: collectionRef.path, operation: 'create', requestResourceData: createData });
+                 errorEmitter.emit('permission-error', permissionError);
+            });
     }
+    setIsDialogOpen(false);
+    setEditingItem(null);
   };
 
   const handleAvailabilityChange = async (item: MenuItemType, checked: boolean) => {
      if (!firestore) return;
      const itemDocRef = doc(firestore, 'menuItems', item.id);
-     try {
-        await updateDoc(itemDocRef, { availability: checked });
-         toast({
-          title: "Availability Updated",
-          description: `${item.name} is now ${checked ? 'available' : 'unavailable'}.`,
+     const updateData = { availability: checked };
+     updateDoc(itemDocRef, updateData)
+        .then(() => {
+             toast({
+              title: "Availability Updated",
+              description: `${item.name} is now ${checked ? 'available' : 'unavailable'}.`,
+            });
+        })
+        .catch(error => {
+             const permissionError = new FirestorePermissionError({ path: itemDocRef.path, operation: 'update', requestResourceData: updateData });
+             errorEmitter.emit('permission-error', permissionError);
+             toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Failed to update item availability.",
+            });
         });
-     } catch (error) {
-        console.error("Error updating availability:", error);
-         toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Failed to update item availability.",
-        });
-     }
   }
 
   if (!currentUser) {

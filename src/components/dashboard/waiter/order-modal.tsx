@@ -19,6 +19,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 interface OrderModalProps {
     table: TableType;
@@ -46,7 +48,7 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
 
     // Fetch items for the open order
     const orderItemsRef = useMemoFirebase(() => {
-        if (!firestore || !openOrder?.id) return null; // FIX: Check for openOrder.id
+        if (!firestore || !openOrder?.id) return null;
         return collection(firestore, 'orders', openOrder.id, 'items');
     }, [firestore, openOrder]);
 
@@ -81,11 +83,14 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
 
         const batch = writeBatch(firestore);
         let currentOrder = openOrder;
+        let newOrderId: string | null = null;
+        let newOrderTotalPrice = openOrder?.totalPrice || 0;
 
         try {
             // If no open order exists, create one
             if (!currentOrder) {
                 const newOrderRef = doc(collection(firestore, 'orders'));
+                newOrderId = newOrderRef.id;
                 batch.set(newOrderRef, {
                     tableId: table.id,
                     status: 'open',
@@ -94,29 +99,28 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                     updatedAt: serverTimestamp(),
                     createdBy: currentUser.id,
                 });
-                // This is a temporary object to use for the rest of the function
                 currentOrder = { id: newOrderRef.id, tableId: table.id, status: 'open', totalPrice: 0, createdAt: new Date().toISOString() };
             }
 
             if (!currentOrder) throw new Error("Failed to create or find order.");
             
-            let orderTotalPrice = openOrder?.totalPrice || 0;
+            const orderIdForItems = currentOrder.id;
 
             for (const menuItemId in localOrder) {
                 const quantity = localOrder[menuItemId];
                 const menuItem = menuItems?.find(m => m.id === menuItemId);
 
                 if (menuItem) {
-                    const orderItemRef = doc(collection(firestore, 'orders', currentOrder.id, 'items'));
+                    const orderItemRef = doc(collection(firestore, 'orders', orderIdForItems, 'items'));
                     batch.set(orderItemRef, {
-                        orderId: currentOrder.id,
+                        orderId: orderIdForItems,
                         menuItemId,
                         name: menuItem.name,
                         price: menuItem.price,
                         quantity,
                     });
 
-                    orderTotalPrice += menuItem.price * quantity;
+                    newOrderTotalPrice += menuItem.price * quantity;
 
                     if (menuItem.stockType === 'Inventoried') {
                         const menuItemRef = doc(firestore, 'menuItems', menuItem.id);
@@ -125,8 +129,8 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                 }
             }
 
-            const orderRef = doc(firestore, 'orders', currentOrder.id);
-            batch.update(orderRef, { totalPrice: orderTotalPrice, updatedAt: serverTimestamp() });
+            const orderRef = doc(firestore, 'orders', orderIdForItems);
+            batch.update(orderRef, { totalPrice: newOrderTotalPrice, updatedAt: serverTimestamp() });
             
             if (table.status === 'available') {
                 const tableDocRef = doc(firestore, 'tables', table.id);
@@ -138,8 +142,13 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
             setLocalOrder({});
             toast({ title: 'Order Confirmed', description: 'Items have been added to the order.' });
 
-        } catch (error) {
-            console.error('Error confirming order:', error);
+        } catch (error: any) {
+            const permissionError = new FirestorePermissionError({
+                path: `orders/${currentOrder?.id || newOrderId}`,
+                operation: 'write',
+                requestResourceData: { localOrder }
+            });
+            errorEmitter.emit('permission-error', permissionError);
             toast({ variant: 'destructive', title: 'Order Failed', description: 'Could not confirm the order.' });
         }
     };
@@ -160,8 +169,13 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
             
             toast({ title: 'Payment Successful', description: `The bill for Table ${table.tableNumber} has been settled.`});
             onClose();
-        } catch (error) {
-            console.error('Error marking as paid:', error);
+        } catch (error: any) {
+            const permissionError = new FirestorePermissionError({
+                path: `orders/${openOrder.id}`,
+                operation: 'update',
+                requestResourceData: { status: 'paid' }
+            });
+            errorEmitter.emit('permission-error', permissionError);
             toast({ variant: 'destructive', title: 'Payment Failed', description: 'Could not process the payment.' });
         }
     };

@@ -34,6 +34,8 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useUserContext } from '@/context/user-context';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 const statusColors: Record<TableStatus, string> = {
     available: 'bg-green-500 text-white',
@@ -74,60 +76,69 @@ export default function TableManagementPage() {
   const handleDeleteTable = async (id: string) => {
     if(!firestore) return;
     if(confirm('Are you sure you want to delete this table? This cannot be undone.')) {
-      try {
-        await deleteDoc(doc(firestore, 'tables', id));
-        toast({
-            title: 'Table Deleted',
-            description: 'The table has been successfully removed.',
+      const tableDocRef = doc(firestore, 'tables', id);
+      deleteDoc(tableDocRef)
+        .then(() => {
+            toast({
+                title: 'Table Deleted',
+                description: 'The table has been successfully removed.',
+            });
+        })
+        .catch(error => {
+            console.error("Error deleting table: ", error);
+            const permissionError = new FirestorePermissionError({ path: tableDocRef.path, operation: 'delete' });
+            errorEmitter.emit('permission-error', permissionError);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Failed to delete table.",
+            });
         });
-      } catch (error) {
-        console.error("Error deleting table: ", error);
-        toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Failed to delete table.",
-        });
-      }
     }
   };
 
   const handleFormSubmit = async (values: Omit<TableType, 'id'>) => {
     if (!firestore || !currentUser) return;
   
-    try {
-      if (editingTable) {
-        // Update existing table
+    if (editingTable) {
         const tableDocRef = doc(firestore, 'tables', editingTable.id);
-        await updateDoc(tableDocRef, {
+        const updateData = {
           ...values,
           updatedAt: serverTimestamp(),
-        });
-        toast({
-          title: "Table Updated",
-          description: "The table details have been updated.",
-        });
-      } else {
+        };
+        updateDoc(tableDocRef, updateData)
+            .then(() => {
+                toast({
+                  title: "Table Updated",
+                  description: "The table details have been updated.",
+                });
+            })
+            .catch(error => {
+                const permissionError = new FirestorePermissionError({ path: tableDocRef.path, operation: 'update', requestResourceData: updateData });
+                errorEmitter.emit('permission-error', permissionError);
+            });
+    } else {
         // Create new table
-        await addDoc(collection(firestore, 'tables'), {
+        const createData = {
             ...values,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
-        });
-        toast({
-          title: "Table Created",
-          description: "A new table has been successfully added.",
-        });
-      }
-      setIsDialogOpen(false);
-      setEditingTable(null);
-    } catch (error: any) {
-      console.error("Error saving table:", error);
-       toast({
-        variant: "destructive",
-        title: "Uh oh! Something went wrong.",
-        description: `Failed to save table. ${error.message}`,
-      });
+        };
+        const collectionRef = collection(firestore, 'tables');
+        addDoc(collectionRef, createData)
+            .then(() => {
+                toast({
+                  title: "Table Created",
+                  description: "A new table has been successfully added.",
+                });
+            })
+            .catch(error => {
+                const permissionError = new FirestorePermissionError({ path: collectionRef.path, operation: 'create', requestResourceData: createData });
+                errorEmitter.emit('permission-error', permissionError);
+            });
     }
+    setIsDialogOpen(false);
+    setEditingTable(null);
   };
 
   if (!currentUser) {

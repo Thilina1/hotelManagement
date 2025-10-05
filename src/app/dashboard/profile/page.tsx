@@ -1,8 +1,6 @@
 'use client';
 
-import { useUser, useFirestore } from '@/firebase';
-import { doc, getDoc } from 'firebase/firestore';
-import { useEffect, useState } from 'react';
+import { useUser } from '@/firebase';
 import type { User as UserType } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,30 +8,15 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Skeleton } from '@/components/ui/skeleton';
 import { User, Mail, Calendar, Shield } from 'lucide-react';
 
-export default function ProfilePage() {
-  const { user: firebaseUser, isUserLoading } = useUser();
-  const [user, setUser] = useState<UserType | null>(null);
-  const [loading, setLoading] = useState(true);
-  const firestore = useFirestore();
+interface ProfilePageProps {
+  user?: UserType | null;
+}
+
+export default function ProfilePage({ user }: ProfilePageProps) {
+  const { user: firebaseUser } = useUser();
   const avatar = PlaceHolderImages.find(p => p.id === 'avatar-1');
 
-  useEffect(() => {
-    const fetchUserData = async () => {
-        if (firebaseUser) {
-            const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
-            if (userDoc.exists()) {
-                setUser({ id: firebaseUser.uid, ...userDoc.data() } as UserType);
-            }
-        }
-        setLoading(false);
-    };
-
-    if (!isUserLoading) {
-        fetchUserData();
-    }
-  }, [firebaseUser, isUserLoading, firestore]);
-
-  if (loading || isUserLoading || !user) {
+  if (!user || !firebaseUser) {
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8">
             <div className="flex flex-col items-center space-y-4">

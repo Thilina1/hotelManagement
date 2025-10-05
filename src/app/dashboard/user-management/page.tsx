@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Table,
   TableBody,
@@ -20,9 +20,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { MoreHorizontal, UserPlus, Trash2, Edit } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { User, UserRole } from '@/lib/types';
-import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { collection, doc, deleteDoc, setDoc, updateDoc, serverTimestamp, getDoc } from 'firebase/firestore';
-import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth'; // Correct import
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, doc, deleteDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { UserForm } from '@/components/dashboard/user-management/user-form';
 import {
@@ -39,17 +39,17 @@ const roleColors: Record<UserRole, string> = {
     payment: 'bg-emerald-500 text-white',
 };
 
-export default function UserManagementPage() {
-  const { user: firebaseUser, isUserLoading: isAuthLoading } = useUser();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [isRoleLoading, setIsRoleLoading] = useState(true);
+interface UserManagementPageProps {
+  currentUser?: User | null;
+}
+
+export default function UserManagementPage({ currentUser }: UserManagementPageProps) {
   const firestore = useFirestore();
   const auth = getAuth();
-
+  
   const isAllowedToView = currentUser?.role === 'admin';
 
   const usersCollection = useMemoFirebase(() => {
-    // IMPORTANT: Only create the query if the user is an admin
     if (!firestore || !isAllowedToView) return null;
     return collection(firestore, 'users');
   }, [firestore, isAllowedToView]);
@@ -58,31 +58,6 @@ export default function UserManagementPage() {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-
-  useEffect(() => {
-    const fetchCurrentUserRole = async () => {
-      if (firebaseUser) {
-        try {
-          const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
-          if (userDoc.exists()) {
-            setCurrentUser({ id: firebaseUser.uid, ...userDoc.data() } as User);
-          } else {
-             setCurrentUser(null); // User document doesn't exist
-          }
-        } catch (error) {
-           console.error("Error fetching user role:", error);
-           setCurrentUser(null);
-        }
-      } else {
-         setCurrentUser(null);
-      }
-      setIsRoleLoading(false);
-    };
-
-    if (!isAuthLoading && firestore) {
-      fetchCurrentUserRole();
-    }
-  }, [firebaseUser, isAuthLoading, firestore]);
 
   const handleAddUserClick = () => {
     setEditingUser(null);
@@ -99,8 +74,6 @@ export default function UserManagementPage() {
     if(confirm('Are you sure you want to delete this user? This cannot be undone.')) {
       try {
         await deleteDoc(doc(firestore, 'users', id));
-        // Note: This does not delete the user from Firebase Auth.
-        // A cloud function would be needed for that for a production app.
       } catch (error) {
         console.error("Error deleting user: ", error);
         alert("Failed to delete user.");
@@ -113,7 +86,6 @@ export default function UserManagementPage() {
   
     try {
       if (editingUser) {
-        // Update user in Firestore
         const userDocRef = doc(firestore, 'users', editingUser.id);
         const { email, password, ...firestoreData } = values;
         await updateDoc(userDocRef, {
@@ -121,30 +93,24 @@ export default function UserManagementPage() {
           updatedAt: serverTimestamp(),
           updatedBy: currentUser.id,
         });
-        // Password updates should be handled by a dedicated, secure flow
-        // and are not handled here to avoid complexity.
       } else {
-        // Create user in Auth and Firestore
         if (!values.email || !values.password) {
           throw new Error("Email and password are required for new users.");
         }
         
-        // Use the standard createUserWithEmailAndPassword which does NOT sign the new user in,
-        // thus preserving the admin's session.
-        const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+        const tempAuth = getAuth();
+        const userCredential = await createUserWithEmailAndPassword(tempAuth, values.email, values.password);
         const newUser = userCredential.user;
         
         const { email, password, ...firestoreData } = values;
         
         await setDoc(doc(firestore, 'users', newUser.uid), {
-            name: firestoreData.name,
-            birthday: firestoreData.birthday,
-            role: firestoreData.role,
-            id: newUser.uid,
-            createdAt: serverTimestamp(),
-            createdBy: currentUser.id,
-            updatedAt: serverTimestamp(),
-            updatedBy: currentUser.id,
+          ...firestoreData,
+          id: newUser.uid,
+          createdAt: serverTimestamp(),
+          createdBy: currentUser.id,
+          updatedAt: serverTimestamp(),
+          updatedBy: currentUser.id,
         });
       }
       setIsDialogOpen(false);
@@ -159,9 +125,7 @@ export default function UserManagementPage() {
     }
   };
 
-  const isLoading = isAuthLoading || isRoleLoading;
-
-  if (isLoading) {
+  if (!currentUser) {
      return (
        <div className="space-y-6">
         <div className="flex justify-between items-start">
@@ -296,5 +260,3 @@ export default function UserManagementPage() {
     </div>
   );
 }
-
-    

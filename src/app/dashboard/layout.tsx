@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, type ReactNode } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useUser } from '@/firebase';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import AppSidebar from '@/components/dashboard/app-sidebar';
@@ -11,14 +11,14 @@ import { doc, getDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { useState } from 'react';
 import type { User } from '@/lib/types';
+import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
-    const { user: firebaseUser, isUserLoading } = useUser();
+    const { user: firebaseUser, isUserLoading: isAuthLoading } = useUser();
     const [user, setUser] = useState<User | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [isRoleLoading, setIsRoleLoading] = useState(true);
     const router = useRouter();
-    const pathname = usePathname();
     const firestore = useFirestore();
 
     useEffect(() => {
@@ -28,30 +28,32 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 if (userDoc.exists()) {
                     setUser({ id: firebaseUser.uid, ...userDoc.data() } as User);
                 } else {
-                    // This case can happen if the user exists in Auth but not in Firestore.
-                    // Depending on the app's logic, you might want to log them out or create a Firestore doc.
-                    // For now, we treat them as not fully logged in.
+                    // This can happen if the auth user exists but the firestore doc was deleted.
+                    // Log them out.
                     setUser(null);
+                    router.push('/');
                 }
             } else {
                 setUser(null);
             }
-            setLoading(false);
+            setIsRoleLoading(false);
         };
 
-        if (!isUserLoading && firestore) {
+        if (!isAuthLoading && firestore) {
             fetchUserRole();
         }
-    }, [firebaseUser, isUserLoading, firestore]);
+    }, [firebaseUser, isAuthLoading, firestore, router]);
 
     useEffect(() => {
-        // Redirect only when we are done loading and have confirmed there's no firebaseUser
-        if (!isUserLoading && !firebaseUser) {
+        // Redirect only when we are done loading auth and have confirmed there's no firebaseUser
+        if (!isAuthLoading && !firebaseUser) {
             router.push('/');
         }
-    }, [firebaseUser, isUserLoading, router]);
+    }, [firebaseUser, isAuthLoading, router]);
 
-    if (loading || isUserLoading || !user) {
+    const isLoading = isAuthLoading || isRoleLoading;
+
+    if (isLoading || !user) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-background">
                 <div className="space-y-4 w-full max-w-4xl p-4">
@@ -67,6 +69,14 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             </div>
         );
     }
+    
+    // Pass user data to child components
+    const childrenWithProps = React.Children.map(children, child => {
+        if (React.isValidElement(child)) {
+            return React.cloneElement(child, { user } as { user: User });
+        }
+        return child;
+    });
 
     return (
         <div className="bg-muted/40 min-h-screen">
@@ -75,7 +85,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 <SidebarInset>
                     <DashboardHeader user={user} />
                     <main className="flex-1 p-4 sm:p-6 lg:p-8">
-                        {children}
+                        <FirebaseErrorListener />
+                        {childrenWithProps}
                     </main>
                 </SidebarInset>
             </SidebarProvider>

@@ -46,7 +46,7 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
 
     // Fetch items for the open order
     const orderItemsRef = useMemoFirebase(() => {
-        if (!firestore || !openOrder) return null;
+        if (!firestore || !openOrder?.id) return null; // FIX: Check for openOrder.id
         return collection(firestore, 'orders', openOrder.id, 'items');
     }, [firestore, openOrder]);
 

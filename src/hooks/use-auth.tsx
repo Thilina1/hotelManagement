@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
@@ -10,31 +10,24 @@ import { useFirebase, useFirestore, useAuth as useFirebaseAuth } from '@/firebas
 
 interface AuthContextType {
   user: User | null;
-  login: (name: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-// In a real app, email is derived from the user's name. This is a simplification.
-// For example, 'Admin User' becomes 'admin.user@example.com'.
-// This is not a robust solution but serves for this mock-style login.
-const emailFromName = (name: string) => `${name.toLowerCase().replace(' ', '.')}@example.com`;
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   
-  // These hooks can only be called from a component within FirebaseProvider
   const auth = useFirebaseAuth();
   const firestore = useFirestore();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
-        // User is signed in, now fetch their profile from Firestore
         const userDocRef = doc(firestore, 'users', firebaseUser.uid);
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
@@ -42,31 +35,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(userData);
           localStorage.setItem('user', JSON.stringify(userData));
         } else {
-          // No user profile found, something is wrong. Log them out.
           await signOut(auth);
           setUser(null);
           localStorage.removeItem('user');
         }
       } else {
-        // User is signed out
         setUser(null);
         localStorage.removeItem('user');
       }
       setLoading(false);
     });
 
-    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, [auth, firestore, router]);
 
 
-  const login = async (name: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<boolean> => {
     setLoading(true);
-    const email = emailFromName(name);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // The onAuthStateChanged listener will handle setting the user state
-      // and redirecting, so we just return true here.
       return true;
     } catch (error) {
       console.error("Login failed:", error);
@@ -78,7 +65,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     setLoading(true);
     await signOut(auth);
-    // The onAuthStateChanged listener will handle clearing user state.
     router.push('/');
     setLoading(false);
   };

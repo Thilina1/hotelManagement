@@ -31,7 +31,7 @@ import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { Logo } from "@/components/icons";
 
 const formSchema = z.object({
-  name: z.string().min(1, { message: "Name is required." }),
+  email: z.string().email({ message: "Invalid email address." }),
   password: z.string().min(1, { message: "Password is required." }),
 });
 
@@ -45,14 +45,14 @@ export default function LoginPage() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: "",
+      email: "",
       password: "",
     },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
-    const success = await login(values.name, values.password);
+    const success = await login(values.email, values.password);
     if (success) {
       toast({
         title: "Login Successful",
@@ -90,14 +90,14 @@ export default function LoginPage() {
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <FormField
                   control={form.control}
-                  name="name"
+                  name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Name</FormLabel>
+                      <FormLabel>Email</FormLabel>
                       <FormControl>
                         <div className="relative">
                            <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                           <Input placeholder="e.g. John Doe" {...field} className="pl-10" />
+                           <Input placeholder="e.g. admin@example.com" {...field} className="pl-10" />
                         </div>
                       </FormControl>
                       <FormMessage />

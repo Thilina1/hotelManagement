@@ -24,56 +24,35 @@ const usersToCreate = [
         password: 'payment123',
         role: 'payment',
         birthday: '1988-09-22',
+    },
+];
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+const createUsers = async () => {
+    for (const user of usersToCreate) {
+        try {
+            const email = `${user.name.toLowerCase()}@example.com`;
+            const userCredential = await createUserWithEmailAndPassword(auth, email, user.password);
+            const uid = userCredential.user.uid;
+
+            await setDoc(doc(db, 'users', uid), {
+                id: uid,
+                name: user.name,
+                role: user.role,
+                birthday: user.birthday,
+            });
+
+            console.log(`Successfully created user: ${email} with role: ${user.role}`);
+        } catch (error) {
+            console.error(`Error creating user: ${user.name}`, error);
+        }
     }
-]
-
-async function createUsers() {
-  console.log(`Attempting to create ${usersToCreate.length} users...`);
-
-  const firebaseApp = initializeApp(firebaseConfig);
-  const auth = getAuth(firebaseApp);
-  const firestore = getFirestore(firebaseApp);
-
-  for (const userData of usersToCreate) {
-    const { name, password, role, birthday } = userData;
-    const email = `${name.toLowerCase().replace(' ', '.')}@example.com`;
-
-    console.log(`\nCreating user:`);
-    console.log(`  Name: ${name}`);
-    console.log(`  Email: ${email}`);
-    console.log(`  Role: ${role}`);
-
-    try {
-      // Step 1: Create the user in Firebase Authentication
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      console.log('Successfully created user in Firebase Authentication with UID:', user.uid);
-
-      // Step 2: Create the user profile in Firestore
-      const userDocRef = doc(firestore, 'users', user.uid);
-      const userProfile = {
-        id: user.uid,
-        name: name,
-        role: role,
-        birthday: birthday,
-      };
-
-      await setDoc(userDocRef, userProfile);
-      console.log(`Successfully created Firestore profile for ${name}.`);
-
-    } catch (error: any) {
-      console.error(`Error creating user ${name}:`, error.message);
-      if (error.code === 'auth/email-already-in-use') {
-          console.error('This email address is already in use. If you want to reset the user, please do so from the Firebase console.');
-      }
-    }
-  }
-}
+};
 
 createUsers().then(() => {
-    console.log('\nFinished creating users.');
+    console.log('Finished creating users.');
     process.exit(0);
-}).catch((error) => {
-    console.error('An unexpected error occurred:', error);
-    process.exit(1);
 });

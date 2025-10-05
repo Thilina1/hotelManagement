@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import {
   Sidebar,
@@ -35,14 +35,14 @@ export default function AppSidebar({ user }: AppSidebarProps) {
             <SidebarContent>
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton href="/dashboard" tooltip="Dashboard" isActive>
+                        <SidebarMenuButton ref="/dashboard" tooltip="Dashboard" isActive>
                             <LayoutDashboard />
                             Dashboard
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                     {user?.role === 'admin' && (
                          <SidebarMenuItem>
-                            <SidebarMenuButton href="/dashboard" tooltip="Admin Panel">
+                            <SidebarMenuButton ref="/dashboard" tooltip="Admin Panel">
                                 <UserCog />
                                 Admin Panel
                             </SidebarMenuButton>
@@ -50,7 +50,7 @@ export default function AppSidebar({ user }: AppSidebarProps) {
                     )}
                      {user?.role === 'waiter' && (
                          <SidebarMenuItem>
-                            <SidebarMenuButton href="/dashboard" tooltip="Orders">
+                            <SidebarMenuButton ref="/dashboard" tooltip="Orders">
                                 <ClipboardList />
                                 Orders
                             </SidebarMenuButton>
@@ -58,12 +58,18 @@ export default function AppSidebar({ user }: AppSidebarProps) {
                     )}
                     {user?.role === 'payment' && (
                          <SidebarMenuItem>
-                            <SidebarMenuButton href="/dashboard" tooltip="Payments">
+                            <SidebarMenuButton ref="/dashboard" tooltip="Payments">
                                 <CreditCard />
                                 Payments
                             </SidebarMenuButton>
                         </SidebarMenuItem>
                     )}
+                    <SidebarMenuItem>
+                        <SidebarMenuButton onClick={logout} tooltip="Logout">
+                            <LogOut />
+                            Logout
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarContent>
             <SidebarFooter>
@@ -76,9 +82,6 @@ export default function AppSidebar({ user }: AppSidebarProps) {
                         <span className="font-semibold text-sm truncate">{user?.name}</span>
                         <span className="text-xs text-muted-foreground capitalize">{user?.role}</span>
                     </div>
-                    <button onClick={logout} className="ml-auto p-2 rounded-md hover:bg-sidebar-accent">
-                        <LogOut className="w-5 h-5" />
-                    </button>
                 </div>
             </SidebarFooter>
         </Sidebar>

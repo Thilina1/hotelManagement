@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useState } from 'react';
 import {
@@ -20,9 +20,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { MoreHorizontal, UserPlus, Trash2, Edit } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import type { User, UserRole } from '@/lib/types';
-import { useCollection, useFirestore } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, deleteDoc } from 'firebase/firestore';
 import { Skeleton } from '../ui/skeleton';
+import DebugUserInfo from './debug-user-info';
 
 const roleColors: Record<UserRole, string> = {
     admin: 'bg-red-500 hover:bg-red-600',
@@ -32,7 +33,7 @@ const roleColors: Record<UserRole, string> = {
 
 export default function AdminDashboard() {
   const firestore = useFirestore();
-  const usersCollection = collection(firestore, 'users');
+  const usersCollection = useMemoFirebase(() => collection(firestore, 'users'), [firestore]);
   const { data: users, isLoading } = useCollection<User>(usersCollection);
 
   const handleAddUser = () => alert("Add user dialog would open here.");
@@ -133,6 +134,7 @@ export default function AdminDashboard() {
           </Table>
         </CardContent>
       </Card>
+      <DebugUserInfo />
     </div>
   );
 }

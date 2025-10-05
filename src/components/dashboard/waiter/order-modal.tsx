@@ -21,6 +21,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
+
 
 interface OrderModalProps {
     table: TableType;
@@ -90,15 +93,11 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
     const handleAddItem = (menuItem: MenuItem) => {
         if (menuItem.stockType === 'Inventoried') {
             const currentStock = menuItem.stock ?? 0;
-            if (currentStock <= 0) {
+            const itemsInCart = localOrder[menuItem.id] || 0;
+            if (currentStock - itemsInCart <= 0) {
                  toast({ variant: 'destructive', title: 'Out of Stock', description: `${menuItem.name} is currently unavailable.` });
                  return;
             }
-            setLocalMenuItems(prevItems => 
-                prevItems?.map(item => 
-                    item.id === menuItem.id ? { ...item, stock: (item.stock ?? 0) - 1 } : item
-                ) ?? null
-            );
         }
 
         setLocalOrder(prev => ({
@@ -108,16 +107,6 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
     };
 
     const handleRemoveItem = (menuItemId: string) => {
-        const menuItem = localMenuItems?.find(item => item.id === menuItemId);
-        
-        if (menuItem?.stockType === 'Inventoried') {
-            setLocalMenuItems(prevItems => 
-                prevItems?.map(item => 
-                    item.id === menuItemId ? { ...item, stock: (item.stock ?? 0) + 1 } : item
-                ) ?? null
-            );
-        }
-
         setLocalOrder(prev => {
             const newCount = (prev[menuItemId] || 0) - 1;
             if (newCount <= 0) {
@@ -132,27 +121,27 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
         if (!firestore || Object.keys(localOrder).length === 0) return;
 
         let currentOrder = openOrder;
-        let orderExisted = !!currentOrder;
+        const orderExisted = !!currentOrder;
 
         try {
-            // Step 1: Ensure an order exists. Create one if it doesn't.
             if (!currentOrder) {
-                const newOrderRef = await addDoc(collection(firestore, 'orders'), {
+                const newOrderRef = doc(collection(firestore, 'orders'));
+                await writeBatch(firestore).set(newOrderRef, {
                     tableId: table.id,
                     status: 'open',
                     totalPrice: 0,
                     createdAt: serverTimestamp(),
                     updatedAt: serverTimestamp(),
-                });
-                currentOrder = { id: newOrderRef.id, tableId: table.id, status: 'open', totalPrice: 0 };
+                }).commit();
+                currentOrder = { id: newOrderRef.id, tableId: table.id, status: 'open', totalPrice: 0, createdAt: new Date().toISOString() };
             }
             
-            if (!currentOrder) throw new Error("Order could not be created or found.");
+            if (!currentOrder) {
+                throw new Error("Order could not be created or found.");
+            }
 
-            // Step 2: Batch write all subsequent operations.
             const batch = writeBatch(firestore);
-
-            // Add new items to the order
+            
             for (const menuItemId in localOrder) {
                 const quantity = localOrder[menuItemId];
                 const menuItem = menuItems?.find(m => m.id === menuItemId);
@@ -167,7 +156,6 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                         quantity,
                     });
 
-                    // Use increment to update total price and stock
                     const orderRef = doc(firestore, 'orders', currentOrder.id);
                     batch.update(orderRef, { totalPrice: increment(menuItem.price * quantity) });
 
@@ -178,19 +166,16 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                 }
             }
 
-            // Update order timestamp
             const orderRef = doc(firestore, 'orders', currentOrder.id);
             batch.update(orderRef, { updatedAt: serverTimestamp() });
             
-            // Update table status if needed
             if (table.status === 'available') {
                 const tableDocRef = doc(firestore, 'tables', table.id);
                 batch.update(tableDocRef, { status: 'occupied' });
             }
-
-            // Create a bill document
+            
             const billRef = doc(collection(firestore, 'bills'));
-            batch.set(billRef, {
+             batch.set(billRef, {
                 orderId: currentOrder.id,
                 tableId: table.id,
                 tableNumber: table.tableNumber,
@@ -208,9 +193,13 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
 
         } catch (error: any) {
             console.error("Error confirming order", error);
+            const permissionError = new FirestorePermissionError({
+              path: 'orders',
+              operation: 'write',
+              requestResourceData: localOrder,
+            });
+            errorEmitter.emit('permission-error', permissionError);
             toast({ variant: 'destructive', title: 'Order Failed', description: 'Could not confirm the order.' });
-            // Revert optimistic UI updates on failure
-            setLocalMenuItems(menuItems);
         }
     };
     
@@ -232,6 +221,8 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
             onClose();
         } catch (error: any) {
             console.error("Error marking as paid", error);
+            const permissionError = new FirestorePermissionError({ path: `orders/${openOrder.id}`, operation: 'update' });
+            errorEmitter.emit('permission-error', permissionError);
             toast({ variant: 'destructive', title: 'Payment Failed', description: 'Could not process the payment.' });
         }
     };
@@ -276,28 +267,35 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                             <ScrollArea className="h-full">
                                 <div className="space-y-2 pr-4">
                                     {areMenuItemsLoading ? (
-                                       [...Array(10)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)
-                                    ) : filteredMenuItems.map(item => (
-                                        <div key={item.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted">
-                                            <div className="flex items-center gap-4">
-                                                <div className="relative w-14 h-14 rounded-md overflow-hidden bg-muted flex items-center justify-center shrink-0">
-                                                    {fallbackImage ? (
-                                                        <Image src={fallbackImage.imageUrl} alt={item.name} layout="fill" className="object-cover" />
-                                                    ) : (
-                                                        <Utensils className="h-6 w-6 text-muted-foreground"/>
-                                                    )}
+                                       [...Array(10)].map((_, i) => <Skeleton key={i} className="h-20 w-full" />)
+                                    ) : filteredMenuItems.map(item => {
+                                        const itemsInCart = localOrder[item.id] || 0;
+                                        const availableStock = (item.stock ?? 0);
+                                        const displayStock = availableStock - itemsInCart;
+                                        const isOutOfStock = item.stockType === 'Inventoried' && displayStock <= 0;
+
+                                        return (
+                                            <div key={item.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="relative w-16 h-16 rounded-md overflow-hidden bg-muted flex items-center justify-center shrink-0">
+                                                        {fallbackImage ? (
+                                                            <Image src={fallbackImage.imageUrl} alt={item.name} layout="fill" className="object-cover" />
+                                                        ) : (
+                                                            <Utensils className="h-8 w-8 text-muted-foreground"/>
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-semibold">{item.name}</p>
+                                                        <p className="text-sm text-muted-foreground">${item.price.toFixed(2)}</p>
+                                                        {item.stockType === 'Inventoried' && <p className={`text-xs ${!isOutOfStock ? 'text-primary' : 'text-destructive'}`}>Stock: {displayStock}</p>}
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <p className="font-semibold">{item.name}</p>
-                                                    <p className="text-sm text-muted-foreground">${item.price.toFixed(2)}</p>
-                                                    {item.stockType === 'Inventoried' && <p className={`text-xs ${item.stock && item.stock > 0 ? 'text-primary' : 'text-destructive'}`}>Stock: {item.stock}</p>}
-                                                </div>
+                                                <Button size="sm" onClick={() => handleAddItem(item)} disabled={isOutOfStock}>
+                                                    <PlusCircle className="mr-2 h-4 w-4" /> Add
+                                                </Button>
                                             </div>
-                                            <Button size="sm" onClick={() => handleAddItem(item)} disabled={item.stockType === 'Inventoried' && (item.stock ?? 0) <= 0}>
-                                                <PlusCircle className="mr-2 h-4 w-4" /> Add
-                                            </Button>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                     {!areMenuItemsLoading && filteredMenuItems.length === 0 && (
                                         <div className="text-center text-muted-foreground py-10">
                                             No menu items found.

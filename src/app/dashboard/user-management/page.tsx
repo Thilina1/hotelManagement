@@ -136,7 +136,9 @@ export default function UserManagementPage() {
             const { email, password, ...firestoreData } = values;
             
             await setDoc(doc(firestore, 'users', newUser.uid), {
-                ...firestoreData,
+                name: firestoreData.name,
+                birthday: firestoreData.birthday,
+                role: firestoreData.role,
                 id: newUser.uid,
                 createdAt: serverTimestamp(),
                 createdBy: currentUser.id,

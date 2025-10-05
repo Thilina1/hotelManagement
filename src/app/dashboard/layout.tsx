@@ -1,18 +1,16 @@
 'use client';
 
-import { useEffect, type ReactNode } from 'react';
+import React, { useEffect, type ReactNode, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser } from '@/firebase';
-import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
+import { useFirestore, useUser } from '@/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+
 import AppSidebar from '@/components/dashboard/app-sidebar';
 import DashboardHeader from '@/components/dashboard/dashboard-header';
-import { Skeleton } from '@/components/ui/skeleton';
-import { doc, getDoc } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
-import { useState } from 'react';
-import type { User } from '@/lib/types';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
-
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
+import { Skeleton } from '@/components/ui/skeleton';
+import type { User } from '@/lib/types';
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
     const { user: firebaseUser, isUserLoading: isAuthLoading } = useUser();
@@ -24,14 +22,19 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     useEffect(() => {
         const fetchUserRole = async () => {
             if (firebaseUser) {
-                const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
-                if (userDoc.exists()) {
-                    setUser({ id: firebaseUser.uid, ...userDoc.data() } as User);
-                } else {
-                    // This can happen if the auth user exists but the firestore doc was deleted.
-                    // Log them out.
-                    setUser(null);
-                    router.push('/');
+                try {
+                    const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
+                    if (userDoc.exists()) {
+                        setUser({ id: firebaseUser.uid, ...userDoc.data() } as User);
+                    } else {
+                        // This can happen if the auth user exists but the firestore doc was deleted.
+                        // Log them out.
+                        setUser(null);
+                        router.push('/');
+                    }
+                } catch (e) {
+                     setUser(null);
+                     router.push('/');
                 }
             } else {
                 setUser(null);
@@ -46,10 +49,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         // Redirect only when we are done loading auth and have confirmed there's no firebaseUser
-        if (!isAuthLoading && !firebaseUser) {
+        if (!isAuthLoading && !isRoleLoading && !firebaseUser) {
             router.push('/');
         }
-    }, [firebaseUser, isAuthLoading, router]);
+    }, [firebaseUser, isAuthLoading, isRoleLoading, router]);
 
     const isLoading = isAuthLoading || isRoleLoading;
 

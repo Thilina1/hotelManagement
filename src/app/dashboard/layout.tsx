@@ -76,7 +76,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     // Pass user data to child components
     const childrenWithProps = React.Children.map(children, child => {
         if (React.isValidElement(child)) {
-            return React.cloneElement(child, { user } as { user: User });
+            // The prop name here must match what the child expects, which is 'currentUser' for UserManagementPage and 'user' for others.
+            // We'll pass both for simplicity, though ideally they'd be consistent.
+            return React.cloneElement(child, { user, currentUser: user } as { user: User, currentUser: User });
         }
         return child;
     });

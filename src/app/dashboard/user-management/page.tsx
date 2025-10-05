@@ -33,6 +33,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useToast } from '@/hooks/use-toast';
+import { useUserContext } from '@/context/user-context';
 
 const roleColors: Record<UserRole, string> = {
     admin: 'bg-primary text-primary-foreground',
@@ -40,13 +41,10 @@ const roleColors: Record<UserRole, string> = {
     payment: 'bg-emerald-500 text-white',
 };
 
-interface UserManagementPageProps {
-  user?: User | null;
-}
-
-export default function UserManagementPage({ user: currentUser }: UserManagementPageProps) {
+export default function UserManagementPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
+  const { user: currentUser } = useUserContext();
   
   const isAllowedToView = currentUser?.role === 'admin';
 
@@ -113,7 +111,8 @@ export default function UserManagementPage({ user: currentUser }: UserManagement
           throw new Error("Email and password are required for new users.");
         }
         
-        const tempAuth = getAuth(); // This does not disrupt the current user's session
+        // This creates the user in a temporary auth instance so it doesn't log out the admin
+        const tempAuth = getAuth(); 
         const userCredential = await createUserWithEmailAndPassword(tempAuth, values.email, values.password);
         const newUser = userCredential.user;
         
@@ -191,8 +190,8 @@ export default function UserManagementPage({ user: currentUser }: UserManagement
             <p className="text-muted-foreground">Manage all staff members in one place.</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
-          setIsDialogOpen(open);
           if (!open) setEditingUser(null);
+          setIsDialogOpen(open);
         }}>
             <DialogTrigger asChild>
                 <Button onClick={handleAddUserClick} className="bg-accent hover:bg-accent/90 text-accent-foreground">

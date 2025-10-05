@@ -5,12 +5,10 @@ import AdminDashboard from '@/components/dashboard/admin-dashboard';
 import WaiterDashboard from '@/components/dashboard/waiter-dashboard';
 import PaymentDashboard from '@/components/dashboard/payment-dashboard';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useUserContext } from '@/context/user-context';
 
-interface DashboardPageProps {
-    user?: User | null;
-}
-
-export default function DashboardPage({ user }: DashboardPageProps) {
+export default function DashboardPage() {
+    const { user } = useUserContext();
 
     if (!user) {
          return (

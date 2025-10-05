@@ -2,7 +2,7 @@
 
 import React, { useEffect, type ReactNode, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useFirestore, useUser } from '@/firebase';
+import { useFirestore, useUser as useAuthUser } from '@/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
 import AppSidebar from '@/components/dashboard/app-sidebar';
@@ -11,9 +11,10 @@ import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { User } from '@/lib/types';
+import { UserProvider } from '@/context/user-context';
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
-    const { user: firebaseUser, isUserLoading: isAuthLoading } = useUser();
+    const { user: firebaseUser, isUserLoading: isAuthLoading } = useAuthUser();
     const [user, setUser] = useState<User | null>(null);
     const [isRoleLoading, setIsRoleLoading] = useState(true);
     const router = useRouter();
@@ -27,14 +28,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                     if (userDoc.exists()) {
                         setUser({ id: firebaseUser.uid, ...userDoc.data() } as User);
                     } else {
-                        // This can happen if the auth user exists but the firestore doc was deleted.
-                        // Log them out.
                         setUser(null);
-                        router.push('/');
                     }
                 } catch (e) {
                      setUser(null);
-                     router.push('/');
                 }
             } else {
                 setUser(null);
@@ -48,15 +45,14 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     }, [firebaseUser, isAuthLoading, firestore, router]);
 
     useEffect(() => {
-        // Redirect only when we are done loading auth and have confirmed there's no firebaseUser
-        if (!isAuthLoading && !isRoleLoading && !firebaseUser) {
+        if (!isAuthLoading && !isRoleLoading && !user) {
             router.push('/');
         }
-    }, [firebaseUser, isAuthLoading, isRoleLoading, router]);
+    }, [user, isAuthLoading, isRoleLoading, router]);
 
     const isLoading = isAuthLoading || isRoleLoading;
 
-    if (isLoading || !firebaseUser) {
+    if (isLoading || !user) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-background">
                 <div className="space-y-4 w-full max-w-4xl p-4">
@@ -73,27 +69,20 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         );
     }
     
-    // Pass user data to child components
-    const childrenWithProps = React.Children.map(children, child => {
-        if (React.isValidElement(child)) {
-            // Pass the user object as a 'user' prop to all children.
-            return React.cloneElement(child, { user } as { user: User | null });
-        }
-        return child;
-    });
-
     return (
-        <div className="bg-muted/40 min-h-screen">
-            <SidebarProvider>
-                <AppSidebar user={user} />
-                <SidebarInset>
-                    <DashboardHeader user={user} />
-                    <main className="flex-1 p-4 sm:p-6 lg:p-8">
-                        <FirebaseErrorListener />
-                        {childrenWithProps}
-                    </main>
-                </SidebarInset>
-            </SidebarProvider>
-        </div>
+        <UserProvider user={user}>
+            <div className="bg-muted/40 min-h-screen">
+                <SidebarProvider>
+                    <AppSidebar user={user} />
+                    <SidebarInset>
+                        <DashboardHeader user={user} />
+                        <main className="flex-1 p-4 sm:p-6 lg:p-8">
+                            <FirebaseErrorListener />
+                            {children}
+                        </main>
+                    </SidebarInset>
+                </SidebarProvider>
+            </div>
+        </UserProvider>
     );
 }

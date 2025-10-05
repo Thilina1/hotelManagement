@@ -7,13 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Skeleton } from '@/components/ui/skeleton';
 import { User, Mail, Calendar, Shield } from 'lucide-react';
+import { useUserContext } from '@/context/user-context';
 
-interface ProfilePageProps {
-  user?: UserType | null;
-}
-
-export default function ProfilePage({ user }: ProfilePageProps) {
+export default function ProfilePage() {
   const { user: firebaseUser } = useUser();
+  const { user } = useUserContext();
   const avatar = PlaceHolderImages.find(p => p.id === 'avatar-1');
 
   if (!user || !firebaseUser) {

@@ -42,6 +42,7 @@ service cloud.firestore {
 
       // Read rules:
       allow get: if isOwner(userId);
+      allow list: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
 
       // Write rules:
       allow create: if isOwner(userId);
@@ -85,10 +86,16 @@ service cloud.firestore {
      * @principle Allows authenticated users access to tables collection.
      */
     match /tables/{tableId} {
-        function isSignedIn() {
-          return request.auth != null;
-        }
-        allow read, write: if isSignedIn();
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function getRole() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+      }
+
+      allow read: if isSignedIn() && (getRole() == 'waiter' || getRole() == 'admin');
+      allow write: if isSignedIn() && getRole() == 'admin';
     }
 
     // Deny access to all other collections unless explicitly allowed

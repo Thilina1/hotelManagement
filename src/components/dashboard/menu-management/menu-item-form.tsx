@@ -22,8 +22,9 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import type { MenuItem } from '@/lib/types';
-import { menuCategories } from '@/app/dashboard/menu-management/page';
+import type { MenuItem, MenuCategory } from '@/lib/types';
+
+const menuCategories: MenuCategory[] = ['Sri Lankan', 'Western', 'Bar'];
 
 const formSchema = z.object({
   name: z.string().min(1, { message: 'Item name is required.' }),

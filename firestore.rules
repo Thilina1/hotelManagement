@@ -2,135 +2,101 @@
  * @fileoverview Firestore Security Rules for the restaurant staff management system.
  *
  * Core Philosophy:
- * This ruleset enforces a strict user-ownership model for user profiles,
- * role-based access control for Rooms, Bookings, and MenuItems, and prevents
- * unauthorized data access or modification. It leverages Firebase Authentication
- * to verify user identity and ensure that users can only access their own data
- * unless they have administrative privileges.
+ * This ruleset enforces a strict user-ownership model for user profiles
+ * and public read access for other collections (rooms, bookings, menu items, tables),
+ * with write access restricted.
  *
  * Data Structure:
- * - /users/{userId}: Stores user profile data.  `userId` MUST match the Firebase Auth UID.
- * - /rooms/{roomId}: Stores hotel room information.
- * - /bookings/{bookingId}: Stores booking information.
- * - /menuItems/{menuItemId}: Stores menu item information, categorized by restaurant section.
+ * - User profiles are stored under /users/{userId}, where {userId} matches the Firebase Auth UID.
+ * - Rooms are stored under /rooms/{roomId}.
+ * - Bookings are stored under /bookings/{bookingId}.
+ * - Menu items are stored under /menuItems/{menuItemId}.
+ * - Tables are stored under /tables/{tableId}.
  *
  * Key Security Decisions:
- * - User listing is implicitly restricted. Only a user with admin role could list all users.
- * - Unauthenticated access is forbidden across the board.
- * - The rules do not validate the data itself outside of authorization. This is to allow for rapid iteration on data shapes.
- *
- * Denormalization for Authorization:
- * This ruleset avoids `get()` calls by relying on data within the documents themselves
- * to make authorization decisions, such as checking user roles directly in the
- * `/users/{userId}` document or checking ownership of /menuItems/{menuItemId}.
- *
- * Structural Segregation:
- * The system uses separate collections for user profiles and public data (rooms, bookings, menu items),
- * allowing for different security policies for each.
+ * - Users can only read and write their own profile data.
+ * - Listing users is denied to prevent information disclosure.
+ * - Other collections are publicly readable, but writes are restricted.
+ * - No complex data validation is performed in these rules (prototyping mode).
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Enforces access control for user profiles. Only the authenticated user
-     *              can access their own profile, or a user with admin role can access any profile.
+     * @description Secure user profiles.  Only the authenticated user can access their own profile.
      * @path /users/{userId}
-     * @allow (get, create, update, delete) if the request is made by the user themselves.
-     * @deny (get, create, update, delete) if the request is made by a different user and the user doesn't have admin role.
-     * @principle Enforces document ownership for writes and restricts access to a user's own data tree.
+     * @allow (get, create, update, delete) - User with UID "user123" can read/write document "user123".
+     * @deny (get, create, update, delete) - User with UID "user123" cannot read/write document "user456".
+     * @principle Enforces document ownership; users can only access their own data.
      */
     match /users/{userId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
       function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
-      function isAdmin() {
-        return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+        return request.auth != null && request.auth.uid == userId;
       }
 
       function isExistingOwner(userId) {
-          return isOwner(userId) && resource != null;
+        return isOwner(userId) && resource != null;
       }
+      allow get: if isOwner(userId);
+      allow list: if false; // Listing users is not permitted
 
-      allow get: if isOwner(userId) || isAdmin();
-      allow list: if false;
-
+      // Allow create if the user is creating their own document, enforcing UID match.
       allow create: if isOwner(userId) && request.resource.data.id == userId;
+
+      // On update, enforce that the userId field cannot be changed.
       allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+
+      // Only the owner can delete their profile, and only if it exists.
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Controls access to hotel room data.
+     * @description Allow public read access to rooms, but restrict writes.
      * @path /rooms/{roomId}
-     * @allow (get, list) Public read access.
-     * @allow (create, update, delete) Only users with 'admin' role can modify room data.
-     * @deny (create, update, delete) if the user is not an admin.
-     * @principle Role-based access control.
+     * @allow (get, list) - Any user can read room information.
+     * @deny (create, update, delete) - No user can create, update, or delete room information.
+     * @principle Public read, restricted write access for room data.
      */
     match /rooms/{roomId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isAdmin() {
-        return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-      }
       allow get, list: if true;
-      allow create: if isAdmin();
-      allow update: if isAdmin() && resource != null;
-      allow delete: if isAdmin() && resource != null;
+      allow create, update, delete: if false;
     }
 
     /**
-     * @description Controls access to booking data.
+     * @description Allow public read access to bookings, but restrict writes.
      * @path /bookings/{bookingId}
-     * @allow (get, list) Public read access.
-     * @allow (create, update, delete) Only users with 'admin' role can modify booking data.
-     * @deny (create, update, delete) if the user is not an admin.
-     * @principle Role-based access control.
+     * @allow (get, list) - Any user can read booking information.
+     * @deny (create, update, delete) - No user can create, update, or delete booking information.
+     * @principle Public read, restricted write access for booking data.
      */
     match /bookings/{bookingId} {
-          function isSignedIn() {
-            return request.auth != null;
-          }
-
-          function isAdmin() {
-            return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-          }
-
-          allow get, list: if true;
-          allow create: if isAdmin();
-          allow update: if isAdmin() && resource != null;
-          allow delete: if isAdmin() && resource != null;
+      allow get, list: if true;
+      allow create, update, delete: if false;
     }
 
-     /**
-      * @description Controls access to menu item data.
-      * @path /menuItems/{menuItemId}
-      * @allow (get, list) Public read access.
-      * @allow (create, update, delete) Only users with 'admin' role can modify menu item data.
-      * @deny (create, update, delete) if the user is not an admin.
-      * @principle Role-based access control.
-      */
+    /**
+     * @description Allow public read access to menu items, but restrict writes.
+     * @path /menuItems/{menuItemId}
+     * @allow (get, list) - Any user can read menu item information.
+     * @deny (create, update, delete) - No user can create, update, or delete menu item information.
+     * @principle Public read, restricted write access for menu item data.
+     */
     match /menuItems/{menuItemId} {
-          function isSignedIn() {
-            return request.auth != null;
-          }
+      allow get, list: if true;
+      allow create, update, delete: if false;
+    }
 
-          function isAdmin() {
-            return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-          }
-
-          allow get, list: if true;
-          allow create: if isAdmin();
-          allow update: if isAdmin() && resource != null;
-          allow delete: if isAdmin() && resource != null;
+    /**
+     * @description Allow public read access to tables, but restrict writes.
+     * @path /tables/{tableId}
+     * @allow (get, list) - Any user can read table information.
+     * @deny (create, update, delete) - No user can create, update, or delete table information.
+     * @principle Public read, restricted write access for table data.
+     */
+    match /tables/{tableId} {
+      allow get, list: if true;
+      allow create, update, delete: if false;
     }
   }
 }

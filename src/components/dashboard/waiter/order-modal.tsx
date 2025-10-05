@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, MinusCircle, ShoppingCart, CheckCircle } from 'lucide-react';
+import { PlusCircle, MinusCircle, ShoppingCart, CheckCircle, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -18,6 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from '@/components/ui/input';
 
 interface OrderModalProps {
     table: TableType;
@@ -28,6 +29,7 @@ interface OrderModalProps {
 export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
     const firestore = useFirestore();
     const { toast } = useToast();
+    const [searchTerm, setSearchTerm] = useState('');
 
     // Fetch menu items
     const menuItemsRef = useMemoFirebase(() => firestore ? collection(firestore, 'menuItems') : null, [firestore]);
@@ -58,6 +60,13 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
             setLocalOrder({});
         }
     }, [isOpen]);
+    
+    const filteredMenuItems = useMemo(() => {
+        if (!menuItems) return [];
+        return menuItems
+            .filter(item => item.availability)
+            .filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    }, [menuItems, searchTerm]);
 
     const handleAddItem = (menuItem: MenuItem) => {
         if (menuItem.stockType === 'Inventoried' && (menuItem.stock ?? 0) <= 0) {
@@ -189,13 +198,22 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                         <CardHeader>
                             <CardTitle>Menu</CardTitle>
                             <CardDescription>Select items to add to the order.</CardDescription>
+                            <div className="relative mt-2">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="Search menu..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="pl-10 w-full"
+                                />
+                            </div>
                         </CardHeader>
                         <CardContent className="flex-1 overflow-hidden">
                             <ScrollArea className="h-full">
                                 <div className="space-y-2 pr-4">
-                                    {isLoading ? (
+                                    {areMenuItemsLoading ? (
                                        [...Array(10)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)
-                                    ) : menuItems?.filter(item => item.availability).map(item => (
+                                    ) : filteredMenuItems.map(item => (
                                         <div key={item.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted">
                                             <div>
                                                 <p className="font-semibold">{item.name}</p>
@@ -207,6 +225,11 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                                             </Button>
                                         </div>
                                     ))}
+                                    {!areMenuItemsLoading && filteredMenuItems.length === 0 && (
+                                        <div className="text-center text-muted-foreground py-10">
+                                            No menu items found.
+                                        </div>
+                                    )}
                                 </div>
                             </ScrollArea>
                         </CardContent>

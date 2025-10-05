@@ -24,6 +24,22 @@ export type Room = {
   updatedAt?: string | { seconds: number; nanoseconds: number };
 };
 
+export type BookingStatus = 'confirmed' | 'checked-in' | 'checked-out' | 'cancelled';
+
+export type Booking = {
+    id: string;
+    roomId: string;
+    guestName: string;
+    guestEmail: string;
+    checkInDate: string;
+    checkOutDate: string;
+    numberOfGuests: number;
+    totalPrice: number;
+    status: BookingStatus;
+    createdAt?: string | { seconds: number; nanoseconds: number };
+    updatedAt?: string | { seconds: number; nanoseconds: number };
+};
+
 export type MenuCategory = 'Sri Lankan' | 'Western' | 'Bar';
 
 export type MenuItem = {

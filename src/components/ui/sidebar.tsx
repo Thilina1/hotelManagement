@@ -571,8 +571,9 @@ const SidebarMenuButton = React.forwardRef<
       return button
     }
 
+    let tooltipContentProps = tooltip
     if (typeof tooltip === "string") {
-      tooltip = {
+      tooltipContentProps = {
         children: tooltip,
       }
     }
@@ -584,7 +585,7 @@ const SidebarMenuButton = React.forwardRef<
           side="right"
           align="center"
           hidden={state !== "collapsed" || isMobile}
-          {...tooltip}
+          {...tooltipContentProps}
         />
       </Tooltip>
     )

@@ -1,14 +1,51 @@
+/**
+ * @fileoverview Firestore Security Rules for Restaurant Staff Management System
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model for user profiles,
+ * combined with role-based access control for other collections. Only
+ * authenticated users can access their own profile data. Other collections
+ * follow a public read with owner-only writes pattern unless otherwise specified.
+ *
+ * Data Structure:
+ * - /users/{userId}: Stores individual user profiles.  Access is restricted to
+ *   the owning user or an admin (not yet implemented in rules).
+ * - /rooms/{roomId}: Stores room details. Public read, owner-only writes.
+ * - /bookings/{bookingId}: Stores booking information. Public read, owner-only writes.
+ * - /menuItems/{menuItemId}: Stores menu items. Public read, owner-only writes.
+ * - /tables/{tableId}: Stores table information. Public read, owner-only writes.
+ * - /orders/{orderId}: Stores customer orders. Public read, owner-only writes.
+ * - /orders/{orderId}/items/{orderItemId}: Stores items within an order. Public read, owner-only writes.
+ * - /bills/{billId}: Stores finalized bills. Public read, owner-only writes.
+ *
+ * Key Security Decisions:
+ * - User listing is implicitly denied because the `list` operation is not
+ *   granted on the `/users` collection. Only a specific user can access their
+ *   own document.
+ * - The default security posture for top-level collections (e.g., `/rooms`,
+ *   `/bookings`) is public read, owner-only writes.
+ * - Data type validation is relaxed to allow for rapid prototyping. Only
+ *   authorization-critical fields are validated.
+ *
+ * Denormalization for Authorization:
+ *  - The current ruleset does not use denormalization. Consider adding
+ *    ownership fields (e.g., `ownerId`, `authorId`) to documents to simplify
+ *    authorization logic and avoid costly `get()` calls in the future.
+ *
+ * Structural Segregation:
+ *  - User profile data is stored in a dedicated `/users/{userId}` collection
+ *    to ensure privacy and prevent accidental public exposure.
+ */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to user profile data.
+     * @description Allows a user to read and write their own user profile.
      * @path /users/{userId}
-     * @allow (get, update, delete) User with UID userId can access their own profile.
-     * @allow (create) User with UID userId can create their own profile.
-     * @deny (get, update, delete) User with UID otherUserId cannot access user with UID userId's profile.
-     * @principle Enforces document ownership for user profiles.
+     * @allow (get, create, update, delete) if the user is signed in and their UID matches the document ID.
+     * @deny (get, create, update, delete) if the user is not signed in or their UID does not match the document ID.
+     * @principle Enforces document ownership for writes.
      */
     match /users/{userId} {
       function isSignedIn() {
@@ -16,27 +53,27 @@ service cloud.firestore {
       }
 
       function isOwner(userId) {
-        return request.auth.uid == userId;
+        return isSignedIn() && request.auth.uid == userId;
       }
 
       function isExistingOwner(userId) {
-          return isOwner(userId) && exists(resource);
+        return isOwner(userId) && resource != null;
       }
 
       allow get: if isOwner(userId);
-      allow list: if false; // User listing is not permitted
+      allow list: if false; // Listing users is not permitted
 
-      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == userId;
+      allow create: if isOwner(userId);
       allow update: if isExistingOwner(userId);
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Allows public read access to room details.
+     * @description Allows anyone to read room information, but restricts writes to owners (not yet implemented).
      * @path /rooms/{roomId}
-     * @allow (get, list) Any user can read room details.
-     * @deny (create, update, delete) Only authenticated users can manage rooms. // TODO: Add validation once an ownership field exists in the schema.
-     * @principle Allows public read access with restricted writes.
+     * @allow (get, list) to anyone.
+     * @deny (create, update, delete) because owner validation is missing.
+     * @principle Public read with owner-only writes (owner validation is a TODO).
      */
     match /rooms/{roomId} {
       allow get, list: if true;
@@ -44,61 +81,73 @@ service cloud.firestore {
     }
 
     /**
-     * @description Allows public read access to booking information.
+     * @description Allows anyone to read booking information, but restricts writes to owners (not yet implemented).
      * @path /bookings/{bookingId}
-     * @allow (get, list) Any user can read booking information.
-     * @deny (create, update, delete) Only authenticated users can manage bookings. // TODO: Add validation once an ownership field exists in the schema.
-     * @principle Allows public read access with restricted writes.
+     * @allow (get, list) to anyone.
+     * @deny (create, update, delete) because owner validation is missing.
+     * @principle Public read with owner-only writes (owner validation is a TODO).
      */
     match /bookings/{bookingId} {
       allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow create, update, delete: if false;  // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Allows public read access to menu item details.
+     * @description Allows anyone to read menu item information, but restricts writes to owners (not yet implemented).
      * @path /menuItems/{menuItemId}
-     * @allow (get, list) Any user can read menu item details.
-     * @deny (create, update, delete) Only authenticated users can manage menu items. // TODO: Add validation once an ownership field exists in the schema.
-     * @principle Allows public read access with restricted writes.
+     * @allow (get, list) to anyone.
+     * @deny (create, update, delete) because owner validation is missing.
+     * @principle Public read with owner-only writes (owner validation is a TODO).
      */
     match /menuItems/{menuItemId} {
       allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow create, update, delete: if false;  // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Allows public read access to table information.
+     * @description Allows anyone to read table information, but restricts writes to owners (not yet implemented).
      * @path /tables/{tableId}
-     * @allow (get, list) Any user can read table information.
-     * @deny (create, update, delete) Only authenticated users can manage tables. // TODO: Add validation once an ownership field exists in the schema.
-     * @principle Allows public read access with restricted writes.
+     * @allow (get, list) to anyone.
+     * @deny (create, update, delete) because owner validation is missing.
+     * @principle Public read with owner-only writes (owner validation is a TODO).
      */
     match /tables/{tableId} {
       allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow create, update, delete: if false;  // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Allows public read access to order information.
+     * @description Allows anyone to read order information, but restricts writes to owners (not yet implemented).
      * @path /orders/{orderId}
-     * @allow (get, list) Any user can read order information.
-     * @deny (create, update, delete) Only authenticated users can manage orders. // TODO: Add validation once an ownership field exists in the schema.
-     * @principle Allows public read access with restricted writes.
+     * @allow (get, list) to anyone.
+     * @deny (create, update, delete) because owner validation is missing.
+     * @principle Public read with owner-only writes (owner validation is a TODO).
      */
     match /orders/{orderId} {
       allow get, list: if true;
       allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+
+      /**
+       * @description Allows anyone to read order item information, but restricts writes to owners (not yet implemented).
+       * @path /orders/{orderId}/items/{orderItemId}
+       * @allow (get, list) to anyone.
+       * @deny (create, update, delete) because owner validation is missing.
+       * @principle Public read with owner-only writes (owner validation is a TODO).
+       */
+      match /items/{orderItemId} {
+          allow get, list: if true;
+          allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      }
     }
 
     /**
-     * @description Controls access to order item data within a specific order.
-     * @path /orders/{orderId}/items/{orderItemId}
-     * @allow (get, list) Any user can read order item data.
-     * @deny (create, update, delete) Only authenticated users can manage order items. // TODO: Add validation once an ownership field exists in the schema.
-     * @principle Allows public read access with restricted writes.
+     * @description Allows anyone to read bill information, but restricts writes to owners (not yet implemented).
+     * @path /bills/{billId}
+     * @allow (get, list) to anyone.
+     * @deny (create, update, delete) because owner validation is missing.
+     * @principle Public read with owner-only writes (owner validation is a TODO).
      */
-    match /orders/{orderId}/items/{orderItemId} {
+    match /bills/{billId} {
       allow get, list: if true;
       allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }

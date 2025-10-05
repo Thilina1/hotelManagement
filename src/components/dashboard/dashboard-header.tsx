@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { User, LogOut } from 'lucide-react';
-import type { User as UserType } from '@/lib/types';
 import { useAuth } from '@/firebase';
 import { signOut } from 'firebase/auth';
 
@@ -19,6 +18,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { SidebarTrigger } from '../ui/sidebar';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { useUserContext } from '@/context/user-context';
 
 const getPageTitle = (pathname: string) => {
     switch (pathname) {
@@ -28,19 +28,18 @@ const getPageTitle = (pathname: string) => {
             return 'Profile';
         case '/dashboard/user-management':
             return 'User Management';
+        case '/dashboard/room-management':
+            return 'Room Management';
         default:
             return 'Dashboard';
     }
 }
 
-interface DashboardHeaderProps {
-    user: UserType | null;
-}
-
-export default function DashboardHeader({ user }: DashboardHeaderProps) {
+export default function DashboardHeader() {
   const auth = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const { user } = useUserContext();
   const avatar = PlaceHolderImages.find(p => p.id === 'avatar-1');
 
   const handleLogout = async () => {

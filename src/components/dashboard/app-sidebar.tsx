@@ -10,7 +10,7 @@ import {
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, LayoutDashboard, Users, UserCog } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, UserCog, BedDouble } from 'lucide-react';
 import type { User } from '@/lib/types';
 import { useAuth } from '@/firebase';
 import { signOut } from 'firebase/auth';
@@ -19,15 +19,13 @@ import { Logo } from '../icons';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useUserContext } from '@/context/user-context';
 
-interface AppSidebarProps {
-  user: User | null;
-}
-
-export default function AppSidebar({ user }: AppSidebarProps) {
+export default function AppSidebar() {
     const auth = useAuth();
     const router = useRouter();
     const pathname = usePathname();
+    const { user } = useUserContext();
     const avatar = PlaceHolderImages.find(p => p.id === 'avatar-1');
 
     const logout = async () => {
@@ -38,6 +36,7 @@ export default function AppSidebar({ user }: AppSidebarProps) {
     const menuItems = [
       { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', roles: ['admin', 'waiter', 'payment'] },
       { href: '/dashboard/user-management', icon: Users, label: 'User Management', roles: ['admin'] },
+      { href: '/dashboard/room-management', icon: BedDouble, label: 'Room Management', roles: ['admin'] },
       { href: '/dashboard/profile', icon: UserCog, label: 'Profile', roles: ['admin', 'waiter', 'payment'] },
     ];
 

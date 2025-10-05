@@ -54,6 +54,40 @@
         "updatedAt",
         "updatedBy"
       ]
+    },
+    "Room": {
+      "title": "Room",
+      "description": "Represents a hotel room.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Document ID." },
+        "roomNumber": { "type": "string", "description": "The number of the room." },
+        "type": { "type": "string", "description": "Type of the room (e.g., Single, Double, Suite).", "enum": ["Single", "Double", "Suite", "Family"] },
+        "status": { "type": "string", "description": "Current status of the room.", "enum": ["available", "occupied", "cleaning", "maintenance"] },
+        "price": { "type": "number", "description": "Price per night." },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["roomNumber", "type", "status", "price"]
+    },
+    "Booking": {
+        "title": "Booking",
+        "description": "Represents a room booking.",
+        "type": "object",
+        "properties": {
+            "id": { "type": "string", "description": "Document ID." },
+            "roomId": { "type": "string", "description": "Reference to the room." },
+            "guestName": { "type": "string" },
+            "guestEmail": { "type": "string", "format": "email" },
+            "checkInDate": { "type": "string", "format": "date" },
+            "checkOutDate": { "type": "string", "format": "date" },
+            "numberOfGuests": { "type": "number" },
+            "totalPrice": { "type": "number" },
+            "status": { "type": "string", "enum": ["confirmed", "checked-in", "checked-out", "cancelled"] },
+            "createdAt": { "type": "string", "format": "date-time" },
+            "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["roomId", "guestName", "checkInDate", "checkOutDate", "numberOfGuests", "totalPrice", "status"]
     }
   },
   "auth": {
@@ -78,6 +112,20 @@
               "description": "The Firebase Auth UID of the user."
             }
           ]
+        }
+      },
+      {
+        "path": "/rooms/{roomId}",
+        "definition": {
+          "schema": { "$ref": "#/backend/entities/Room" },
+          "description": "Stores individual room details."
+        }
+      },
+      {
+        "path": "/bookings/{bookingId}",
+        "definition": {
+            "schema": { "$ref": "#/backend/entities/Booking" },
+            "description": "Stores booking information."
         }
       }
     ],

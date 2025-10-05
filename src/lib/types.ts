@@ -10,3 +10,16 @@ export type User = {
   createdBy?: string;
   updatedBy?: string;
 };
+
+export type RoomStatus = 'available' | 'occupied' | 'cleaning' | 'maintenance';
+export type RoomType = 'Single' | 'Double' | 'Suite' | 'Family';
+
+export type Room = {
+  id: string;
+  roomNumber: string;
+  type: RoomType;
+  status: RoomStatus;
+  price: number;
+  createdAt?: string | { seconds: number; nanoseconds: number };
+  updatedAt?: string | { seconds: number; nanoseconds: number };
+};

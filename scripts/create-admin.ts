@@ -6,51 +6,74 @@ import { getFirestore, setDoc, doc } from 'firebase/firestore';
 import { firebaseConfig } from '../src/firebase/config';
 import 'dotenv/config'
 
-async function createAdmin() {
-  const adminName = 'Admin';
-  const adminPassword = 'admin123';
-  const adminRole = 'admin';
+const usersToCreate = [
+    {
+        name: 'Admin',
+        password: 'admin123',
+        role: 'admin',
+        birthday: '1990-01-01',
+    },
+    {
+        name: 'Waiter',
+        password: 'waiter123',
+        role: 'waiter',
+        birthday: '1995-05-10',
+    },
+    {
+        name: 'Payment',
+        password: 'payment123',
+        role: 'payment',
+        birthday: '1988-09-22',
+    }
+]
 
-  // This is a simplified way to create an email from a name.
-  // In a real application, you would have a more robust way of handling this.
-  const adminEmail = `${adminName.toLowerCase().replace(' ', '.')}@example.com`;
-
-  console.log(`Attempting to create admin user:`);
-  console.log(`  Name: ${adminName}`);
-  console.log(`  Email: ${adminEmail}`);
-  console.log(`  Role: ${adminRole}`);
+async function createUsers() {
+  console.log(`Attempting to create ${usersToCreate.length} users...`);
 
   const firebaseApp = initializeApp(firebaseConfig);
   const auth = getAuth(firebaseApp);
   const firestore = getFirestore(firebaseApp);
 
-  try {
-    // Step 1: Create the user in Firebase Authentication
-    const userCredential = await createUserWithEmailAndPassword(auth, adminEmail, adminPassword);
-    const user = userCredential.user;
-    console.log('Successfully created user in Firebase Authentication with UID:', user.uid);
+  for (const userData of usersToCreate) {
+    const { name, password, role, birthday } = userData;
+    const email = `${name.toLowerCase().replace(' ', '.')}@example.com`;
 
-    // Step 2: Create the user profile in Firestore
-    const userDocRef = doc(firestore, 'users', user.uid);
-    const userProfile = {
-      id: user.uid,
-      name: adminName,
-      role: adminRole,
-      birthday: '1990-01-01', // Default birthday
-    };
+    console.log(`\nCreating user:`);
+    console.log(`  Name: ${name}`);
+    console.log(`  Email: ${email}`);
+    console.log(`  Role: ${role}`);
 
-    await setDoc(userDocRef, userProfile);
-    console.log('Successfully created user profile in Firestore.');
+    try {
+      // Step 1: Create the user in Firebase Authentication
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      console.log('Successfully created user in Firebase Authentication with UID:', user.uid);
 
-    console.log('\nAdmin user created successfully!');
-    process.exit(0);
-  } catch (error: any) {
-    console.error('Error creating admin user:', error.message);
-    if (error.code === 'auth/email-already-in-use') {
-        console.error('This email address is already in use. If you want to reset the user, please do so from the Firebase console.');
+      // Step 2: Create the user profile in Firestore
+      const userDocRef = doc(firestore, 'users', user.uid);
+      const userProfile = {
+        id: user.uid,
+        name: name,
+        role: role,
+        birthday: birthday,
+      };
+
+      await setDoc(userDocRef, userProfile);
+      console.log(`Successfully created Firestore profile for ${name}.`);
+
+    } catch (error: any) {
+      console.error(`Error creating user ${name}:`, error.message);
+      if (error.code === 'auth/email-already-in-use') {
+          console.error('This email address is already in use. If you want to reset the user, please do so from the Firebase console.');
+      }
     }
-    process.exit(1);
   }
 }
 
-createAdmin();
+createUsers().then(() => {
+    console.log('\nFinished creating users.');
+    process.exit(0);
+}).catch((error) => {
+    console.error('An unexpected error occurred:', error);
+    process.exit(1);
+});

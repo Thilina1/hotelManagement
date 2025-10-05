@@ -10,7 +10,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "create-admin": "tsx scripts/create-admin.ts"
+    "seed": "tsx scripts/create-admin.ts"
   },
   "dependencies": {
     "@genkit-ai/google-genai": "^1.20.0",

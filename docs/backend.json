@@ -88,6 +88,22 @@
             "updatedAt": { "type": "string", "format": "date-time" }
         },
         "required": ["roomId", "guestName", "checkInDate", "checkOutDate", "numberOfGuests", "totalPrice", "status"]
+    },
+    "MenuItem": {
+        "title": "Menu Item",
+        "description": "Represents an item on the restaurant menu.",
+        "type": "object",
+        "properties": {
+            "id": { "type": "string", "description": "Document ID." },
+            "name": { "type": "string" },
+            "description": { "type": "string" },
+            "price": { "type": "number" },
+            "category": { "type": "string", "enum": ["Sri Lankan", "Western", "Bar"] },
+            "availability": { "type": "boolean" },
+            "createdAt": { "type": "string", "format": "date-time" },
+            "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["name", "price", "category", "availability"]
     }
   },
   "auth": {
@@ -126,6 +142,13 @@
         "definition": {
             "schema": { "$ref": "#/backend/entities/Booking" },
             "description": "Stores booking information."
+        }
+      },
+      {
+        "path": "/menuItems/{menuItemId}",
+        "definition": {
+            "schema": { "$ref": "#/backend/entities/MenuItem" },
+            "description": "Stores menu item information."
         }
       }
     ],

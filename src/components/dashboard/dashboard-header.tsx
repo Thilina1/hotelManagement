@@ -30,6 +30,8 @@ const getPageTitle = (pathname: string) => {
             return 'User Management';
         case '/dashboard/room-management':
             return 'Room Management';
+        case '/dashboard/menu-management':
+            return 'Menu Management';
         default:
             return 'Dashboard';
     }

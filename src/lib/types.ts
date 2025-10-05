@@ -23,3 +23,16 @@ export type Room = {
   createdAt?: string | { seconds: number; nanoseconds: number };
   updatedAt?: string | { seconds: number; nanoseconds: number };
 };
+
+export type MenuCategory = 'Sri Lankan' | 'Western' | 'Bar';
+
+export type MenuItem = {
+    id: string;
+    name: string;
+    description: string;
+    price: number;
+    category: MenuCategory;
+    availability: boolean;
+    createdAt?: string | { seconds: number; nanoseconds: number };
+    updatedAt?: string | { seconds: number; nanoseconds: number };
+};

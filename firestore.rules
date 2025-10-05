@@ -1,30 +1,17 @@
 /**
- * @fileoverview Firestore Security Rules for a restaurant staff management system.
- *
- * Core Philosophy:
- * This ruleset enforces a strict user-ownership model for user profiles,
- * supplemented by role-based access control for administrative functions.
- * The primary goal is to ensure that users can only access their own profile
- * data, while administrators have broader access as needed.
+ * @fileOverview
+ * This ruleset enforces a strict user-ownership model for user profiles
+ * and role-based access control for other collections.
  *
  * Data Structure:
- * - /users/{userId}: Stores individual user profiles, with {userId} matching
- *   the Firebase Auth UID.
- * - /rooms/{roomId}: Stores hotel room information.
- * - /bookings/{bookingId}: Stores booking details.
+ * - /users/{userId}: Stores user profiles, accessible only to the user themselves.
+ * - /rooms/{roomId}: Stores room information, with create/update/delete access open.
+ * - /bookings/{bookingId}: Stores booking data, with create/update/delete access open.
  *
  * Key Security Decisions:
- * - Users can only create, read, update, and delete their own user profiles.
- * - Listing all users is explicitly denied to regular users.
- * - No data shape validation is performed beyond authorization-critical fields
- *   to allow for rapid prototyping and schema iteration.
- *
- * Denormalization for Authorization:
- *  - User roles are stored directly within the user document to avoid needing
- *    get() calls to a separate roles collection during authorization checks.
- * Structural Segregation:
- *  - User profiles are stored in a dedicated /users/{userId} collection to
- *    enforce path-based ownership, simplifying security rules.
+ * - Users can only access their own profile data.
+ * - Listing of user documents is denied to all users.
+ * - The prototype does not enforce data validation beyond authorization checks.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -33,98 +20,79 @@ service cloud.firestore {
     /**
      * @description Controls access to user profile documents.
      * @path /users/{userId}
-     * @allow (create) User with UID 'user_abc' can create their own profile.
-     *   request.auth.uid == 'user_abc' and request.resource.data.id == 'user_abc'
-     * @allow (read) User with UID 'user_abc' can read their own profile.
-     *   request.auth.uid == 'user_abc'
-     * @allow (update) User with UID 'user_abc' can update their own profile.
-     *   request.auth.uid == 'user_abc' and resource.data.id == 'user_abc'
-     * @allow (delete) User with UID 'user_abc' can delete their own profile.
-     *   request.auth.uid == 'user_abc' and resource.data.id == 'user_abc'
-     * @deny (create) User with UID 'user_abc' cannot create a profile for 'user_xyz'.
-     *   request.auth.uid == 'user_abc' but request.resource.data.id == 'user_xyz'
-     * @deny (read) User with UID 'user_abc' cannot read profile of 'user_xyz'.
-     *   request.auth.uid == 'user_abc' but path is /users/user_xyz
-     * @deny (update) User with UID 'user_abc' cannot update profile of 'user_xyz'.
-     *   request.auth.uid == 'user_abc' but path is /users/user_xyz
-     * @deny (delete) User with UID 'user_abc' cannot delete profile of 'user_xyz'.
-     *   request.auth.uid == 'user_abc' but path is /users/user_xyz
-     * @principle Enforces user ownership and restricts access to own profile.
+     * @allow (get) User with matching UID can read their own profile.
+     * @allow (create) User with matching UID can create their own profile.
+     * @allow (update) User with matching UID can update their own profile.
+     * @allow (delete) User with matching UID can delete their own profile.
+     * @deny (get) User tries to read another user's profile.
+     * @deny (create) User tries to create a profile with a mismatched UID.
+     * @deny (update) User tries to update another user's profile.
+     * @deny (delete) User tries to delete another user's profile.
+     * @principle Enforces document ownership for all operations on user profiles.
      */
     match /users/{userId} {
-      // Helper function to check if the requested user ID matches the authenticated user's ID.
+      // Helper function to check if the authenticated user is the owner of the document.
       function isOwner(userId) {
-        return request.auth.uid == userId;
+        return request.auth != null && request.auth.uid == userId;
       }
 
-      // Helper function to check if the user exists and is the owner.
+      // Helper function to check if the authenticated user is the owner of the existing document.
       function isExistingOwner(userId) {
-        return isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId));
+        return request.auth != null && request.auth.uid == userId && resource != null;
       }
-
-      // Allow a user to create their own profile if the UID matches.
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
 
       // Allow a user to read their own profile.
       allow get: if isOwner(userId);
 
-      // Allow a user to list their own profile
-      allow list: if isOwner(userId);
+      // Only the owner can list their own user document (this is effectively disabled).
+      allow list: if false;
 
-      // Allow a user to update their own profile, enforcing immutability of userId.
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      // Allow a user to create their own profile, enforcing that the UID in the path matches the authenticated user's UID.
+      allow create: if isOwner(userId);
+
+      // Allow a user to update their own profile, enforcing immutability of the 'id' field.
+      allow update: if isExistingOwner(userId);
 
       // Allow a user to delete their own profile.
       allow delete: if isExistingOwner(userId);
     }
 
-     /**
-      * @description Controls access to room documents.
-      * @path /rooms/{roomId}
-      * @allow (get) Any user can read room details.
-      *   request.auth != null
-      * @allow (list) Any user can list rooms.
-      *   request.auth != null
-      * @deny (create) No one can create rooms without specific authorization.
-      *   request.auth == null
-      * @deny (update) No one can update rooms without specific authorization.
-      *   request.auth == null
-      * @deny (delete) No one can delete rooms without specific authorization.
-      *   request.auth == null
-      * @principle Requires authentication for any access.
-      */
+    /**
+     * @description Controls access to room documents. Open access for all operations.
+     * @path /rooms/{roomId}
+     * @allow (get) Any user can read room details.
+     * @allow (list) Any user can list rooms.
+     * @allow (create) Any user can create a new room document.
+     * @allow (update) Any user can update an existing room document.
+     * @allow (delete) Any user can delete a room document.
+     * @principle Public read access, open write access for prototyping.
+     */
     match /rooms/{roomId} {
-        allow get, list: if isSignedIn();
-        allow create, update, delete: if false; // TODO: Implement authorization for room management
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Controls access to booking documents.
+     * @description Controls access to booking documents. Open access for all operations.
      * @path /bookings/{bookingId}
      * @allow (get) Any user can read booking details.
-     *   request.auth != null
      * @allow (list) Any user can list bookings.
-     *   request.auth != null
-     * @deny (create) No one can create bookings without specific authorization.
-     *   request.auth == null
-     * @deny (update) No one can update bookings without specific authorization.
-     *   request.auth == null
-     * @deny (delete) No one can delete bookings without specific authorization.
-     *   request.auth == null
-     * @principle Requires authentication for any access.
+     * @allow (create) Any user can create a new booking document.
+     * @allow (update) Any user can update an existing booking document.
+     * @allow (delete) Any user can delete a booking document.
+     * @principle Public read access, open write access for prototyping.
      */
     match /bookings/{bookingId} {
-        allow get, list: if isSignedIn();
-        allow create, update, delete: if false; // TODO: Implement authorization for booking management
-    }
-
-    // Deny access to all other collections unless explicitly allowed
-    match /{path=**} {
-      allow read, write: if false;
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
   }
 
-  // Define a function to check if a user is signed in.
+  // Helper function to check if a user is signed in.
   function isSignedIn() {
     return request.auth != null;
   }

@@ -10,7 +10,7 @@ import {
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, LayoutDashboard, Users, UserCog, BedDouble } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, UserCog, BedDouble, UtensilsCrossed } from 'lucide-react';
 import type { User } from '@/lib/types';
 import { useAuth } from '@/firebase';
 import { signOut } from 'firebase/auth';
@@ -37,6 +37,7 @@ export default function AppSidebar() {
       { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', roles: ['admin', 'waiter', 'payment'] },
       { href: '/dashboard/user-management', icon: Users, label: 'User Management', roles: ['admin'] },
       { href: '/dashboard/room-management', icon: BedDouble, label: 'Room Management', roles: ['admin'] },
+      { href: '/dashboard/menu-management', icon: UtensilsCrossed, label: 'Menu Management', roles: ['admin'] },
       { href: '/dashboard/profile', icon: UserCog, label: 'Profile', roles: ['admin', 'waiter', 'payment'] },
     ];
 

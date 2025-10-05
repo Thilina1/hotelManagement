@@ -1,50 +1,20 @@
 'use client';
 
-import { useEffect, type ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
-import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import AdminDashboard from '@/components/dashboard/admin-dashboard';
 import WaiterDashboard from '@/components/dashboard/waiter-dashboard';
 import PaymentDashboard from '@/components/dashboard/payment-dashboard';
-import AppSidebar from '@/components/dashboard/app-sidebar';
-import DashboardHeader from '@/components/dashboard/dashboard-header';
 import { Skeleton } from '@/components/ui/skeleton';
-
-function DashboardWrapper({ children }: { children: ReactNode }) {
-    const { user } = useAuth();
-    return (
-        <SidebarProvider>
-            <AppSidebar user={user} />
-            <SidebarInset>
-                <DashboardHeader />
-                <main className="min-h-screen flex-1 p-4 sm:p-6 lg:p-8 bg-background">
-                    {children}
-                </main>
-            </SidebarInset>
-        </SidebarProvider>
-    );
-}
-
 
 export default function DashboardPage() {
     const { user, loading } = useAuth();
-    const router = useRouter();
-
-    useEffect(() => {
-        if (!loading && !user) {
-            router.push('/');
-        }
-    }, [user, loading, router]);
 
     if (loading || !user) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="space-y-4 w-1/2">
-                    <Skeleton className="h-12 w-full" />
-                    <Skeleton className="h-48 w-full" />
-                    <Skeleton className="h-48 w-full" />
-                </div>
+            <div className="space-y-4">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-48 w-full" />
+                <Skeleton className="h-48 w-full" />
             </div>
         );
     }
@@ -67,9 +37,5 @@ export default function DashboardPage() {
         }
     };
 
-    return (
-        <DashboardWrapper>
-            {renderDashboard()}
-        </DashboardWrapper>
-    );
+    return renderDashboard();
 }

@@ -13,28 +13,30 @@ export default function ProfilePage() {
 
   if (loading || !user) {
     return (
-        <div className="space-y-6">
-            <Skeleton className="h-32 w-32 rounded-full mx-auto" />
-            <div className="space-y-2">
-                <Skeleton className="h-8 w-48 mx-auto" />
-                <Skeleton className="h-6 w-32 mx-auto" />
+        <div className="container mx-auto p-4 sm:p-6 lg:p-8">
+            <div className="flex flex-col items-center space-y-4">
+                <Skeleton className="h-32 w-32 rounded-full mx-auto" />
+                <div className="space-y-2">
+                    <Skeleton className="h-8 w-48 mx-auto" />
+                    <Skeleton className="h-6 w-32 mx-auto" />
+                </div>
+                 <Card className="max-w-md mx-auto mt-8 w-full">
+                    <CardHeader>
+                        <Skeleton className="h-6 w-1/4" />
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <Skeleton className="h-6 w-full" />
+                        <Skeleton className="h-6 w-full" />
+                        <Skeleton className="h-6 w-full" />
+                    </CardContent>
+                </Card>
             </div>
-             <Card className="max-w-md mx-auto">
-                <CardHeader>
-                    <Skeleton className="h-6 w-1/4" />
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <Skeleton className="h-6 w-full" />
-                    <Skeleton className="h-6 w-full" />
-                    <Skeleton className="h-6 w-full" />
-                </CardContent>
-            </Card>
         </div>
     );
   }
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 lg:p-8">
+    <div className="container mx-auto">
       <div className="flex flex-col items-center space-y-4">
         <Avatar className="w-32 h-32 border-4 border-primary">
           {avatar && <AvatarImage src={avatar.imageUrl} alt={user.name} />}

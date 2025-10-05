@@ -57,6 +57,7 @@ export default function RoomManagementPage() {
   const isAllowedToView = currentUser?.role === 'admin';
 
   const roomsCollection = useMemoFirebase(() => {
+    // Only create the collection reference if the user is an admin
     if (!firestore || !isAllowedToView) return null;
     return collection(firestore, 'rooms');
   }, [firestore, isAllowedToView]);
@@ -135,6 +136,7 @@ export default function RoomManagementPage() {
     }
   };
 
+  // Show a loading skeleton while the user context is loading
   if (!currentUser) {
      return (
        <div className="space-y-6">
@@ -155,6 +157,7 @@ export default function RoomManagementPage() {
      )
   }
 
+  // Once the user is loaded, check for permissions
   if (!isAllowedToView) {
       return (
           <div className="text-center flex flex-col items-center justify-center h-full">

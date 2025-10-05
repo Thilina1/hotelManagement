@@ -21,13 +21,11 @@ export default function TableOrderPage() {
     const { toast } = useToast();
     const { user: currentUser } = useUserContext();
 
-    const [hasCheckedTable, setHasCheckedTable] = useState(false);
-
     const isWaiter = currentUser?.role === 'waiter' || currentUser?.role === 'admin';
 
     // Fetch table details
     const tableRef = useMemoFirebase(() => firestore && tableId ? doc(firestore, 'tables', tableId) : null, [firestore, tableId]);
-    const { data: table, isLoading: isTableLoading } = useDoc<TableType>(tableRef);
+    const { data: table, isLoading: isTableLoading, error: tableError } = useDoc<TableType>(tableRef);
 
     // Fetch menu items
     const menuItemsRef = useMemoFirebase(() => firestore ? collection(firestore, 'menuItems') : null, [firestore]);
@@ -51,12 +49,6 @@ export default function TableOrderPage() {
     const { data: orderItems, isLoading: areOrderItemsLoading } = useCollection<OrderItem>(orderItemsRef);
 
     const [localOrder, setLocalOrder] = useState<Record<string, number>>({});
-
-    useEffect(() => {
-      if (!isTableLoading) {
-        setHasCheckedTable(true);
-      }
-    }, [isTableLoading]);
 
     const handleAddItem = (menuItem: MenuItem) => {
         if (menuItem.stockType === 'Inventoried' && (menuItem.stock ?? 0) <= 0) {
@@ -98,7 +90,7 @@ export default function TableOrderPage() {
                     updatedAt: serverTimestamp(),
                     createdBy: currentUser.id,
                 });
-                currentOrder = { id: newOrderRef.id, tableId, status: 'open', totalPrice: 0 };
+                currentOrder = { id: newOrderRef.id, tableId, status: 'open', totalPrice: 0, createdAt: new Date().toISOString() };
             }
 
             if (!currentOrder) throw new Error("Failed to create or find order.");
@@ -179,7 +171,50 @@ export default function TableOrderPage() {
 
     const totalBill = (openOrder?.totalPrice || 0) + totalLocalPrice;
 
-    if (!isLoading && !isWaiter) {
+    if (!isTableLoading && !table) {
+        notFound();
+    }
+
+    if (isLoading) {
+        return (
+             <div className="container mx-auto p-4 space-y-6">
+                <header>
+                    <Skeleton className="h-10 w-1/3" />
+                    <Skeleton className="h-4 w-1/2 mt-2" />
+                </header>
+                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 items-start">
+                    <Card className="lg:col-span-2">
+                        <CardHeader>
+                           <Skeleton className="h-8 w-1/4" />
+                           <Skeleton className="h-4 w-1/2" />
+                        </CardHeader>
+                        <CardContent>
+                           <div className="space-y-4 pr-4">
+                                {[...Array(10)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+                            </div>
+                        </CardContent>
+                    </Card>
+                     <Card className="sticky top-24">
+                        <CardHeader>
+                            <Skeleton className="h-8 w-1/2" />
+                            <Skeleton className="h-6 w-1/4" />
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <Skeleton className="h-24 w-full" />
+                            <Skeleton className="h-24 w-full" />
+                        </CardContent>
+                        <CardFooter className="flex flex-col gap-4">
+                            <Skeleton className="h-8 w-full" />
+                            <Skeleton className="h-10 w-full" />
+                            <Skeleton className="h-10 w-full" />
+                        </CardFooter>
+                    </Card>
+                </div>
+            </div>
+        )
+    }
+
+    if (!isWaiter) {
       return (
           <div className="text-center flex flex-col items-center justify-center h-full">
               <Card className="p-8 max-w-md w-full">
@@ -194,14 +229,11 @@ export default function TableOrderPage() {
       )
     }
 
-    if (hasCheckedTable && !table) {
-        notFound();
-    }
 
     return (
         <div className="container mx-auto p-4 space-y-6">
             <header>
-                {isTableLoading ? <Skeleton className="h-10 w-1/3" /> : <h1 className="text-3xl font-headline font-bold">Table {table?.tableNumber} - Order</h1>}
+                <h1 className="text-3xl font-headline font-bold">Table {table?.tableNumber} - Order</h1>
                 <p className="text-muted-foreground">Add items to the order and manage the bill.</p>
             </header>
 
@@ -213,26 +245,20 @@ export default function TableOrderPage() {
                     </CardHeader>
                     <CardContent>
                         <ScrollArea className="h-[60vh]">
-                            {isLoading ? (
-                                <div className="space-y-4 pr-4">
-                                    {[...Array(10)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
-                                </div>
-                            ) : (
-                                <div className="space-y-2 pr-4">
-                                    {menuItems?.filter(item => item.availability).map(item => (
-                                        <div key={item.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted">
-                                            <div>
-                                                <p className="font-semibold">{item.name}</p>
-                                                <p className="text-sm text-muted-foreground">${item.price.toFixed(2)}</p>
-                                                {item.stockType === 'Inventoried' && <p className="text-xs text-primary">Stock: {item.stock}</p>}
-                                            </div>
-                                            <Button size="sm" onClick={() => handleAddItem(item)}>
-                                                <PlusCircle className="mr-2 h-4 w-4" /> Add
-                                            </Button>
+                            <div className="space-y-2 pr-4">
+                                {menuItems?.filter(item => item.availability).map(item => (
+                                    <div key={item.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted">
+                                        <div>
+                                            <p className="font-semibold">{item.name}</p>
+                                            <p className="text-sm text-muted-foreground">${item.price.toFixed(2)}</p>
+                                            {item.stockType === 'Inventoried' && <p className="text-xs text-primary">Stock: {item.stock}</p>}
                                         </div>
-                                    ))}
-                                </div>
-                            )}
+                                        <Button size="sm" onClick={() => handleAddItem(item)}>
+                                            <PlusCircle className="mr-2 h-4 w-4" /> Add
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
                         </ScrollArea>
                     </CardContent>
                 </Card>
@@ -295,5 +321,5 @@ export default function TableOrderPage() {
             </div>
         </div>
     );
-
+}
     

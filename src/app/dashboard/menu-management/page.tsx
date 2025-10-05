@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import {
   Table,
   TableBody,
@@ -17,11 +17,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { MoreHorizontal, PlusCircle, Trash2, Edit, UtensilsCrossed } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { MoreHorizontal, PlusCircle, Trash2, Edit } from 'lucide-react';
 import type { MenuItem as MenuItemType, MenuCategory } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, deleteDoc, addDoc, updateDoc, serverTimestamp, query, where } from 'firebase/firestore';
+import { collection, doc, deleteDoc, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MenuItemForm } from '@/components/dashboard/menu-management/menu-item-form';
 import {
@@ -36,12 +35,6 @@ import { useUserContext } from '@/context/user-context';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from '@/components/ui/switch';
 
-
-const categoryColors: Record<MenuCategory, string> = {
-    'Sri Lankan': 'bg-orange-200 text-orange-800',
-    'Western': 'bg-sky-200 text-sky-800',
-    'Bar': 'bg-purple-200 text-purple-800',
-};
 
 const menuCategories: MenuCategory[] = ['Sri Lankan', 'Western', 'Bar'];
 
@@ -96,9 +89,10 @@ export default function MenuManagementPage() {
     if (!firestore || !currentUser) return;
   
     try {
-      const dataToSave = { ...values };
+      const dataToSave: Partial<Omit<MenuItemType, 'id' | 'createdAt' | 'updatedAt'>> = { ...values };
       if (dataToSave.stockType === 'Non-Inventoried') {
-        delete dataToSave.stock;
+        // Use a partial type or delete the property safely
+        delete (dataToSave as Partial<MenuItemType>).stock;
       }
 
       if (editingItem) {
@@ -317,5 +311,3 @@ export default function MenuManagementPage() {
     </div>
   );
 }
-
-    

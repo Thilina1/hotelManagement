@@ -49,6 +49,7 @@ export default function UserManagementPage() {
   const isAllowedToView = currentUser?.role === 'admin';
 
   const usersCollection = useMemoFirebase(() => {
+    // Only create the collection reference if the user is an admin
     if (!firestore || !isAllowedToView) return null;
     return collection(firestore, 'users');
   }, [firestore, isAllowedToView]);
@@ -154,7 +155,7 @@ export default function UserManagementPage() {
             <Skeleton className="h-12 w-1/2" />
             <Skeleton className="h-10 w-28" />
         </div>
-        <Card className="glassy rounded-2xl">
+        <Card>
             <CardHeader>
                 <Skeleton className="h-8 w-1/4" />
                 <Skeleton className="h-4 w-1/2" />
@@ -170,7 +171,7 @@ export default function UserManagementPage() {
   if (!isAllowedToView) {
       return (
           <div className="text-center flex flex-col items-center justify-center h-full">
-              <Card className="glassy rounded-2xl p-8 max-w-md w-full">
+              <Card className="p-8 max-w-md w-full">
                 <CardHeader>
                     <CardTitle className="text-2xl font-bold">Access Denied</CardTitle>
                 </CardHeader>
@@ -198,7 +199,7 @@ export default function UserManagementPage() {
                     <UserPlus className="mr-2 h-4 w-4" /> Add User
                 </Button>
             </DialogTrigger>
-            <DialogContent className="glassy">
+            <DialogContent>
                 <DialogHeader>
                     <DialogTitle>{editingUser ? 'Edit User' : 'Add New User'}</DialogTitle>
                 </DialogHeader>
@@ -210,7 +211,7 @@ export default function UserManagementPage() {
         </Dialog>
       </div>
 
-      <Card className="glassy rounded-2xl">
+      <Card>
         <CardHeader>
           <CardTitle>Staff List</CardTitle>
           <CardDescription>A list of all users in the system.</CardDescription>
@@ -218,7 +219,7 @@ export default function UserManagementPage() {
         <CardContent>
           <Table>
             <TableHeader>
-              <TableRow className="border-white/20">
+              <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Birthday</TableHead>
@@ -230,14 +231,14 @@ export default function UserManagementPage() {
               {areUsersLoading && (
                 <>
                   {[...Array(3)].map((_, i) => (
-                    <TableRow key={i} className="border-white/10">
-                      <TableCell colSpan={5}><Skeleton className="h-8 w-full bg-white/10" /></TableCell>
+                    <TableRow key={i}>
+                      <TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell>
                     </TableRow>
                   ))}
                 </>
               )}
               {!areUsersLoading && users && users.map((user) => (
-                <TableRow key={user.id} className="border-white/10">
+                <TableRow key={user.id}>
                   <TableCell className="font-medium">{user.name}</TableCell>
                   <TableCell>
                     <Badge variant="secondary" className={`capitalize ${roleColors[user.role]}`}>
@@ -249,17 +250,17 @@ export default function UserManagementPage() {
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-white/10">
+                        <Button variant="ghost" className="h-8 w-8 p-0">
                           <span className="sr-only">Open menu</span>
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="glassy">
-                        <DropdownMenuItem onClick={() => handleEditUserClick(user)} className="hover:bg-white/10">
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEditUserClick(user)}>
                             <Edit className="mr-2 h-4 w-4"/>
                             Edit
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-500 hover:!text-red-500 hover:!bg-red-500/10" onClick={() => handleDeleteUser(user.id)}>
+                        <DropdownMenuItem className="text-red-500 hover:!text-red-500" onClick={() => handleDeleteUser(user.id)}>
                             <Trash2 className="mr-2 h-4 w-4"/>
                             Delete
                         </DropdownMenuItem>

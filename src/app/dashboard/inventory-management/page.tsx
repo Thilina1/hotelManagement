@@ -153,11 +153,6 @@ export default function InventoryManagementPage() {
       )
   }
 
-  const renderSortArrow = (key: SortKey) => {
-    if (sortConfig.key !== key) return null;
-    return sortConfig.direction === 'ascending' ? '▲' : '▼';
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-start">

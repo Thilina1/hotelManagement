@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, query, where, writeBatch, serverTimestamp, increment, addDoc } from 'firebase/firestore';
@@ -37,6 +37,11 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<MenuCategory | null>(null);
     const fallbackImage = PlaceHolderImages.find(p => p.id === 'login-background');
+    const [refetchToggle, setRefetchToggle] = useState(false);
+
+    const refetchOrderData = useCallback(() => {
+        setRefetchToggle(prev => !prev);
+    }, []);
 
 
     // Fetch menu items
@@ -47,7 +52,7 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
     const openOrderQuery = useMemoFirebase(() => {
         if (!firestore) return null;
         return query(collection(firestore, 'orders'), where('tableId', '==', table.id), where('status', '==', 'open'));
-    }, [firestore, table.id]);
+    }, [firestore, table.id, refetchToggle]);
 
     const { data: openOrders, isLoading: areOrdersLoading } = useCollection<Order>(openOrderQuery);
     const openOrder = useMemo(() => (openOrders && openOrders.length > 0) ? openOrders[0] : null, [openOrders]);
@@ -84,10 +89,13 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
             toast({ variant: 'destructive', title: 'Out of Stock', description: `${menuItem.name} is currently unavailable.` });
             return;
         }
-        setLocalOrder(prev => ({
-            ...prev,
-            [menuItem.id]: (prev[menuItem.id] || 0) + 1,
-        }));
+        setLocalOrder(prev => {
+            const currentQuantity = prev[menuItem.id] || 0;
+            return {
+                ...prev,
+                [menuItem.id]: currentQuantity + 1,
+            };
+        });
     };
 
     const handleRemoveItem = (menuItemId: string) => {
@@ -105,6 +113,7 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
         if (!firestore) return;
 
         const batch = writeBatch(firestore);
+        let orderExisted = !!openOrder;
         let currentOrderId = openOrder?.id;
         let currentOrderPrice = openOrder?.totalPrice || 0;
 
@@ -149,7 +158,7 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
 
             if (currentOrderId) {
                 const orderRef = doc(firestore, 'orders', currentOrderId);
-                batch.update(orderRef, { totalPrice: currentOrderPrice + newItemsPrice, updatedAt: serverTimestamp() });
+                batch.update(orderRef, { totalPrice: increment(newItemsPrice), updatedAt: serverTimestamp() });
             }
             
             if (table.status === 'available') {
@@ -161,6 +170,10 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
 
             setLocalOrder({});
             toast({ title: 'Order Confirmed', description: 'Items have been added to the order.' });
+            
+            if (!orderExisted) {
+              refetchOrderData();
+            }
 
         } catch (error: any) {
             console.error("Error confirming order", error);
@@ -190,7 +203,8 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
         }
     };
 
-    const isLoading = areMenuItemsLoading || areOrdersLoading || areOrderItemsLoading;
+    const isLoading = areMenuItemsLoading || areOrdersLoading;
+    
     const totalLocalPrice = Object.entries(localOrder).reduce((acc, [id, quantity]) => {
         const item = menuItems?.find(m => m.id === id);
         return acc + (item ? item.price * quantity : 0);
@@ -209,8 +223,8 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                         <CardHeader>
                             <CardTitle>Menu</CardTitle>
                             <CardDescription>Select items to add to the order.</CardDescription>
-                            <div className="flex gap-2 items-center">
-                                <div className="relative flex-grow">
+                            <div className="flex gap-2 items-center flex-wrap">
+                                <div className="relative flex-grow min-w-[200px]">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                     <Input
                                         placeholder="Search menu..."
@@ -233,9 +247,9 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                                     ) : filteredMenuItems.map(item => (
                                         <div key={item.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted">
                                             <div className="flex items-center gap-4">
-                                                <div className="relative w-14 h-14 rounded-md overflow-hidden bg-muted flex items-center justify-center">
+                                                <div className="relative w-14 h-14 rounded-md overflow-hidden bg-muted flex items-center justify-center shrink-0">
                                                     {fallbackImage ? (
-                                                        <Image src={fallbackImage.imageUrl} alt={item.name} fill className="object-cover" />
+                                                        <Image src={fallbackImage.imageUrl} alt={item.name} layout="fill" className="object-cover" />
                                                     ) : (
                                                         <Utensils className="h-6 w-6 text-muted-foreground"/>
                                                     )}
@@ -266,10 +280,11 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                             <CardTitle className="flex items-center"><ShoppingCart className="mr-2"/> Current Bill</CardTitle>
                             {table && <Badge className="capitalize w-fit">{table.status}</Badge>}
                         </CardHeader>
-                        <CardContent className="space-y-4 flex-1 overflow-hidden">
-                            <ScrollArea className="h-full flex flex-col">
+                        <CardContent className="space-y-4 flex-1 overflow-auto">
+                           
                                 <Separator />
                                 <h3 className="font-semibold my-2">Current Order</h3>
+                                <div className="space-y-1 pr-2 max-h-32 overflow-y-auto">
                                 {areOrderItemsLoading ? <Skeleton className="h-16 w-full" /> : 
                                  orderItems && orderItems.length > 0 ? (
                                     orderItems.map(item => (
@@ -281,9 +296,11 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                                 ) : (
                                     <p className="text-sm text-muted-foreground">No items in the current order.</p>
                                 )}
+                                </div>
                                 
                                 <Separator className="my-2"/>
                                 <h3 className="font-semibold mb-2">New Items</h3>
+                                <div className="space-y-1 pr-2 max-h-48 overflow-y-auto">
                                 {Object.keys(localOrder).length > 0 ? (
                                     Object.entries(localOrder).map(([id, quantity]) => {
                                         const item = menuItems?.find(m => m.id === id);
@@ -302,7 +319,8 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                                 ) : (
                                     <p className="text-sm text-muted-foreground">Add items from the menu.</p>
                                 )}
-                            </ScrollArea>
+                                </div>
+                          
                         </CardContent>
                         <CardFooter className="flex flex-col gap-4 mt-auto border-t pt-4">
                             <div className="w-full flex justify-between items-center text-xl font-bold">

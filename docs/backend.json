@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -23,17 +24,35 @@
         "role": {
           "type": "string",
           "description": "The user's role within the system.  Allowed values: 'admin', 'waiter', 'payment'.",
-          "format": "enum",
-          "items": {
-            "type": "string"
-          }
+          "enum": ["admin", "waiter", "payment"]
+        },
+        "createdAt": {
+            "type": "string",
+            "description": "Timestamp when the user was created.",
+            "format": "date-time"
+        },
+        "updatedAt": {
+            "type": "string",
+            "description": "Timestamp when the user was last updated.",
+            "format": "date-time"
+        },
+        "createdBy": {
+            "type": "string",
+            "description": "UID of the user who created this user."
+        },
+        "updatedBy": {
+            "type": "string",
+            "description": "UID of the user who last updated this user."
         }
       },
       "required": [
-        "id",
         "name",
         "birthday",
-        "role"
+        "role",
+        "createdAt",
+        "createdBy",
+        "updatedAt",
+        "updatedBy"
       ]
     }
   },

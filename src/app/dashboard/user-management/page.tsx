@@ -21,16 +21,26 @@ import { MoreHorizontal, UserPlus, Trash2, Edit } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { User, UserRole } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, deleteDoc, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
+import { UserForm } from '@/components/dashboard/user-management/user-form';
+import { useAuth } from '@/hooks/use-auth';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 const roleColors: Record<UserRole, string> = {
-    admin: 'bg-red-500 hover:bg-red-600',
-    waiter: 'bg-blue-500 hover:bg-blue-600',
-    payment: 'bg-green-500 hover:bg-green-600',
+    admin: 'bg-primary text-primary-foreground',
+    waiter: 'bg-accent text-accent-foreground',
+    payment: 'bg-emerald-500 text-white',
 };
 
 export default function UserManagementPage() {
+  const { user: currentUser } = useAuth();
   const firestore = useFirestore();
   const usersCollection = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -38,8 +48,18 @@ export default function UserManagementPage() {
   }, [firestore]);
   const { data: users, isLoading } = useCollection<User>(usersCollection);
 
-  const handleAddUser = () => alert("Add user dialog would open here.");
-  const handleEditUser = (id: string) => alert(`Edit user dialog for user ${id} would open here.`);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+
+  const handleAddUserClick = () => {
+    setEditingUser(null);
+    setIsDialogOpen(true);
+  };
+
+  const handleEditUserClick = (user: User) => {
+    setEditingUser(user);
+    setIsDialogOpen(true);
+  };
   
   const handleDeleteUser = async (id: string) => {
     if(!firestore) return;
@@ -53,6 +73,36 @@ export default function UserManagementPage() {
     }
   };
 
+  const handleFormSubmit = async (values: Partial<User>) => {
+    if (!firestore || !usersCollection || !currentUser) return;
+
+    try {
+        if (editingUser) {
+            // Update user
+            const userDocRef = doc(firestore, 'users', editingUser.id);
+            await updateDoc(userDocRef, {
+                ...values,
+                updatedAt: serverTimestamp(),
+                updatedBy: currentUser.id,
+            });
+        } else {
+            // Create user
+            await addDoc(usersCollection, {
+                ...values,
+                createdAt: serverTimestamp(),
+                createdBy: currentUser.id,
+                updatedAt: serverTimestamp(),
+                updatedBy: currentUser.id,
+            });
+        }
+        setIsDialogOpen(false);
+        setEditingUser(null);
+    } catch (error) {
+        console.error("Error saving user:", error);
+        alert("Failed to save user.");
+    }
+  };
+
 
   return (
     <div className="space-y-6">
@@ -61,12 +111,28 @@ export default function UserManagementPage() {
             <h1 className="text-3xl font-headline font-bold">User Management</h1>
             <p className="text-muted-foreground">Manage all staff members in one place.</p>
         </div>
-        <Button onClick={handleAddUser}>
-          <UserPlus className="mr-2 h-4 w-4" /> Add User
-        </Button>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) setEditingUser(null);
+        }}>
+            <DialogTrigger asChild>
+                <Button onClick={handleAddUserClick} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                    <UserPlus className="mr-2 h-4 w-4" /> Add User
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="glassy">
+                <DialogHeader>
+                    <DialogTitle>{editingUser ? 'Edit User' : 'Add New User'}</DialogTitle>
+                </DialogHeader>
+                <UserForm
+                    user={editingUser}
+                    onSubmit={handleFormSubmit}
+                />
+            </DialogContent>
+        </Dialog>
       </div>
 
-      <Card>
+      <Card className="glassy rounded-2xl">
         <CardHeader>
           <CardTitle>Staff List</CardTitle>
           <CardDescription>A list of all users in the system.</CardDescription>
@@ -74,50 +140,48 @@ export default function UserManagementPage() {
         <CardContent>
           <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="border-white/20">
                 <TableHead>Name</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Birthday</TableHead>
+                <TableHead>Updated At</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading && (
                 <>
-                  <TableRow>
-                    <TableCell colSpan={4}><Skeleton className="h-8 w-full" /></TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell colSpan={4}><Skeleton className="h-8 w-full" /></TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell colSpan={4}><Skeleton className="h-8 w-full" /></TableCell>
-                  </TableRow>
+                  {[...Array(3)].map((_, i) => (
+                    <TableRow key={i} className="border-white/10">
+                      <TableCell colSpan={5}><Skeleton className="h-8 w-full bg-white/10" /></TableCell>
+                    </TableRow>
+                  ))}
                 </>
               )}
               {!isLoading && users && users.map((user) => (
-                <TableRow key={user.id}>
+                <TableRow key={user.id} className="border-white/10">
                   <TableCell className="font-medium">{user.name}</TableCell>
                   <TableCell>
-                    <Badge variant="secondary" className={`capitalize text-white ${roleColors[user.role]}`}>
+                    <Badge variant="secondary" className={`capitalize ${roleColors[user.role]}`}>
                         {user.role}
                     </Badge>
                   </TableCell>
-                  <TableCell>{new Date(user.birthday).toLocaleDateString()}</TableCell>
+                  <TableCell>{user.birthday ? new Date(user.birthday).toLocaleDateString() : 'N/A'}</TableCell>
+                   <TableCell>{user.updatedAt ? new Date((user.updatedAt as any).seconds * 1000).toLocaleString() : 'N/A'}</TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
+                        <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-white/10">
                           <span className="sr-only">Open menu</span>
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEditUser(user.id)}>
+                      <DropdownMenuContent align="end" className="glassy">
+                        <DropdownMenuItem onClick={() => handleEditUserClick(user)} className="hover:bg-white/10">
                             <Edit className="mr-2 h-4 w-4"/>
                             Edit
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-500" onClick={() => handleDeleteUser(user.id)}>
+                        <DropdownMenuItem className="text-red-500 hover:!text-red-500 hover:!bg-red-500/10" onClick={() => handleDeleteUser(user.id)}>
                             <Trash2 className="mr-2 h-4 w-4"/>
                             Delete
                         </DropdownMenuItem>
@@ -128,7 +192,7 @@ export default function UserManagementPage() {
               ))}
                {!isLoading && (!users || users.length === 0) && (
                 <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground">
+                    <TableCell colSpan={5} className="text-center text-muted-foreground py-10">
                         No users found.
                     </TableCell>
                 </TableRow>

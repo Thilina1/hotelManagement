@@ -41,6 +41,7 @@ export type Booking = {
 };
 
 export type MenuCategory = 'Sri Lankan' | 'Western' | 'Bar';
+export type StockType = 'Inventoried' | 'Non-Inventoried';
 
 export type MenuItem = {
     id: string;
@@ -49,6 +50,8 @@ export type MenuItem = {
     price: number;
     category: MenuCategory;
     availability: boolean;
+    stockType: StockType;
+    stock?: number;
     createdAt?: string | { seconds: number; nanoseconds: number };
     updatedAt?: string | { seconds: number; nanoseconds: number };
 };
@@ -65,3 +68,5 @@ export type Table = {
     createdAt?: string | { seconds: number; nanoseconds: number };
     updatedAt?: string | { seconds: number; nanoseconds: number };
 }
+
+    

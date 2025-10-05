@@ -1,12 +1,13 @@
 'use client';
 
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -22,16 +23,20 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import type { MenuItem, MenuCategory } from '@/lib/types';
+import type { MenuItem, MenuCategory, StockType } from '@/lib/types';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 const menuCategories: MenuCategory[] = ['Sri Lankan', 'Western', 'Bar'];
+const stockTypes: StockType[] = ['Inventoried', 'Non-Inventoried'];
 
 const formSchema = z.object({
   name: z.string().min(1, { message: 'Item name is required.' }),
   description: z.string().optional(),
   price: z.coerce.number().min(0, { message: 'Price must be a positive number.' }),
-  category: z.enum(['Sri Lankan', 'Western', 'Bar']),
+  category: z.enum(menuCategories),
   availability: z.boolean(),
+  stockType: z.enum(stockTypes),
+  stock: z.coerce.number().optional(),
 });
 
 interface MenuItemFormProps {
@@ -48,7 +53,14 @@ export function MenuItemForm({ item, onSubmit }: MenuItemFormProps) {
       price: item?.price || 0,
       category: item?.category || 'Sri Lankan',
       availability: item?.availability ?? true,
+      stockType: item?.stockType || 'Non-Inventoried',
+      stock: item?.stock || 0,
     },
+  });
+
+  const watchedStockType = useWatch({
+    control: form.control,
+    name: 'stockType',
   });
 
   return (
@@ -117,6 +129,60 @@ export function MenuItemForm({ item, onSubmit }: MenuItemFormProps) {
         />
         <FormField
           control={form.control}
+          name="stockType"
+          render={({ field }) => (
+            <FormItem className="space-y-3">
+              <FormLabel>Stock Type</FormLabel>
+              <FormControl>
+                <RadioGroup
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                  className="flex space-x-4"
+                >
+                  <FormItem className="flex items-center space-x-2 space-y-0">
+                    <FormControl>
+                      <RadioGroupItem value="Non-Inventoried" />
+                    </FormControl>
+                    <FormLabel className="font-normal">
+                      Non-Inventoried
+                    </FormLabel>
+                  </FormItem>
+                  <FormItem className="flex items-center space-x-2 space-y-0">
+                    <FormControl>
+                      <RadioGroupItem value="Inventoried" />
+                    </FormControl>
+                    <FormLabel className="font-normal">
+                      Inventoried
+                    </FormLabel>
+                  </FormItem>
+                </RadioGroup>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {watchedStockType === 'Inventoried' && (
+          <FormField
+            control={form.control}
+            name="stock"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Stock</FormLabel>
+                <FormControl>
+                  <Input type="number" placeholder="e.g., 100" {...field} />
+                </FormControl>
+                 <FormDescription>
+                  Current quantity on hand.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+        
+        <FormField
+          control={form.control}
           name="availability"
           render={({ field }) => (
             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
@@ -140,3 +206,5 @@ export function MenuItemForm({ item, onSubmit }: MenuItemFormProps) {
     </Form>
   );
 }
+
+    

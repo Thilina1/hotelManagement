@@ -92,15 +92,20 @@ export default function MenuManagementPage() {
     }
   };
 
-  const handleFormSubmit = async (values: Omit<MenuItemType, 'id'>) => {
+  const handleFormSubmit = async (values: Omit<MenuItemType, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (!firestore || !currentUser) return;
   
     try {
+      const dataToSave = { ...values };
+      if (dataToSave.stockType === 'Non-Inventoried') {
+        delete dataToSave.stock;
+      }
+
       if (editingItem) {
         // Update existing item
         const itemDocRef = doc(firestore, 'menuItems', editingItem.id);
         await updateDoc(itemDocRef, {
-          ...values,
+          ...dataToSave,
           updatedAt: serverTimestamp(),
         });
         toast({
@@ -110,7 +115,7 @@ export default function MenuManagementPage() {
       } else {
         // Create new item
         await addDoc(collection(firestore, 'menuItems'), {
-            ...values,
+            ...dataToSave,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
         });
@@ -193,6 +198,7 @@ export default function MenuManagementPage() {
                 <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Price</TableHead>
+                <TableHead>Stock</TableHead>
                 <TableHead>Availability</TableHead>
                 <TableHead>Last Updated</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -203,7 +209,7 @@ export default function MenuManagementPage() {
                     <>
                     {[...Array(3)].map((_, i) => (
                         <TableRow key={i}>
-                        <TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell>
+                        <TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell>
                         </TableRow>
                     ))}
                     </>
@@ -212,6 +218,9 @@ export default function MenuManagementPage() {
                     <TableRow key={item.id}>
                     <TableCell className="font-medium">{item.name}</TableCell>
                     <TableCell>${item.price.toFixed(2)}</TableCell>
+                    <TableCell>
+                      {item.stockType === 'Inventoried' ? item.stock : 'N/A'}
+                    </TableCell>
                     <TableCell>
                         <Switch
                             checked={item.availability}
@@ -243,7 +252,7 @@ export default function MenuManagementPage() {
                 ))}
                 {!areMenuItemsLoading && (!filteredItems || filteredItems.length === 0) && (
                     <TableRow>
-                        <TableCell colSpan={5} className="text-center text-muted-foreground py-10">
+                        <TableCell colSpan={6} className="text-center text-muted-foreground py-10">
                             No items found in this category.
                         </TableCell>
                     </TableRow>
@@ -308,3 +317,5 @@ export default function MenuManagementPage() {
     </div>
   );
 }
+
+    

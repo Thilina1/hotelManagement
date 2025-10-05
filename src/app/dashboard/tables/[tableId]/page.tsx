@@ -21,6 +21,8 @@ export default function TableOrderPage() {
     const { toast } = useToast();
     const { user: currentUser } = useUserContext();
 
+    const [hasCheckedTable, setHasCheckedTable] = useState(false);
+
     const isWaiter = currentUser?.role === 'waiter' || currentUser?.role === 'admin';
 
     // Fetch table details
@@ -49,6 +51,12 @@ export default function TableOrderPage() {
     const { data: orderItems, isLoading: areOrderItemsLoading } = useCollection<OrderItem>(orderItemsRef);
 
     const [localOrder, setLocalOrder] = useState<Record<string, number>>({});
+
+    useEffect(() => {
+      if (!isTableLoading) {
+        setHasCheckedTable(true);
+      }
+    }, [isTableLoading]);
 
     const handleAddItem = (menuItem: MenuItem) => {
         if (menuItem.stockType === 'Inventoried' && (menuItem.stock ?? 0) <= 0) {
@@ -171,7 +179,7 @@ export default function TableOrderPage() {
 
     const totalBill = (openOrder?.totalPrice || 0) + totalLocalPrice;
 
-    if (!isWaiter && !isLoading) {
+    if (!isLoading && !isWaiter) {
       return (
           <div className="text-center flex flex-col items-center justify-center h-full">
               <Card className="p-8 max-w-md w-full">
@@ -186,7 +194,7 @@ export default function TableOrderPage() {
       )
     }
 
-    if (!isLoading && !table) {
+    if (hasCheckedTable && !table) {
         notFound();
     }
 
@@ -219,7 +227,7 @@ export default function TableOrderPage() {
                                                 {item.stockType === 'Inventoried' && <p className="text-xs text-primary">Stock: {item.stock}</p>}
                                             </div>
                                             <Button size="sm" onClick={() => handleAddItem(item)}>
-                                                <PlusCircle className="mr-2" /> Add
+                                                <PlusCircle className="mr-2 h-4 w-4" /> Add
                                             </Button>
                                         </div>
                                     ))}
@@ -287,4 +295,5 @@ export default function TableOrderPage() {
             </div>
         </div>
     );
-}
+
+    

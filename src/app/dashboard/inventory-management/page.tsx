@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Search, Save, ArrowUpDown } from 'lucide-react';
 import type { MenuItem as MenuItemType } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, updateDoc, serverTimestamp, increment } from 'firebase/firestore';
+import { collection, doc, updateDoc, serverTimestamp, increment, query, where } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useUserContext } from '@/context/user-context';
@@ -27,17 +27,15 @@ export default function InventoryManagementPage() {
   const { toast } = useToast();
   const { user: currentUser } = useUserContext();
   
-  const isAllowedToView = currentUser?.role === 'admin';
-
   const [searchTerm, setSearchTerm] = useState('');
   const [stockLevels, setStockLevels] = useState<Record<string, number | string>>({});
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'ascending' | 'descending' }>({ key: 'name', direction: 'ascending' });
 
 
   const inventoryItemsCollection = useMemoFirebase(() => {
-    if (!firestore || !isAllowedToView) return null;
+    if (!firestore) return null;
     return query(collection(firestore, 'menuItems'), where('stockType', '==', 'Inventoried'));
-  }, [firestore, isAllowedToView]);
+  }, [firestore]);
 
   const { data: inventoryItems, isLoading: areItemsLoading } = useCollection<MenuItemType>(inventoryItemsCollection);
 
@@ -83,7 +81,7 @@ export default function InventoryManagementPage() {
     setStockLevels(prev => ({ ...prev, [itemId]: isNaN(parsedValue as number) ? '' : parsedValue }));
   };
 
-  const handleUpdateStock = async (itemId: string) => {
+  const handleUpdateStock = (itemId: string) => {
     if (!firestore) return;
     const stockToAdd = stockLevels[itemId];
 
@@ -102,24 +100,23 @@ export default function InventoryManagementPage() {
         updatedAt: serverTimestamp(),
       };
     
-    try {
-        await updateDoc(itemDocRef, updateData);
+    updateDoc(itemDocRef, updateData).then(() => {
         toast({
           title: "Stock Updated",
           description: `Added ${stockToAdd} to the stock.`,
         });
         setStockLevels(prev => ({...prev, [itemId]: ''}));
-    } catch (error) {
+    }).catch(error => {
         console.error("Error updating stock:", error);
         toast({
           variant: "destructive",
           title: "Error",
           description: "Failed to update stock level.",
         });
-    }
+    });
   };
   
-  if (!currentUser) {
+  if (!currentUser || areItemsLoading) {
      return (
        <div className="space-y-6">
         <div className="flex justify-between items-start">
@@ -136,21 +133,6 @@ export default function InventoryManagementPage() {
         </Card>
       </div>
      )
-  }
-
-  if (!isAllowedToView) {
-      return (
-          <div className="text-center flex flex-col items-center justify-center h-full">
-              <Card className="p-8 max-w-md w-full">
-                <CardHeader>
-                    <CardTitle className="text-2xl font-bold">Access Denied</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-muted-foreground">You do not have permission to view this page. Please contact an administrator.</p>
-                </CardContent>
-              </Card>
-          </div>
-      )
   }
 
   return (

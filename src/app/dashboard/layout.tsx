@@ -28,6 +28,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 if (userDoc.exists()) {
                     setUser({ id: firebaseUser.uid, ...userDoc.data() } as User);
                 } else {
+                    // This case can happen if the user exists in Auth but not in Firestore.
+                    // Depending on the app's logic, you might want to log them out or create a Firestore doc.
+                    // For now, we treat them as not fully logged in.
                     setUser(null);
                 }
             } else {
@@ -36,18 +39,19 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             setLoading(false);
         };
 
-        if (!isUserLoading) {
+        if (!isUserLoading && firestore) {
             fetchUserRole();
         }
     }, [firebaseUser, isUserLoading, firestore]);
 
     useEffect(() => {
-        if (!loading && !user) {
+        // Redirect only when we are done loading and have confirmed there's no firebaseUser
+        if (!isUserLoading && !firebaseUser) {
             router.push('/');
         }
-    }, [user, loading, router, pathname]);
+    }, [firebaseUser, isUserLoading, router]);
 
-    if (loading || isUserLoading) {
+    if (loading || isUserLoading || !user) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-background">
                 <div className="space-y-4 w-full max-w-4xl p-4">
@@ -63,12 +67,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             </div>
         );
     }
-    
-    if (!user) {
-         router.push('/');
-         return null;
-    }
-
 
     return (
         <div className="bg-muted/40 min-h-screen">

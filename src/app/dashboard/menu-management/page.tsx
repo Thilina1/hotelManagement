@@ -67,7 +67,7 @@ export default function MenuManagementPage() {
     setIsDialogOpen(true);
   };
   
-  const handleDeleteItem = async (id: string) => {
+  const handleDeleteItem = (id: string) => {
     if(!firestore) return;
     if(confirm('Are you sure you want to delete this menu item? This cannot be undone.')) {
         const itemDocRef = doc(firestore, 'menuItems', id);
@@ -90,7 +90,7 @@ export default function MenuManagementPage() {
     }
   };
 
-  const handleFormSubmit = async (values: Omit<MenuItemType, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const handleFormSubmit = (values: Omit<MenuItemType, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (!firestore || !currentUser) return;
   
     const dataToSave: Partial<Omit<MenuItemType, 'id' | 'createdAt' | 'updatedAt'>> = { ...values };
@@ -141,7 +141,7 @@ export default function MenuManagementPage() {
     setEditingItem(null);
   };
 
-  const handleAvailabilityChange = async (item: MenuItemType, checked: boolean) => {
+  const handleAvailabilityChange = (item: MenuItemType, checked: boolean) => {
      if (!firestore) return;
      const itemDocRef = doc(firestore, 'menuItems', item.id);
      const updateData = { availability: checked };

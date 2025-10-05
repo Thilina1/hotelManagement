@@ -32,6 +32,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useToast } from '@/hooks/use-toast';
 
 const roleColors: Record<UserRole, string> = {
     admin: 'bg-primary text-primary-foreground',
@@ -46,6 +47,7 @@ interface UserManagementPageProps {
 export default function UserManagementPage({ currentUser }: UserManagementPageProps) {
   const firestore = useFirestore();
   const auth = getAuth();
+  const { toast } = useToast();
   
   const isAllowedToView = currentUser?.role === 'admin';
 
@@ -74,30 +76,46 @@ export default function UserManagementPage({ currentUser }: UserManagementPagePr
     if(confirm('Are you sure you want to delete this user? This cannot be undone.')) {
       try {
         await deleteDoc(doc(firestore, 'users', id));
+        toast({
+            title: 'User Deleted',
+            description: 'The user has been successfully removed.',
+        });
       } catch (error) {
         console.error("Error deleting user: ", error);
-        alert("Failed to delete user.");
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to delete user.",
+        });
       }
     }
   };
 
   const handleFormSubmit = async (values: Partial<User> & { email?: string; password?: string }) => {
-    if (!firestore || !currentUser || !auth) return;
+    if (!firestore || !currentUser) return;
   
     try {
       if (editingUser) {
+        // Update existing user
         const userDocRef = doc(firestore, 'users', editingUser.id);
-        const { email, password, ...firestoreData } = values;
+        const { email, password, ...firestoreData } = values; // email and password are not updated here
         await updateDoc(userDocRef, {
           ...firestoreData,
           updatedAt: serverTimestamp(),
           updatedBy: currentUser.id,
         });
+        toast({
+          title: "User Updated",
+          description: "The user's details have been updated.",
+        });
       } else {
+        // Create new user
         if (!values.email || !values.password) {
           throw new Error("Email and password are required for new users.");
         }
         
+        // We use a temporary auth instance to create the user without signing them in
+        // and disrupting the admin's session.
         const tempAuth = getAuth();
         const userCredential = await createUserWithEmailAndPassword(tempAuth, values.email, values.password);
         const newUser = userCredential.user;
@@ -112,16 +130,24 @@ export default function UserManagementPage({ currentUser }: UserManagementPagePr
           updatedAt: serverTimestamp(),
           updatedBy: currentUser.id,
         });
+        toast({
+          title: "User Created",
+          description: "A new user has been successfully added.",
+        });
       }
       setIsDialogOpen(false);
       setEditingUser(null);
     } catch (error: any) {
       console.error("Error saving user:", error);
+      let description = `Failed to save user. ${error.message}`;
       if (error.code === 'auth/email-already-in-use') {
-        alert('This email address is already in use by another account.');
-      } else {
-        alert(`Failed to save user. ${error.message}`);
+        description = 'This email address is already in use by another account.';
       }
+       toast({
+        variant: "destructive",
+        title: "Uh oh! Something went wrong.",
+        description: description,
+      });
     }
   };
 

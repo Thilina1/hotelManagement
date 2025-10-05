@@ -1,21 +1,6 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BedDouble, Users, Utensils, BookCopy, Bed } from "lucide-react";
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
-import type { Room, Table, User, Booking } from '@/lib/types';
-import { Skeleton } from "../ui/skeleton";
-
 export default function AdminDashboard() {
-  const firestore = useFirestore();
-
-  const usersCollection = useMemoFirebase(() => firestore ? collection(firestore, 'users') : null, [firestore]);
-  
-  const { data: users, isLoading: usersLoading } = useCollection<User>(usersCollection);
-
-  const isLoading = usersLoading;
-
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-start">

@@ -46,7 +46,6 @@ interface UserManagementPageProps {
 
 export default function UserManagementPage({ currentUser }: UserManagementPageProps) {
   const firestore = useFirestore();
-  const auth = getAuth();
   const { toast } = useToast();
   
   const isAllowedToView = currentUser?.role === 'admin';

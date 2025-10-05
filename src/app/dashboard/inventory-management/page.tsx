@@ -12,13 +12,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from '@/components/ui/input';
-import { Search, Save } from 'lucide-react';
+import { Search, Save, ArrowUpDown } from 'lucide-react';
 import type { MenuItem as MenuItemType } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, updateDoc, serverTimestamp, query, where } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useUserContext } from '@/context/user-context';
+
+type SortKey = keyof Pick<MenuItemType, 'name' | 'category' | 'stock'>;
 
 export default function InventoryManagementPage() {
   const firestore = useFirestore();
@@ -29,6 +31,8 @@ export default function InventoryManagementPage() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [stockLevels, setStockLevels] = useState<Record<string, number | string>>({});
+  const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'ascending' | 'descending' }>({ key: 'name', direction: 'ascending' });
+
 
   const inventoryItemsCollection = useMemoFirebase(() => {
     if (!firestore || !isAllowedToView) return null;
@@ -38,10 +42,41 @@ export default function InventoryManagementPage() {
   const { data: inventoryItems, isLoading: areItemsLoading } = useCollection<MenuItemType>(inventoryItemsCollection);
 
   const filteredItems = useMemo(() => {
-    return inventoryItems?.filter(item =>
+    if (!inventoryItems) return [];
+    return inventoryItems.filter(item =>
       item.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [inventoryItems, searchTerm]);
+
+  const sortedItems = useMemo(() => {
+    let sortableItems = [...filteredItems];
+    if (sortConfig.key !== null) {
+      sortableItems.sort((a, b) => {
+        const aValue = a[sortConfig.key];
+        const bValue = b[sortConfig.key];
+
+        if (aValue === undefined || aValue === null) return 1;
+        if (bValue === undefined || bValue === null) return -1;
+        
+        if (aValue < bValue) {
+          return sortConfig.direction === 'ascending' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === 'ascending' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [filteredItems, sortConfig]);
+
+  const requestSort = (key: SortKey) => {
+    let direction: 'ascending' | 'descending' = 'ascending';
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+  };
 
   const handleStockChange = (itemId: string, value: string) => {
     const parsedValue = value === '' ? '' : parseInt(value, 10);
@@ -118,6 +153,11 @@ export default function InventoryManagementPage() {
       )
   }
 
+  const renderSortArrow = (key: SortKey) => {
+    if (sortConfig.key !== key) return null;
+    return sortConfig.direction === 'ascending' ? '▲' : '▼';
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-start">
@@ -145,9 +185,24 @@ export default function InventoryManagementPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[40%]">Item Name</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Current Stock</TableHead>
+                <TableHead className="w-[40%]">
+                   <Button variant="ghost" onClick={() => requestSort('name')}>
+                    Item Name
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </TableHead>
+                <TableHead>
+                   <Button variant="ghost" onClick={() => requestSort('category')}>
+                    Category
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </TableHead>
+                <TableHead>
+                   <Button variant="ghost" onClick={() => requestSort('stock')}>
+                    Current Stock
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </TableHead>
                 <TableHead className="text-right w-[30%]">Update Stock</TableHead>
               </TableRow>
             </TableHeader>
@@ -161,7 +216,7 @@ export default function InventoryManagementPage() {
                   ))}
                 </>
               )}
-              {!areItemsLoading && filteredItems?.map((item) => (
+              {!areItemsLoading && sortedItems?.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">{item.name}</TableCell>
                   <TableCell>{item.category}</TableCell>
@@ -183,7 +238,7 @@ export default function InventoryManagementPage() {
                   </TableCell>
                 </TableRow>
               ))}
-               {!areItemsLoading && (!filteredItems || filteredItems.length === 0) && (
+               {!areItemsLoading && (!sortedItems || sortedItems.length === 0) && (
                 <TableRow>
                     <TableCell colSpan={4} className="text-center text-muted-foreground py-10">
                         No inventoried items found.

@@ -1,16 +1,12 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import type { User } from '@/lib/types';
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut, Auth, User as FirebaseUser } from 'firebase/auth';
+import { doc, getDoc, Firestore } from 'firebase/firestore';
 
-// This is mock data. In a real application, you would fetch this from your database.
-// The password field is included for mock authentication purposes and should NOT be stored in plaintext in a real database.
-const mockUsers = [
-  { id: '1', name: 'Admin User', password: 'admin', role: 'admin', birthday: '1990-01-01' },
-  { id: '2', name: 'Waiter User', password: 'waiter', role: 'waiter', birthday: '1995-05-10' },
-  { id: '3', name: 'Payment User', password: 'payment', role: 'payment', birthday: '1998-11-20' },
-];
+import type { User } from '@/lib/types';
+import { useFirebase, useFirestore, useAuth as useFirebaseAuth } from '@/firebase';
 
 interface AuthContextType {
   user: User | null;
@@ -21,65 +17,70 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+// In a real app, email is derived from the user's name. This is a simplification.
+// For example, 'Admin User' becomes 'admin.user@example.com'.
+// This is not a robust solution but serves for this mock-style login.
+const emailFromName = (name: string) => `${name.toLowerCase().replace(' ', '.')}@example.com`;
+
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  
+  // These hooks can only be called from a component within FirebaseProvider
+  const auth = useFirebaseAuth();
+  const firestore = useFirestore();
 
   useEffect(() => {
-    // This is a mock session check. In a real app, you'd verify a token or session cookie.
-    try {
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
+      if (firebaseUser) {
+        // User is signed in, now fetch their profile from Firestore
+        const userDocRef = doc(firestore, 'users', firebaseUser.uid);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) {
+          const userData = { id: firebaseUser.uid, ...userDoc.data() } as User;
+          setUser(userData);
+          localStorage.setItem('user', JSON.stringify(userData));
+        } else {
+          // No user profile found, something is wrong. Log them out.
+          await signOut(auth);
+          setUser(null);
+          localStorage.removeItem('user');
+        }
+      } else {
+        // User is signed out
+        setUser(null);
+        localStorage.removeItem('user');
       }
-    } catch (error) {
-      console.error("Could not parse user from localStorage", error);
-      localStorage.removeItem('user');
-    } finally {
       setLoading(false);
-    }
-  }, []);
+    });
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
+  }, [auth, firestore, router]);
+
 
   const login = async (name: string, password: string): Promise<boolean> => {
-    // MOCK AUTHENTICATION
-    // In a real application, you would replace this with a call to your authentication service (e.g., Firebase Authentication).
-    // Example with Firebase:
-    // try {
-    //   const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    //   // After successful login, fetch user role and other data from Firestore
-    //   const userDoc = await getDoc(doc(db, "users", userCredential.user.uid));
-    //   if (userDoc.exists()) {
-    //     const userData = { id: userCredential.user.uid, ...userDoc.data() } as User;
-    //     setUser(userData);
-    //     localStorage.setItem('user', JSON.stringify(userData));
-    //     return true;
-    //   } else {
-    //     await signOut(auth); // Sign out if no user data found
-    //     return false;
-    //   }
-    // } catch (error) {
-    //   console.error("Login failed:", error);
-    //   return false;
-    // }
-
-    const foundUser = mockUsers.find(u => u.name.toLowerCase() === name.toLowerCase() && u.password === password);
-    
-    if (foundUser) {
-      const { password: _, ...userToSet } = foundUser;
-      setUser(userToSet);
-      localStorage.setItem('user', JSON.stringify(userToSet));
+    setLoading(true);
+    const email = emailFromName(name);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      // The onAuthStateChanged listener will handle setting the user state
+      // and redirecting, so we just return true here.
       return true;
+    } catch (error) {
+      console.error("Login failed:", error);
+      setLoading(false);
+      return false;
     }
-    
-    return false;
   };
 
-  const logout = () => {
-    // In a real app with Firebase: await signOut(auth);
-    setUser(null);
-    localStorage.removeItem('user');
+  const logout = async () => {
+    setLoading(true);
+    await signOut(auth);
+    // The onAuthStateChanged listener will handle clearing user state.
     router.push('/');
+    setLoading(false);
   };
 
   return (

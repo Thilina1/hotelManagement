@@ -20,15 +20,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { MoreHorizontal, UserPlus, Trash2, Edit } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import type { User, UserRole } from '@/lib/types';
-
-// Mock data, in a real app this would come from your backend/database
-const initialUsers: User[] = [
-  { id: '1', name: 'Admin User', role: 'admin', birthday: '1990-01-01' },
-  { id: '2', name: 'Waiter User', role: 'waiter', birthday: '1995-05-10' },
-  { id: '3', name: 'Payment User', role: 'payment', birthday: '1998-11-20' },
-  { id: '4', name: 'Jane Smith', role: 'waiter', birthday: '1999-03-15' },
-  { id: '5', name: 'Mike Johnson', role: 'payment', birthday: '1985-08-22' },
-];
+import { useCollection, useFirestore } from '@/firebase';
+import { collection, doc, deleteDoc } from 'firebase/firestore';
+import { Skeleton } from '../ui/skeleton';
 
 const roleColors: Record<UserRole, string> = {
     admin: 'bg-red-500 hover:bg-red-600',
@@ -36,16 +30,22 @@ const roleColors: Record<UserRole, string> = {
     payment: 'bg-green-500 hover:bg-green-600',
 };
 
-
 export default function AdminDashboard() {
-  const [users, setUsers] = useState<User[]>(initialUsers);
+  const firestore = useFirestore();
+  const usersCollection = collection(firestore, 'users');
+  const { data: users, isLoading } = useCollection<User>(usersCollection);
 
-  // In a real app, these functions would trigger API calls
   const handleAddUser = () => alert("Add user dialog would open here.");
   const handleEditUser = (id: string) => alert(`Edit user dialog for user ${id} would open here.`);
-  const handleDeleteUser = (id: string) => {
-    if(confirm('Are you sure you want to delete this user?')) {
-        setUsers(users.filter(user => user.id !== id));
+  
+  const handleDeleteUser = async (id: string) => {
+    if(confirm('Are you sure you want to delete this user? This cannot be undone.')) {
+      try {
+        await deleteDoc(doc(firestore, 'users', id));
+      } catch (error) {
+        console.error("Error deleting user: ", error);
+        alert("Failed to delete user.");
+      }
     }
   };
 
@@ -78,7 +78,20 @@ export default function AdminDashboard() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {users.map((user) => (
+              {isLoading && (
+                <>
+                  <TableRow>
+                    <TableCell colSpan={4}><Skeleton className="h-8 w-full" /></TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell colSpan={4}><Skeleton className="h-8 w-full" /></TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell colSpan={4}><Skeleton className="h-8 w-full" /></TableCell>
+                  </TableRow>
+                </>
+              )}
+              {!isLoading && users && users.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">{user.name}</TableCell>
                   <TableCell>
@@ -109,6 +122,13 @@ export default function AdminDashboard() {
                   </TableCell>
                 </TableRow>
               ))}
+               {!isLoading && (!users || users.length === 0) && (
+                <TableRow>
+                    <TableCell colSpan={4} className="text-center text-muted-foreground">
+                        No users found.
+                    </TableCell>
+                </TableRow>
+               )}
             </TableBody>
           </Table>
         </CardContent>

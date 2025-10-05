@@ -42,7 +42,7 @@ export default function AppSidebar({ user }: AppSidebarProps) {
                     </SidebarMenuItem>
                     {user?.role === 'admin' && (
                          <SidebarMenuItem>
-                            <SidebarMenuButton href="/dashboard" tooltip="Admin Panel" isActive>
+                            <SidebarMenuButton href="/dashboard" tooltip="Admin Panel">
                                 <UserCog />
                                 Admin Panel
                             </SidebarMenuButton>
@@ -50,7 +50,7 @@ export default function AppSidebar({ user }: AppSidebarProps) {
                     )}
                      {user?.role === 'waiter' && (
                          <SidebarMenuItem>
-                            <SidebarMenuButton href="/dashboard" tooltip="Orders" isActive>
+                            <SidebarMenuButton href="/dashboard" tooltip="Orders">
                                 <ClipboardList />
                                 Orders
                             </SidebarMenuButton>
@@ -58,7 +58,7 @@ export default function AppSidebar({ user }: AppSidebarProps) {
                     )}
                     {user?.role === 'payment' && (
                          <SidebarMenuItem>
-                            <SidebarMenuButton href="/dashboard" tooltip="Payments" isActive>
+                            <SidebarMenuButton href="/dashboard" tooltip="Payments">
                                 <CreditCard />
                                 Payments
                             </SidebarMenuButton>
@@ -70,7 +70,7 @@ export default function AppSidebar({ user }: AppSidebarProps) {
                 <div className="flex items-center gap-3">
                     <Avatar>
                          {avatar && <AvatarImage src={avatar.imageUrl} alt={user?.name} />}
-                        <AvatarFallback>{user?.name.charAt(0).toUpperCase()}</AvatarFallback>
+                        <AvatarFallback>{user?.name ? user.name.charAt(0).toUpperCase() : 'U'}</AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col overflow-hidden">
                         <span className="font-semibold text-sm truncate">{user?.name}</span>

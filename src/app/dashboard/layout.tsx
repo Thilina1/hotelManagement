@@ -56,7 +56,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
     const isLoading = isAuthLoading || isRoleLoading;
 
-    if (isLoading || !user) {
+    if (isLoading || !firebaseUser) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-background">
                 <div className="space-y-4 w-full max-w-4xl p-4">
@@ -76,9 +76,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     // Pass user data to child components
     const childrenWithProps = React.Children.map(children, child => {
         if (React.isValidElement(child)) {
-            // The prop name here must match what the child expects, which is 'currentUser' for UserManagementPage and 'user' for others.
-            // We'll pass both for simplicity, though ideally they'd be consistent.
-            return React.cloneElement(child, { user, currentUser: user } as { user: User, currentUser: User });
+            // Pass the user object as a 'user' prop to all children.
+            return React.cloneElement(child, { user } as { user: User | null });
         }
         return child;
     });

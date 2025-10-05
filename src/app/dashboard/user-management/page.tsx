@@ -41,10 +41,10 @@ const roleColors: Record<UserRole, string> = {
 };
 
 interface UserManagementPageProps {
-  currentUser?: User | null;
+  user?: User | null;
 }
 
-export default function UserManagementPage({ currentUser }: UserManagementPageProps) {
+export default function UserManagementPage({ user: currentUser }: UserManagementPageProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
   
@@ -113,9 +113,7 @@ export default function UserManagementPage({ currentUser }: UserManagementPagePr
           throw new Error("Email and password are required for new users.");
         }
         
-        // We use a temporary auth instance to create the user without signing them in
-        // and disrupting the admin's session.
-        const tempAuth = getAuth();
+        const tempAuth = getAuth(); // This does not disrupt the current user's session
         const userCredential = await createUserWithEmailAndPassword(tempAuth, values.email, values.password);
         const newUser = userCredential.user;
         

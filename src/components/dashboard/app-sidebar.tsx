@@ -35,14 +35,14 @@ export default function AppSidebar({ user }: AppSidebarProps) {
             <SidebarContent>
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton ref="/dashboard" tooltip="Dashboard" isActive>
+                        <SidebarMenuButton href="/dashboard" tooltip="Dashboard" isActive>
                             <LayoutDashboard />
                             Dashboard
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                     {user?.role === 'admin' && (
                          <SidebarMenuItem>
-                            <SidebarMenuButton ref="/dashboard" tooltip="Admin Panel">
+                            <SidebarMenuButton href="/dashboard" tooltip="Admin Panel">
                                 <UserCog />
                                 Admin Panel
                             </SidebarMenuButton>
@@ -50,7 +50,7 @@ export default function AppSidebar({ user }: AppSidebarProps) {
                     )}
                      {user?.role === 'waiter' && (
                          <SidebarMenuItem>
-                            <SidebarMenuButton ref="/dashboard" tooltip="Orders">
+                            <SidebarMenuButton href="/dashboard" tooltip="Orders">
                                 <ClipboardList />
                                 Orders
                             </SidebarMenuButton>
@@ -58,7 +58,7 @@ export default function AppSidebar({ user }: AppSidebarProps) {
                     )}
                     {user?.role === 'payment' && (
                          <SidebarMenuItem>
-                            <SidebarMenuButton ref="/dashboard" tooltip="Payments">
+                            <SidebarMenuButton href="/dashboard" tooltip="Payments">
                                 <CreditCard />
                                 Payments
                             </SidebarMenuButton>

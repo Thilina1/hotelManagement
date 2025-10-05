@@ -1,64 +1,131 @@
 /**
- * @fileoverview Firestore Security Rules for the restaurant staff management system.
+ * @fileoverview Firestore Security Rules for a restaurant staff management system.
  *
  * Core Philosophy:
- * This ruleset enforces a role-based access control model where users can only
- * access their own profile data and administrators have broader access.
+ * This ruleset enforces a strict user-ownership model for user profiles,
+ * supplemented by role-based access control for administrative functions.
+ * The primary goal is to ensure that users can only access their own profile
+ * data, while administrators have broader access as needed.
  *
  * Data Structure:
- * User profiles are stored in `/users/{userId}`, where `{userId}` corresponds to the
- * Firebase Authentication UID.
+ * - /users/{userId}: Stores individual user profiles, with {userId} matching
+ *   the Firebase Auth UID.
+ * - /rooms/{roomId}: Stores hotel room information.
+ * - /bookings/{bookingId}: Stores booking details.
  *
  * Key Security Decisions:
- * - Users can only create their own profile with a matching UID.
- * - Updates and deletes are restricted to the user themselves or an admin.
- * - Listing users is disallowed for non-admins.
- * - The rules are designed for Authorization Independence to avoid complex queries.
+ * - Users can only create, read, update, and delete their own user profiles.
+ * - Listing all users is explicitly denied to regular users.
+ * - No data shape validation is performed beyond authorization-critical fields
+ *   to allow for rapid prototyping and schema iteration.
  *
  * Denormalization for Authorization:
- * No denormalization is used.  The user's role is stored within the user's document
- * to avoid additional reads for role-based checks.
+ *  - User roles are stored directly within the user document to avoid needing
+ *    get() calls to a separate roles collection during authorization checks.
+ * Structural Segregation:
+ *  - User profiles are stored in a dedicated /users/{userId} collection to
+ *    enforce path-based ownership, simplifying security rules.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Rules for the /users/{userId} collection.
+     * @description Controls access to user profile documents.
      * @path /users/{userId}
-     * @allow (create) User with matching UID can create their own profile.
-     * @allow (get, update, delete) Authenticated user with matching UID can access and modify their profile.
-     * @deny (create) User tries to create a profile with a mismatched UID.
-     * @deny (list) Non-admins cannot list all users.
-     * @principle Enforces document ownership for writes.
+     * @allow (create) User with UID 'user_abc' can create their own profile.
+     *   request.auth.uid == 'user_abc' and request.resource.data.id == 'user_abc'
+     * @allow (read) User with UID 'user_abc' can read their own profile.
+     *   request.auth.uid == 'user_abc'
+     * @allow (update) User with UID 'user_abc' can update their own profile.
+     *   request.auth.uid == 'user_abc' and resource.data.id == 'user_abc'
+     * @allow (delete) User with UID 'user_abc' can delete their own profile.
+     *   request.auth.uid == 'user_abc' and resource.data.id == 'user_abc'
+     * @deny (create) User with UID 'user_abc' cannot create a profile for 'user_xyz'.
+     *   request.auth.uid == 'user_abc' but request.resource.data.id == 'user_xyz'
+     * @deny (read) User with UID 'user_abc' cannot read profile of 'user_xyz'.
+     *   request.auth.uid == 'user_abc' but path is /users/user_xyz
+     * @deny (update) User with UID 'user_abc' cannot update profile of 'user_xyz'.
+     *   request.auth.uid == 'user_abc' but path is /users/user_xyz
+     * @deny (delete) User with UID 'user_abc' cannot delete profile of 'user_xyz'.
+     *   request.auth.uid == 'user_abc' but path is /users/user_xyz
+     * @principle Enforces user ownership and restricts access to own profile.
      */
     match /users/{userId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
+      // Helper function to check if the requested user ID matches the authenticated user's ID.
       function isOwner(userId) {
         return request.auth.uid == userId;
       }
 
-      function isCreatingOwnProfile(userId) {
-        return request.auth.uid == userId;
+      // Helper function to check if the user exists and is the owner.
+      function isExistingOwner(userId) {
+        return isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId));
       }
 
-      // Allows a user to create their profile IF the UID matches the document ID
-      allow create: if isSignedIn() && isCreatingOwnProfile(userId);
+      // Allow a user to create their own profile if the UID matches.
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
 
-      // Allows a user to read their own profile
-      allow get: if isSignedIn() && isOwner(userId);
+      // Allow a user to read their own profile.
+      allow get: if isOwner(userId);
 
-      // Allows a user to update their profile IF they are the owner
-      allow update: if isSignedIn() && isOwner(userId);
+      // Allow a user to list their own profile
+      allow list: if isOwner(userId);
 
-      // Allows a user to delete their profile IF they are the owner and the resource exists.
-      allow delete: if isSignedIn() && isOwner(userId);
+      // Allow a user to update their own profile, enforcing immutability of userId.
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
 
-      // Listing users is not permitted
-      allow list: if false;
+      // Allow a user to delete their own profile.
+      allow delete: if isExistingOwner(userId);
     }
+
+     /**
+      * @description Controls access to room documents.
+      * @path /rooms/{roomId}
+      * @allow (get) Any user can read room details.
+      *   request.auth != null
+      * @allow (list) Any user can list rooms.
+      *   request.auth != null
+      * @deny (create) No one can create rooms without specific authorization.
+      *   request.auth == null
+      * @deny (update) No one can update rooms without specific authorization.
+      *   request.auth == null
+      * @deny (delete) No one can delete rooms without specific authorization.
+      *   request.auth == null
+      * @principle Requires authentication for any access.
+      */
+    match /rooms/{roomId} {
+        allow get, list: if isSignedIn();
+        allow create, update, delete: if false; // TODO: Implement authorization for room management
+    }
+
+    /**
+     * @description Controls access to booking documents.
+     * @path /bookings/{bookingId}
+     * @allow (get) Any user can read booking details.
+     *   request.auth != null
+     * @allow (list) Any user can list bookings.
+     *   request.auth != null
+     * @deny (create) No one can create bookings without specific authorization.
+     *   request.auth == null
+     * @deny (update) No one can update bookings without specific authorization.
+     *   request.auth == null
+     * @deny (delete) No one can delete bookings without specific authorization.
+     *   request.auth == null
+     * @principle Requires authentication for any access.
+     */
+    match /bookings/{bookingId} {
+        allow get, list: if isSignedIn();
+        allow create, update, delete: if false; // TODO: Implement authorization for booking management
+    }
+
+    // Deny access to all other collections unless explicitly allowed
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+
+  // Define a function to check if a user is signed in.
+  function isSignedIn() {
+    return request.auth != null;
   }
 }

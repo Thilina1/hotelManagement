@@ -539,6 +539,10 @@ const SidebarMenuButton = React.forwardRef<
     asChild?: boolean
     isActive?: boolean
     tooltip?: string | React.ComponentProps<typeof TooltipContent>
+    ref?:
+      | React.Ref<HTMLButtonElement>
+      | React.Ref<HTMLAnchorElement>
+      | undefined
   } & VariantProps<typeof sidebarMenuButtonVariants>
 >(
   (
@@ -555,10 +559,12 @@ const SidebarMenuButton = React.forwardRef<
   ) => {
     const Comp = asChild ? Slot : "button"
     const { isMobile, state } = useSidebar()
+    const localRef = React.useRef(null)
+    const resolvedRef = ref || localRef
 
     const button = (
       <Comp
-        ref={ref}
+        ref={resolvedRef}
         data-sidebar="menu-button"
         data-size={size}
         data-active={isActive}
@@ -571,12 +577,8 @@ const SidebarMenuButton = React.forwardRef<
       return button
     }
 
-    let tooltipContentProps = tooltip
-    if (typeof tooltip === "string") {
-      tooltipContentProps = {
-        children: tooltip,
-      }
-    }
+    const tooltipContentProps =
+      typeof tooltip === "string" ? { children: tooltip } : tooltip
 
     return (
       <Tooltip>

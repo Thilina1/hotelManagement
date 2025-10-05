@@ -21,6 +21,9 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useUserContext } from '@/context/user-context';
 
 const getPageTitle = (pathname: string) => {
+    if (pathname.startsWith('/dashboard/tables/')) {
+        return 'Table Order';
+    }
     switch (pathname) {
         case '/dashboard':
             return 'Dashboard';

@@ -69,4 +69,22 @@ export type Table = {
     updatedAt?: string | { seconds: number; nanoseconds: number };
 }
 
-    
+export type OrderStatus = 'open' | 'billed' | 'paid' | 'cancelled';
+
+export type Order = {
+    id: string;
+    tableId: string;
+    status: OrderStatus;
+    totalPrice: number;
+    createdAt?: string | { seconds: number; nanoseconds: number };
+    updatedAt?: string | { seconds: number; nanoseconds: number };
+};
+
+export type OrderItem = {
+    id: string;
+    orderId: string;
+    menuItemId: string;
+    name: string;
+    price: number;
+    quantity: number;
+};

@@ -8,6 +8,7 @@ import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import type { Table, TableSection } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import Link from 'next/link';
 
 const statusStyles: Record<string, { badge: string, border: string }> = {
     'occupied': { badge: 'bg-yellow-500', border: 'border-yellow-500' },
@@ -53,7 +54,8 @@ export default function WaiterDashboard() {
                   {isLoading && Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-36 w-full" />)}
                   
                   {!isLoading && tablesBySection[section] && tablesBySection[section].map(table => (
-                      <Card key={table.id} className={`hover:shadow-lg transition-shadow cursor-pointer border-2 ${statusStyles[table.status]?.border || 'border-gray-300'}`}>
+                    <Link href={`/dashboard/tables/${table.id}`} key={table.id}>
+                      <Card className={`hover:shadow-lg transition-shadow cursor-pointer border-2 h-full ${statusStyles[table.status]?.border || 'border-gray-300'}`}>
                           <CardHeader className="flex flex-row items-center justify-between pb-2">
                               <CardTitle className="text-lg font-bold font-headline">Table {table.tableNumber}</CardTitle>
                               <Badge className={`text-white capitalize ${statusStyles[table.status]?.badge || 'bg-gray-500'}`}>
@@ -71,6 +73,7 @@ export default function WaiterDashboard() {
                               </div>
                           </CardContent>
                       </Card>
+                    </Link>
                   ))}
                   
                    {!isLoading && (!tablesBySection[section] || tablesBySection[section].length === 0) && (

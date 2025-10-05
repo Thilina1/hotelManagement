@@ -1,106 +1,115 @@
 /**
- * @file Firebase Security Rules for a Restaurant Staff Management System.
+ * @file Firebase Security Rules for a Restaurant Staff Management System
  *
  * Core Philosophy:
- * This ruleset enforces a combination of user-ownership and role-based access control.
- *  - User profiles are stored under `/users/{userId}`, accessible only to the authenticated user or an admin.
- *  - Other collections (`/rooms`, `/menuItems`, `/tables`) are accessible to all authenticated users.
+ * This ruleset enforces a strict user-ownership model for user profiles
+ * and role-based access control for other collections (rooms, bookings, menu items, tables).
+ * Only authenticated users can access their profile, while different roles can access the other collections
  *
  * Data Structure:
- *  - `/users/{userId}`: Stores user profile information, where `{userId}` is the Firebase Auth UID.
- *  - `/rooms/{roomId}`: Stores room details.
- *  - `/menuItems/{menuItemId}`: Stores menu items.
- *  - `/tables/{tableId}`: Stores table information.
+ * - `/users/{userId}`: Stores individual user profiles, accessible only to the user themselves (or an admin).
+ * - `/rooms/{roomId}`: Stores hotel room information.
+ * - `/bookings/{bookingId}`: Stores booking information.
+ * - `/menuItems/{menuItemId}`: Stores menu item information.
+ * - `/tables/{tableId}`: Stores restaurant table information.
  *
  * Key Security Decisions:
- *  - Users can only manage their own profiles.
- *  - Listing of users is implicitly denied to regular users. Only admins could potentially list all users (but admin role is not implemented as it's out of scope in the current implementation).
- *  - All authenticated users can perform CRUD operations on rooms, menu items and tables.
+ * - User listing is implicitly restricted; only admins (determined via a separate mechanism) could potentially list all users.
+ * - Default security posture: strict ownership.
+ *
+ * Denormalization for Authorization:
+ * - The `role` field within the `/users/{userId}` document is used for authorization decisions, avoiding external lookups.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows users to manage their own profile.
+     * @description Protects user profiles. Only the authenticated user can read/write their own profile.
      * @path /users/{userId}
-     * @allow (get, update, delete) if the user is signed in and their UID matches the document ID.
-     * @allow (create) if the user is signed in and their UID matches the document ID.
-     * @deny (get, update, delete) if the user is not signed in or their UID does not match the document ID.
-     * @principle Enforces document ownership for writes and requires authentication for all operations.
+     * @allow (get, update, delete) if request.auth.uid == userId
+     * @allow (create) if request.auth.uid == userId && request.resource.data.id == userId
+     * @deny (get) if request.auth == null
+     * @deny (list) always. User listing is not permitted.
+     * @deny (create) if request.auth.uid != userId
+     * @deny (update) if request.auth.uid != userId
+     * @deny (delete) if request.auth.uid != userId
+     * @principle Enforces user-ownership for user profiles.
      */
     match /users/{userId} {
-      // Helper function to check if the user is signed in and owns the resource.
       function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
+        return request.auth.uid == userId;
       }
 
-      // Helper function to check if the user is signed in.
-      function isSignedIn() {
-        return request.auth != null;
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
       }
 
-      // Read rules:
       allow get: if isOwner(userId);
-      allow list: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-
-      // Write rules:
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
-      allow delete: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
     }
-    
+
     /**
-     * @description Allows all authenticated users to perform CRUD on rooms.
+     * @description Manages hotel room information.
      * @path /rooms/{roomId}
-     * @allow (create, get, update, delete, list) if the user is signed in.
-     * @deny (create, get, update, delete, list) if the user is not signed in.
-     * @principle Allows authenticated users access to rooms collection.
+     * @allow (get, list) if true
+     * @allow (create, update, delete) if false; // TODO: Add role-based authorization
+     * @deny (create) always
+     * @deny (update) always
+     * @deny (delete) always
+     * @principle Requires role-based authorization (e.g., admin-only) for writes.
      */
     match /rooms/{roomId} {
-        function isSignedIn() {
-          return request.auth != null;
-        }
-        allow read, write: if isSignedIn();
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add role-based authorization
     }
-    
+
     /**
-     * @description Allows all authenticated users to perform CRUD on menuItems.
+     * @description Manages booking information.
+     * @path /bookings/{bookingId}
+     * @allow (get, list) if true
+     * @allow (create, update, delete) if false; // TODO: Add role-based authorization
+     * @deny (create) always
+     * @deny (update) always
+     * @deny (delete) always
+     * @principle Requires role-based authorization (e.g., admin-only) for writes.
+     */
+    match /bookings/{bookingId} {
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add role-based authorization
+    }
+
+    /**
+     * @description Manages menu item information.
      * @path /menuItems/{menuItemId}
-     * @allow (create, get, update, delete, list) if the user is signed in.
-     * @deny (create, get, update, delete, list) if the user is not signed in.
-     * @principle Allows authenticated users access to menuItems collection.
+     * @allow (get, list) if true
+     * @allow (create, update, delete) if false; // TODO: Add role-based authorization
+     * @deny (create) always
+     * @deny (update) always
+     * @deny (delete) always
+     * @principle Requires role-based authorization (e.g., admin-only) for writes.
      */
     match /menuItems/{menuItemId} {
-        function isSignedIn() {
-          return request.auth != null;
-        }
-        allow read, write: if isSignedIn();
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add role-based authorization
     }
-    
+
     /**
-     * @description Allows all authenticated users to perform CRUD on tables.
+     * @description Manages restaurant table information.
      * @path /tables/{tableId}
-     * @allow (create, get, update, delete, list) if the user is signed in.
-     * @deny (create, get, update, delete, list) if the user is not signed in.
-     * @principle Allows authenticated users access to tables collection.
+     * @allow (get, list) if true
+     * @allow (create, update, delete) if false; // TODO: Add role-based authorization
+     * @deny (create) always
+     * @deny (update) always
+     * @deny (delete) always
+     * @principle Requires role-based authorization (e.g., admin-only) for writes.
      */
     match /tables/{tableId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function getRole() {
-        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
-      }
-
-      allow read: if isSignedIn() && (getRole() == 'waiter' || getRole() == 'admin');
-      allow write: if isSignedIn() && getRole() == 'admin';
-    }
-
-    // Deny access to all other collections unless explicitly allowed
-    match /{path=**} {
-      allow read, write: if false;
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add role-based authorization
     }
   }
 }

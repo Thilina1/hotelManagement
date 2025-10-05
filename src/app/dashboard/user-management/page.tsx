@@ -40,31 +40,49 @@ const roleColors: Record<UserRole, string> = {
 };
 
 export default function UserManagementPage() {
-  const { user: firebaseUser, isUserLoading } = useUser();
+  const { user: firebaseUser, isUserLoading: isAuthLoading } = useUser();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isRoleLoading, setIsRoleLoading] = useState(true);
   const firestore = useFirestore();
   const auth = getAuth();
 
+  const isAllowedToView = currentUser?.role === 'admin';
+
   const usersCollection = useMemoFirebase(() => {
-    if (!firestore) return null;
+    // IMPORTANT: Only create the query if the user is an admin
+    if (!firestore || !isAllowedToView) return null;
     return collection(firestore, 'users');
-  }, [firestore]);
-  const { data: users, isLoading } = useCollection<User>(usersCollection);
+  }, [firestore, isAllowedToView]);
+  
+  const { data: users, isLoading: areUsersLoading } = useCollection<User>(usersCollection);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
 
   useEffect(() => {
-    const fetchCurrentUser = async () => {
+    const fetchCurrentUserRole = async () => {
       if (firebaseUser) {
-        const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
-        if (userDoc.exists()) {
-          setCurrentUser({ id: firebaseUser.uid, ...userDoc.data() } as User);
+        try {
+          const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
+          if (userDoc.exists()) {
+            setCurrentUser({ id: firebaseUser.uid, ...userDoc.data() } as User);
+          } else {
+             setCurrentUser(null); // User document doesn't exist
+          }
+        } catch (error) {
+           console.error("Error fetching user role:", error);
+           setCurrentUser(null);
         }
+      } else {
+         setCurrentUser(null);
       }
+      setIsRoleLoading(false);
     };
-    fetchCurrentUser();
-  }, [firebaseUser, firestore]);
+
+    if (!isAuthLoading && firestore) {
+      fetchCurrentUserRole();
+    }
+  }, [firebaseUser, isAuthLoading, firestore]);
 
   const handleAddUserClick = () => {
     setEditingUser(null);
@@ -91,7 +109,7 @@ export default function UserManagementPage() {
   };
 
   const handleFormSubmit = async (values: Partial<User> & { email?: string; password?: string }) => {
-    if (!firestore || !usersCollection || !currentUser || !auth) return;
+    if (!firestore || !currentUser || !auth) return;
 
     try {
         if (editingUser) {
@@ -138,7 +156,9 @@ export default function UserManagementPage() {
     }
   };
 
-  if (isUserLoading || !currentUser) {
+  const isLoading = isAuthLoading || isRoleLoading;
+
+  if (isLoading) {
      return (
        <div className="space-y-6">
         <div className="flex justify-between items-start">
@@ -158,11 +178,17 @@ export default function UserManagementPage() {
      )
   }
 
-  if (currentUser?.role !== 'admin') {
+  if (!isAllowedToView) {
       return (
-          <div className="text-center">
-              <h2 className="text-2xl font-bold">Access Denied</h2>
-              <p>You do not have permission to view this page.</p>
+          <div className="text-center flex flex-col items-center justify-center h-full">
+              <Card className="glassy rounded-2xl p-8 max-w-md w-full">
+                <CardHeader>
+                    <CardTitle className="text-2xl font-bold">Access Denied</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-muted-foreground">You do not have permission to view this page. Please contact an administrator.</p>
+                </CardContent>
+              </Card>
           </div>
       )
   }
@@ -212,7 +238,7 @@ export default function UserManagementPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading && (
+              {areUsersLoading && (
                 <>
                   {[...Array(3)].map((_, i) => (
                     <TableRow key={i} className="border-white/10">
@@ -221,7 +247,7 @@ export default function UserManagementPage() {
                   ))}
                 </>
               )}
-              {!isLoading && users && users.map((user) => (
+              {!areUsersLoading && users && users.map((user) => (
                 <TableRow key={user.id} className="border-white/10">
                   <TableCell className="font-medium">{user.name}</TableCell>
                   <TableCell>
@@ -253,7 +279,7 @@ export default function UserManagementPage() {
                   </TableCell>
                 </TableRow>
               ))}
-               {!isLoading && (!users || users.length === 0) && (
+               {!areUsersLoading && (!users || users.length === 0) && (
                 <TableRow>
                     <TableCell colSpan={5} className="text-center text-muted-foreground py-10">
                         No users found.

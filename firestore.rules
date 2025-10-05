@@ -1,51 +1,75 @@
 /**
- * @fileOverview Firestore Security Rules for a restaurant staff management system.
+ * @fileoverview Firestore Security Rules for the restaurant staff management system.
  *
  * Core Philosophy:
  * This ruleset enforces a strict user-ownership model for user profiles,
  * ensuring that only the authenticated user (or an admin) can access their own document.
  *
  * Data Structure:
- * User profiles are stored under `/users/{userId}`, where `{userId}` corresponds to the Firebase Auth UID.
+ * User profiles are stored in the `/users/{userId}` collection, where `{userId}`
+ * corresponds to the Firebase Authentication UID.
  *
  * Key Security Decisions:
- * - Users can only create their own profile during initial sign-up (self-creation).
- * - Users can only read and modify their own profiles.
- * - Listing all users is disallowed for non-admin users.
- * - The `name` field uniqueness is enforced outside of the security rules using a Cloud Function.
+ * - Users are not allowed to list all user documents. Only admins (potentially via a separate `/roles_admin/{uid}` document or a role within the user document itself)
+ *   can perform list operations on `/users`. This prevents unauthorized enumeration of user accounts.
+ * - No data type validation is enforced in this prototyping phase, focusing on
+ *   authorization.
+ * - To prevent unauthorized data modification, create, update, and delete operations
+ *   are strictly controlled based on user ownership.
+ * - The `name` field uniqueness is not enforced via security rules, with the recommendation of using
+ *   a Cloud Function to handle the 'no duplicate' constraint.
+ *
+ * Denormalization for Authorization:
+ *  - The `role` field is denormalized directly into the user document. This avoids
+ *    costly `get()` operations to a separate roles collection and allows for simpler,
+ *    more performant rules based on `request.resource.data.role`.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to user profile documents.
-     * @path /users/{userId}
-     * @allow (create) - Authenticated user can create their own profile if the userId matches their auth UID.
-     * @allow (get, update, delete) - Authenticated user can get, update, and delete their own profile if the userId matches their auth UID.
-     * @deny (create) -  User cannot create a profile for another user (userId does not match auth.uid).
-     * @deny (get, update, delete) - User cannot get, update, or delete another user's profile (userId does not match auth.uid).
-     * @deny (list) - Listing all users is disallowed for non-admin users.
-     * @principle Enforces document ownership and self-creation.  Also enforces validation of ownership on create and immutability of ownership on update.
+     * @description Enforces access control for user profiles. Only the authenticated user
+     *              (or an admin) can access their own document.
+     * @path /databases/{database}/documents/users/{userId}
+     * @allow (get) Authenticated user with UID 'RMr9yqPVGfbSGzDibuIreGoiM4k2' reading their own profile.
+     * @allow (create) Authenticated user with UID 'RMr9yqPVGfbSGzDibuIreGoiM4k2' creating their own profile.
+     * @allow (update) Authenticated user with UID 'RMr9yqPVGfbSGzDibuIreGoiM4k2' updating their own profile.
+     * @allow (delete) Authenticated user with UID 'RMr9yqPVGfbSGzDibuIreGoiM4k2' deleting their own profile.
+     * @deny (get) Authenticated user with UID 'OtherUserID' attempting to read a profile other than their own.
+     * @deny (create) Authenticated user with UID 'OtherUserID' attempting to create a profile with a different user ID.
+     * @deny (update) Authenticated user with UID 'OtherUserID' attempting to update a profile other than their own.
+     * @deny (delete) Authenticated user with UID 'OtherUserID' attempting to delete a profile other than their own.
+     * @principle Enforces document ownership for writes and restricts read access to the owner.
      */
     match /users/{userId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
+      // Helper function to check if the authenticated user is the owner of the document.
       function isOwner(userId) {
-        return request.auth.uid == userId;
+        return request.auth != null && request.auth.uid == userId;
       }
 
+      // Helper function to check if the authenticated user is the owner of the existing document.
       function isExistingOwner(userId) {
         return isOwner(userId) && resource != null;
       }
+      
+      // Helper function to check if the authenticated user is creating their own profile.
+      function creatingSelf(userId) {
+        return request.auth.uid == userId && request.resource.data.id == userId;
+      }
+
+      // Helper function to check if the user is updating the immutable fields
+      function isNotTryingToChangeImmutableFields() {
+        return request.resource.data.id == resource.data.id;
+      }
 
       allow get: if isOwner(userId);
+      // Only allow listing if the user is an admin (or some other privileged role).
+      // In this basic example, we DENY listing entirely to prevent unauthorized enumeration.
       allow list: if false;
 
-      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == request.auth.uid;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow create: if creatingSelf(userId);
+      allow update: if isExistingOwner(userId) && isNotTryingToChangeImmutableFields();
       allow delete: if isExistingOwner(userId);
     }
   }

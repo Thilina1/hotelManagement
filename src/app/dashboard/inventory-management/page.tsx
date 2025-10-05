@@ -15,12 +15,10 @@ import { Input } from '@/components/ui/input';
 import { Search, Save, ArrowUpDown } from 'lucide-react';
 import type { MenuItem as MenuItemType } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, updateDoc, serverTimestamp, query, where } from 'firebase/firestore';
+import { collection, doc, updateDoc, serverTimestamp, increment } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useUserContext } from '@/context/user-context';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 
 type SortKey = keyof Pick<MenuItemType, 'name' | 'category' | 'stock'>;
 
@@ -87,42 +85,38 @@ export default function InventoryManagementPage() {
 
   const handleUpdateStock = async (itemId: string) => {
     if (!firestore) return;
-    const newStock = stockLevels[itemId];
+    const stockToAdd = stockLevels[itemId];
 
-    if (newStock === '' || newStock === undefined || isNaN(Number(newStock))) {
+    if (stockToAdd === '' || stockToAdd === undefined || isNaN(Number(stockToAdd)) || Number(stockToAdd) === 0) {
         toast({
             variant: "destructive",
             title: "Invalid Input",
-            description: "Please enter a valid number for the stock.",
+            description: "Please enter a valid, non-zero number to add to the stock.",
         });
         return;
     }
 
     const itemDocRef = doc(firestore, 'menuItems', itemId);
     const updateData = { 
-        stock: Number(newStock),
+        stock: increment(Number(stockToAdd)),
         updatedAt: serverTimestamp(),
       };
     
-    updateDoc(itemDocRef, updateData)
-        .then(() => {
-          toast({
-            title: "Stock Updated",
-            description: `The stock level has been successfully updated.`,
-          });
-          // Clear the input for this item
-          setStockLevels(prev => ({...prev, [itemId]: ''}));
-        })
-        .catch(error => {
-          console.error("Error updating stock:", error);
-          const permissionError = new FirestorePermissionError({ path: itemDocRef.path, operation: 'update', requestResourceData: updateData });
-          errorEmitter.emit('permission-error', permissionError);
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Failed to update stock level.",
-          });
+    try {
+        await updateDoc(itemDocRef, updateData);
+        toast({
+          title: "Stock Updated",
+          description: `Added ${stockToAdd} to the stock.`,
         });
+        setStockLevels(prev => ({...prev, [itemId]: ''}));
+    } catch (error) {
+        console.error("Error updating stock:", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to update stock level.",
+        });
+    }
   };
   
   if (!currentUser) {
@@ -226,7 +220,7 @@ export default function InventoryManagementPage() {
                     <div className="flex items-center justify-end gap-2">
                       <Input
                         type="number"
-                        placeholder="New Qty"
+                        placeholder="Add Qty"
                         className="w-24 h-9"
                         value={stockLevels[item.id] ?? ''}
                         onChange={(e) => handleStockChange(item.id, e.target.value)}

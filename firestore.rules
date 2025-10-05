@@ -1,152 +1,162 @@
 /**
- * @file Firestore Security Rules
- * @core_philosophy This ruleset enforces a strict user-ownership model for user profiles
- *  and open access for other restaurant-related data (rooms, bookings, menu items, tables, orders, order items).
- *  User data is stored under `/users/{userId}`, where `{userId}` corresponds to the Firebase Auth UID.
- *  Other data is stored in top-level collections with no ownership enforced, reflecting the "prototyping" philosophy.
- * @data_structure
- *  - /users/{userId}: User profiles, accessible only to the owner.
- *  - /rooms/{roomId}: Hotel room data.
- *  - /bookings/{bookingId}: Booking data.
- *  - /menuItems/{menuItemId}: Menu item data.
- *  - /tables/{tableId}: Restaurant table data.
- *  - /orders/{orderId}: Order data.
- *  - /orders/{orderId}/items/{orderItemId}: Order item data.
- * @key_security_decisions
- *  - User listing is implicitly denied due to the user-ownership model.  Only an admin could potentially list all users (but this is not implemented in these rules).
- *  - All write operations to non-user collections are currently open to authenticated users. This should be restricted in a production environment.
- * @denormalization_for_authorization N/A - User ownership is determined by path.
- * @structural_segregation User data is segregated into a dedicated collection.
+ * @fileoverview Firestore Security Rules for the Restaurant Staff Management System.
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model for user profiles and allows authenticated access to Rooms, MenuItems, and Tables.
+ *
+ * Data Structure:
+ * - User profiles are stored in `/users/{userId}`, where `{userId}` is the Firebase Auth UID.
+ * - Room, MenuItem, Table and Order information are stored in top-level collections.
+ *
+ * Key Security Decisions:
+ * - Users can only read and write their own profile data.
+ * - Listing users is implicitly restricted as only admins (not covered in these basic rules) would have access to the entire `/users` collection.
+ * - All authenticated users can read/write Rooms, MenuItems, and Tables.
+ * - No data shape validation is performed in this prototyping phase.
+ *
+ * Denormalization for Authorization:
+ *  - The user's role is stored directly within the user document itself to enable role-based access control without additional reads.
+ *
+ * Structural Segregation:
+ *  - User profiles are stored in a dedicated user subcollection to enforce clear ownership and prevent accidental data exposure.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to user profiles. Only the authenticated user can read/write their own profile.
+     * @description Allows a user to read and write their own user profile.
      * @path /users/{userId}
-     * @allow (create) User with UID 'user_abc' can create a profile at /users/user_abc.
-     * @allow (get,update,delete) User with UID 'user_abc' can get,update,delete a profile at /users/user_abc.
-     * @deny (create) User with UID 'user_xyz' cannot create a profile at /users/user_abc.
-     * @deny (get,update,delete) User with UID 'user_xyz' cannot get,update,delete a profile at /users/user_abc.
-     * @principle Enforces document ownership for all operations.
+     * @allow (get, create, update, delete) if the user is signed in and the requested userId matches their auth UID.
+     * @deny (get, create, update, delete) if the user is not signed in or the userId does not match their auth UID.
+     * @principle Enforces document ownership for user profiles.
      */
     match /users/{userId} {
-      function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
-      }
-      function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-      }
-
-      allow get: if isOwner(userId);
-      allow list: if false; // Prevent listing all users
-
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id; // Enforce immutability of userId
-      allow delete: if isExistingOwner(userId);
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if isSignedIn() && isOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isOwner(userId) && isExistingOwner(userId);
+      allow delete: if isSignedIn() && isOwner(userId) && isExistingOwner(userId);
     }
 
     /**
-     * @description Controls access to hotel room data.
+     * @description Allows any authenticated user to read and write Room data.
      * @path /rooms/{roomId}
-     * @allow (get,list) Any authenticated user can read room data.
-     * @allow (create,update,delete) Any authenticated user can create, update, or delete room data.
-     * @deny (create,update,delete) Unauthenticated users cannot create, update, or delete room data.
-     * @principle Allows open read and write access to authenticated users.
+     * @allow (get, list, create, update, delete) if the user is signed in.
+     * @deny (get, list, create, update, delete) if the user is not signed in.
+     * @principle Allows authenticated users to manage room information.
      */
     match /rooms/{roomId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      allow get, list: if true;
-      allow create, update, delete: if isSignedIn();
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Controls access to booking data.
+     * @description Allows any authenticated user to read and write Booking data.
      * @path /bookings/{bookingId}
-     * @allow (get,list) Any authenticated user can read booking data.
-     * @allow (create,update,delete) Any authenticated user can create, update, or delete booking data.
-     * @deny (create,update,delete) Unauthenticated users cannot create, update, or delete booking data.
-     * @principle Allows open read and write access to authenticated users.
+     * @allow (get, list, create, update, delete) if the user is signed in.
+     * @deny (get, list, create, update, delete) if the user is not signed in.
+     * @principle Allows authenticated users to manage booking information.
      */
     match /bookings/{bookingId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      allow get, list: if true;
-      allow create, update, delete: if isSignedIn();
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Controls access to menu item data.
+     * @description Allows any authenticated user to read and write MenuItem data.
      * @path /menuItems/{menuItemId}
-     * @allow (get,list) Any authenticated user can read menu item data.
-     * @allow (create,update,delete) Any authenticated user can create, update, or delete menu item data.
-     * @deny (create,update,delete) Unauthenticated users cannot create, update, or delete menu item data.
-     * @principle Allows open read and write access to authenticated users.
+     * @allow (get, list, create, update, delete) if the user is signed in.
+     * @deny (get, list, create, update, delete) if the user is not signed in.
+     * @principle Allows authenticated users to manage menu items.
      */
     match /menuItems/{menuItemId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      allow get, list: if true;
-      allow create, update, delete: if isSignedIn();
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Controls access to table data.
+     * @description Allows any authenticated user to read and write Table data.
      * @path /tables/{tableId}
-     * @allow (get,list) Any authenticated user can read table data.
-     * @allow (create,update,delete) Any authenticated user can create, update, or delete table data.
-     * @deny (create,update,delete) Unauthenticated users cannot create, update, or delete table data.
-     * @principle Allows open read and write access to authenticated users.
+     * @allow (get, list, create, update, delete) if the user is signed in.
+     * @deny (get, list, create, update, delete) if the user is not signed in.
+     * @principle Allows authenticated users to manage table information.
      */
     match /tables/{tableId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      allow get, list: if true;
-      allow create, update, delete: if isSignedIn();
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
-
-    /**
-     * @description Controls access to order data.
-     * @path /orders/{orderId}
-     * @allow (get,list) Any authenticated user can read order data.
-     * @allow (create,update,delete) Any authenticated user can create, update, or delete order data.
-     * @deny (create,update,delete) Unauthenticated users cannot create, update, or delete order data.
-     * @principle Allows open read and write access to authenticated users.
-     */
+      /**
+       * @description Allows any authenticated user to read and write order data.
+       * @path /orders/{orderId}
+       * @allow (get, list, create, update, delete) if the user is signed in.
+       * @deny (get, list, create, update, delete) if the user is not signed in.
+       * @principle Allows authenticated users to manage orders.
+       */
     match /orders/{orderId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      allow get, list: if true;
-      allow create, update, delete: if isSignedIn();
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
+    }
+        /**
+         * @description Allows any authenticated user to read and write order item data.
+         * @path /orders/{orderId}/items/{orderItemId}
+         * @allow (get, list, create, update, delete) if the user is signed in.
+         * @deny (get, list, create, update, delete) if the user is not signed in.
+         * @principle Allows authenticated users to manage order items.
+         */
+    match /orders/{orderId}/items/{orderItemId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
-    /**
-     * @description Controls access to order item data within an order.
-     * @path /orders/{orderId}/items/{orderItemId}
-     * @allow (get,list) Any authenticated user can read order item data.
-     * @allow (create,update,delete) Any authenticated user can create, update, or delete order item data.
-     * @deny (create,update,delete) Unauthenticated users cannot create, update, or delete order item data.
-     * @principle Allows open read and write access to authenticated users.
-     */
-    match /orders/{orderId}/items/{orderItemId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      allow get, list: if true;
-      allow create, update, delete: if isSignedIn();
+    // Fallback rule: Disallow all other reads and writes.
+    match /{path=**} {
+      allow read: if false;
+      allow write: if false;
     }
   }
+}
+
+/**
+ * @description Checks if the user is signed in.
+ * @return {boolean} True if the user is signed in, false otherwise.
+ */
+function isSignedIn() {
+  return request.auth != null;
+}
+
+/**
+ * @description Checks if the requested user ID matches the authenticated user's ID.
+ * @param {string} userId The user ID from the path.
+ * @return {boolean} True if the user is the owner, false otherwise.
+ */
+function isOwner(userId) {
+  return request.auth.uid == userId;
+}
+
+/**
+ * @description Checks if the requested user ID matches the authenticated user's ID and the resource exists.
+ * @param {string} userId The user ID from the path.
+ * @return {boolean} True if the user is the existing owner, false otherwise.
+ */
+function isExistingOwner(userId) {
+    return isOwner(userId) && resource != null;
 }

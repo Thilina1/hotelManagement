@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, query, where, writeBatch, serverTimestamp, increment } from 'firebase/firestore';
 import type { Table as TableType, MenuItem, Order, OrderItem } from '@/lib/types';
@@ -12,15 +12,12 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { PlusCircle, MinusCircle, ShoppingCart, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useUserContext } from '@/context/user-context';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 
 interface OrderModalProps {
     table: TableType;
@@ -31,7 +28,6 @@ interface OrderModalProps {
 export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
     const firestore = useFirestore();
     const { toast } = useToast();
-    const { user: currentUser } = useUserContext();
 
     // Fetch menu items
     const menuItemsRef = useMemoFirebase(() => firestore ? collection(firestore, 'menuItems') : null, [firestore]);
@@ -55,6 +51,13 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
     const { data: orderItems, isLoading: areOrderItemsLoading } = useCollection<OrderItem>(orderItemsRef);
 
     const [localOrder, setLocalOrder] = useState<Record<string, number>>({});
+    
+    // Clear local order when modal is closed or table changes
+    useEffect(() => {
+        if (!isOpen) {
+            setLocalOrder({});
+        }
+    }, [isOpen]);
 
     const handleAddItem = (menuItem: MenuItem) => {
         if (menuItem.stockType === 'Inventoried' && (menuItem.stock ?? 0) <= 0) {
@@ -79,25 +82,23 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
     };
 
     const handleConfirmOrder = async () => {
-        if (!firestore || !currentUser) return;
+        if (!firestore) return;
 
         const batch = writeBatch(firestore);
         let currentOrder = openOrder;
-        let newOrderId: string | null = null;
+        
         let newOrderTotalPrice = openOrder?.totalPrice || 0;
 
         try {
             // If no open order exists, create one
             if (!currentOrder) {
                 const newOrderRef = doc(collection(firestore, 'orders'));
-                newOrderId = newOrderRef.id;
                 batch.set(newOrderRef, {
                     tableId: table.id,
                     status: 'open',
                     totalPrice: 0,
                     createdAt: serverTimestamp(),
                     updatedAt: serverTimestamp(),
-                    createdBy: currentUser.id,
                 });
                 currentOrder = { id: newOrderRef.id, tableId: table.id, status: 'open', totalPrice: 0, createdAt: new Date().toISOString() };
             }
@@ -143,12 +144,7 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
             toast({ title: 'Order Confirmed', description: 'Items have been added to the order.' });
 
         } catch (error: any) {
-            const permissionError = new FirestorePermissionError({
-                path: `orders/${currentOrder?.id || newOrderId}`,
-                operation: 'write',
-                requestResourceData: { localOrder }
-            });
-            errorEmitter.emit('permission-error', permissionError);
+            console.error("Error confirming order", error);
             toast({ variant: 'destructive', title: 'Order Failed', description: 'Could not confirm the order.' });
         }
     };
@@ -170,12 +166,7 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
             toast({ title: 'Payment Successful', description: `The bill for Table ${table.tableNumber} has been settled.`});
             onClose();
         } catch (error: any) {
-            const permissionError = new FirestorePermissionError({
-                path: `orders/${openOrder.id}`,
-                operation: 'update',
-                requestResourceData: { status: 'paid' }
-            });
-            errorEmitter.emit('permission-error', permissionError);
+            console.error("Error marking as paid", error);
             toast({ variant: 'destructive', title: 'Payment Failed', description: 'Could not process the payment.' });
         }
     };

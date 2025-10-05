@@ -77,7 +77,7 @@ export default function LoginPage() {
             <div className="flex justify-center items-center gap-2">
               <Logo className="h-8 w-8 text-primary" />
               <h1 className="text-3xl font-headline font-bold">
-                Staff Manager
+                Restaurant Staff Manager
               </h1>
             </div>
             <CardTitle className="text-2xl font-headline">Welcome Back</CardTitle>

@@ -21,9 +21,14 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
     if (loading || !user) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="space-y-4 w-1/2">
-                    <Skeleton className="h-12 w-full" />
+            <div className="flex items-center justify-center min-h-screen bg-background">
+                <div className="space-y-4 w-full max-w-4xl p-4">
+                    <div className="flex items-center space-x-4">
+                        <Skeleton className="h-14 w-14" />
+                        <div className="space-y-2 flex-1">
+                             <Skeleton className="h-6 w-1/4" />
+                        </div>
+                    </div>
                     <Skeleton className="h-48 w-full" />
                     <Skeleton className="h-48 w-full" />
                 </div>
@@ -32,14 +37,16 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     }
 
     return (
-        <SidebarProvider>
-            <AppSidebar user={user} />
-            <SidebarInset>
-                <DashboardHeader />
-                <main className="min-h-screen flex-1 p-4 sm:p-6 lg:p-8 bg-background">
-                    {children}
-                </main>
-            </SidebarInset>
-        </SidebarProvider>
+        <div className="bg-muted/40 min-h-screen">
+            <SidebarProvider>
+                <AppSidebar user={user} />
+                <SidebarInset>
+                    <DashboardHeader />
+                    <main className="flex-1 p-4 sm:p-6 lg:p-8">
+                        {children}
+                    </main>
+                </SidebarInset>
+            </SidebarProvider>
+        </div>
     );
 }

@@ -39,7 +39,7 @@ export default function AppSidebar({ user }: AppSidebarProps) {
             <SidebarHeader>
                 <div className="flex items-center gap-2">
                     <Logo className="w-8 h-8 text-primary" />
-                    <h2 className="text-xl font-headline font-bold text-sidebar-foreground">Staff Manager</h2>
+                    <h2 className="text-xl font-headline font-bold text-sidebar-foreground">Restaurant Staff Manager</h2>
                 </div>
             </SidebarHeader>
             <SidebarContent>
@@ -63,7 +63,7 @@ export default function AppSidebar({ user }: AppSidebarProps) {
                 </SidebarMenu>
             </SidebarContent>
             <SidebarFooter>
-                <div className="flex items-center gap-3">
+                 <Link href="/dashboard/profile" className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-sidebar-accent transition-colors">
                     <Avatar>
                          {avatar && <AvatarImage src={avatar.imageUrl} alt={user?.name} />}
                         <AvatarFallback>{user?.name ? user.name.charAt(0).toUpperCase() : 'U'}</AvatarFallback>
@@ -72,7 +72,7 @@ export default function AppSidebar({ user }: AppSidebarProps) {
                         <span className="font-semibold text-sm truncate">{user?.name}</span>
                         <span className="text-xs text-muted-foreground capitalize">{user?.role}</span>
                     </div>
-                </div>
+                </Link>
             </SidebarFooter>
         </Sidebar>
     );

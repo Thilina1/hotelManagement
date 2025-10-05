@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { User, LogOut } from 'lucide-react';
 
 import { useAuth } from '@/hooks/use-auth';
@@ -18,9 +18,24 @@ import {
 import { SidebarTrigger } from '../ui/sidebar';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
+const getPageTitle = (pathname: string) => {
+    switch (pathname) {
+        case '/dashboard':
+            return 'Dashboard';
+        case '/dashboard/profile':
+            return 'Profile';
+        case '/dashboard/user-management':
+            return 'User Management';
+        default:
+            return 'Dashboard';
+    }
+}
+
+
 export default function DashboardHeader() {
   const { user, logout } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const avatar = PlaceHolderImages.find(p => p.id === 'avatar-1');
 
   const handleLogout = async () => {
@@ -29,9 +44,11 @@ export default function DashboardHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
       <SidebarTrigger className="md:hidden"/>
-      <div className="flex-1" />
+      <div className="flex-1">
+        <h1 className="font-semibold text-lg">{getPageTitle(pathname)}</h1>
+      </div>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button

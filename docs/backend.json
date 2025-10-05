@@ -104,6 +104,21 @@
             "updatedAt": { "type": "string", "format": "date-time" }
         },
         "required": ["name", "price", "category", "availability"]
+    },
+    "Table": {
+      "title": "Table",
+      "description": "Represents a table in the restaurant.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Document ID." },
+        "tableNumber": { "type": "string", "description": "The number of the table." },
+        "section": { "type": "string", "description": "Section of the restaurant where the table is located.", "enum": ["Sri Lankan", "Western", "Outdoor", "Bar"] },
+        "capacity": { "type": "number", "description": "Number of people the table can accommodate." },
+        "status": { "type": "string", "description": "Current status of the table.", "enum": ["available", "occupied", "reserved"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["tableNumber", "section", "capacity", "status"]
     }
   },
   "auth": {
@@ -149,6 +164,13 @@
         "definition": {
             "schema": { "$ref": "#/backend/entities/MenuItem" },
             "description": "Stores menu item information."
+        }
+      },
+      {
+        "path": "/tables/{tableId}",
+        "definition": {
+            "schema": { "$ref": "#/backend/entities/Table" },
+            "description": "Stores restaurant table information."
         }
       }
     ],

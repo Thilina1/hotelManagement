@@ -15,7 +15,7 @@ import type { User } from '@/lib/types';
 import { useAuth } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
-import { Logo } from '../icons';
+import { Logo, TableIcon } from '../icons';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -38,6 +38,7 @@ export default function AppSidebar() {
       { href: '/dashboard/user-management', icon: Users, label: 'User Management', roles: ['admin'] },
       { href: '/dashboard/room-management', icon: BedDouble, label: 'Room Management', roles: ['admin'] },
       { href: '/dashboard/menu-management', icon: UtensilsCrossed, label: 'Menu Management', roles: ['admin'] },
+      { href: '/dashboard/table-management', icon: TableIcon, label: 'Table Management', roles: ['admin'] },
       { href: '/dashboard/profile', icon: UserCog, label: 'Profile', roles: ['admin', 'waiter', 'payment'] },
     ];
 

@@ -36,3 +36,16 @@ export type MenuItem = {
     createdAt?: string | { seconds: number; nanoseconds: number };
     updatedAt?: string | { seconds: number; nanoseconds: number };
 };
+
+export type TableSection = 'Sri Lankan' | 'Western' | 'Outdoor' | 'Bar';
+export type TableStatus = 'available' | 'occupied' | 'reserved';
+
+export type Table = {
+    id: string;
+    tableNumber: string;
+    section: TableSection;
+    capacity: number;
+    status: TableStatus;
+    createdAt?: string | { seconds: number; nanoseconds: number };
+    updatedAt?: string | { seconds: number; nanoseconds: number };
+}

@@ -48,7 +48,7 @@ export default function AppSidebar() {
             <SidebarHeader>
                 <div className="flex items-center gap-2">
                     <Logo className="w-8 h-8 text-primary" />
-                    <h2 className="text-xl font-headline font-bold text-sidebar-foreground">Kandy</h2>
+                    <h2 className="text-xl font-headline font-bold text-sidebar-foreground"></h2>
                 </div>
             </SidebarHeader>
             <SidebarContent>

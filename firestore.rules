@@ -1,134 +1,152 @@
 /**
- * @fileoverview Firestore Security Rules for the Restaurant Staff Management System.
- *
- * Core Philosophy:
- * This ruleset enforces a strict user-ownership model for user profiles,
- * and reasonable access controls for other collections based on common use cases.
- *
- * Data Structure:
- * - /users/{userId}: Stores user profiles. Only the authenticated user or an admin can access their own document.
- * - /rooms/{roomId}: Stores hotel room information. Publicly readable.
- * - /bookings/{bookingId}: Stores booking information. Publicly readable.
- * - /menuItems/{menuItemId}: Stores menu item information. Publicly readable.
- * - /tables/{tableId}: Stores restaurant table information. Publicly readable.
- * - /orders/{orderId}: Stores customer orders. Publicly readable.
- * - /orders/{orderId}/items/{orderItemId}: Stores order items. Publicly readable.
- *
- * Key Security Decisions:
- * - User listing is implicitly denied for non-admins due to the ownership model.
- * - Public read access is granted to non-user-specific collections (rooms, bookings, etc.) to simplify data access.
- * - The rules do NOT validate data shapes in this prototyping phase.
- *
- * Denormalization for Authorization:
- *  - The current design relies on path-based ownership for the `/users/{userId}` collection. No denormalization is needed here.
- *  - For other collections, if more fine-grained access control is required in the future, consider denormalizing relevant data (e.g., an `ownerId` field) onto the documents themselves.
- *
- * Structural Segregation:
- *  - User-specific data is stored under `/users/{userId}`, while public data resides in top-level collections.
+ * @file Firestore Security Rules
+ * @core_philosophy This ruleset enforces a strict user-ownership model for user profiles
+ *  and open access for other restaurant-related data (rooms, bookings, menu items, tables, orders, order items).
+ *  User data is stored under `/users/{userId}`, where `{userId}` corresponds to the Firebase Auth UID.
+ *  Other data is stored in top-level collections with no ownership enforced, reflecting the "prototyping" philosophy.
+ * @data_structure
+ *  - /users/{userId}: User profiles, accessible only to the owner.
+ *  - /rooms/{roomId}: Hotel room data.
+ *  - /bookings/{bookingId}: Booking data.
+ *  - /menuItems/{menuItemId}: Menu item data.
+ *  - /tables/{tableId}: Restaurant table data.
+ *  - /orders/{orderId}: Order data.
+ *  - /orders/{orderId}/items/{orderItemId}: Order item data.
+ * @key_security_decisions
+ *  - User listing is implicitly denied due to the user-ownership model.  Only an admin could potentially list all users (but this is not implemented in these rules).
+ *  - All write operations to non-user collections are currently open to authenticated users. This should be restricted in a production environment.
+ * @denormalization_for_authorization N/A - User ownership is determined by path.
+ * @structural_segregation User data is segregated into a dedicated collection.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Manages user profile access. Only the authenticated user can access their own profile.
+     * @description Controls access to user profiles. Only the authenticated user can read/write their own profile.
      * @path /users/{userId}
-     * @allow (create) - Authenticated user can create their own profile if the userId matches their auth.uid.
-     * @allow (get, update, delete) - Authenticated user can get, update, or delete their own profile if the userId matches their auth.uid.
-     * @deny (create, update, delete) - If the userId does not match the authenticated user's uid.
-     * @principle Enforces user-ownership.
+     * @allow (create) User with UID 'user_abc' can create a profile at /users/user_abc.
+     * @allow (get,update,delete) User with UID 'user_abc' can get,update,delete a profile at /users/user_abc.
+     * @deny (create) User with UID 'user_xyz' cannot create a profile at /users/user_abc.
+     * @deny (get,update,delete) User with UID 'user_xyz' cannot get,update,delete a profile at /users/user_abc.
+     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
       function isOwner(userId) {
-        return request.auth.uid == userId;
+        return request.auth != null && request.auth.uid == userId;
       }
-
       function isExistingOwner(userId) {
         return isOwner(userId) && resource != null;
       }
 
       allow get: if isOwner(userId);
-      allow list: if false; // User listing is not permitted.
+      allow list: if false; // Prevent listing all users
 
-      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id; // Enforce immutability of userId
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Allows public read access to room information.
+     * @description Controls access to hotel room data.
      * @path /rooms/{roomId}
-     * @allow (get, list) - Any user can read room data.
-     * @deny (create, update, delete) - Writes are disallowed in this prototyping phase.
-     * @principle Public read access for non-user-specific data.
+     * @allow (get,list) Any authenticated user can read room data.
+     * @allow (create,update,delete) Any authenticated user can create, update, or delete room data.
+     * @deny (create,update,delete) Unauthenticated users cannot create, update, or delete room data.
+     * @principle Allows open read and write access to authenticated users.
      */
     match /rooms/{roomId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
       allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow create, update, delete: if isSignedIn();
     }
 
     /**
-     * @description Allows public read access to booking information.
+     * @description Controls access to booking data.
      * @path /bookings/{bookingId}
-     * @allow (get, list) - Any user can read booking data.
-     * @deny (create, update, delete) - Writes are disallowed in this prototyping phase.
-     * @principle Public read access for non-user-specific data.
+     * @allow (get,list) Any authenticated user can read booking data.
+     * @allow (create,update,delete) Any authenticated user can create, update, or delete booking data.
+     * @deny (create,update,delete) Unauthenticated users cannot create, update, or delete booking data.
+     * @principle Allows open read and write access to authenticated users.
      */
     match /bookings/{bookingId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
       allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow create, update, delete: if isSignedIn();
     }
 
     /**
-     * @description Allows public read access to menu item information.
+     * @description Controls access to menu item data.
      * @path /menuItems/{menuItemId}
-     * @allow (get, list) - Any user can read menu item data.
-     * @deny (create, update, delete) - Writes are disallowed in this prototyping phase.
-     * @principle Public read access for non-user-specific data.
+     * @allow (get,list) Any authenticated user can read menu item data.
+     * @allow (create,update,delete) Any authenticated user can create, update, or delete menu item data.
+     * @deny (create,update,delete) Unauthenticated users cannot create, update, or delete menu item data.
+     * @principle Allows open read and write access to authenticated users.
      */
     match /menuItems/{menuItemId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
       allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow create, update, delete: if isSignedIn();
     }
 
     /**
-     * @description Allows public read access to table information.
+     * @description Controls access to table data.
      * @path /tables/{tableId}
-     * @allow (get, list) - Any user can read table data.
-     * @deny (create, update, delete) - Writes are disallowed in this prototyping phase.
-     * @principle Public read access for non-user-specific data.
+     * @allow (get,list) Any authenticated user can read table data.
+     * @allow (create,update,delete) Any authenticated user can create, update, or delete table data.
+     * @deny (create,update,delete) Unauthenticated users cannot create, update, or delete table data.
+     * @principle Allows open read and write access to authenticated users.
      */
     match /tables/{tableId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
       allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow create, update, delete: if isSignedIn();
     }
 
     /**
-     * @description Allows public read access to order information.
+     * @description Controls access to order data.
      * @path /orders/{orderId}
-     * @allow (get, list) - Any user can read order data.
-     * @deny (create, update, delete) - Writes are disallowed in this prototyping phase.
-     * @principle Public read access for non-user-specific data.
+     * @allow (get,list) Any authenticated user can read order data.
+     * @allow (create,update,delete) Any authenticated user can create, update, or delete order data.
+     * @deny (create,update,delete) Unauthenticated users cannot create, update, or delete order data.
+     * @principle Allows open read and write access to authenticated users.
      */
     match /orders/{orderId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
       allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow create, update, delete: if isSignedIn();
     }
 
     /**
-     * @description Allows public read access to order item information.
+     * @description Controls access to order item data within an order.
      * @path /orders/{orderId}/items/{orderItemId}
-     * @allow (get, list) - Any user can read order item data.
-     * @deny (create, update, delete) - Writes are disallowed in this prototyping phase.
-     * @principle Public read access for non-user-specific data.
+     * @allow (get,list) Any authenticated user can read order item data.
+     * @allow (create,update,delete) Any authenticated user can create, update, or delete order item data.
+     * @deny (create,update,delete) Unauthenticated users cannot create, update, or delete order item data.
+     * @principle Allows open read and write access to authenticated users.
      */
     match /orders/{orderId}/items/{orderItemId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
       allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow create, update, delete: if isSignedIn();
     }
   }
 }

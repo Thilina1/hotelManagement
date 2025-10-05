@@ -95,7 +95,7 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                     createdBy: currentUser.id,
                 });
                 // This is a temporary object to use for the rest of the function
-                currentOrder = { id: newOrderRef.id, tableId: table.id, status: 'open', totalPrice: 0 };
+                currentOrder = { id: newOrderRef.id, tableId: table.id, status: 'open', totalPrice: 0, createdAt: new Date().toISOString() };
             }
 
             if (!currentOrder) throw new Error("Failed to create or find order.");

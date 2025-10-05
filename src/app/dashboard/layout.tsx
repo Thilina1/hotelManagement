@@ -7,7 +7,6 @@ import { doc, getDoc } from 'firebase/firestore';
 
 import AppSidebar from '@/components/dashboard/app-sidebar';
 import DashboardHeader from '@/components/dashboard/dashboard-header';
-import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { User } from '@/lib/types';
@@ -31,6 +30,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                         setUser(null);
                     }
                 } catch (e) {
+                     console.error("Error fetching user role:", e);
                      setUser(null);
                 }
             } else {
@@ -73,11 +73,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <UserProvider user={user}>
             <div className="bg-muted/40 min-h-screen">
                 <SidebarProvider>
-                    <AppSidebar user={user} />
+                    <AppSidebar />
                     <SidebarInset>
-                        <DashboardHeader user={user} />
+                        <DashboardHeader />
                         <main className="flex-1 p-4 sm:p-6 lg:p-8">
-                            <FirebaseErrorListener />
                             {children}
                         </main>
                     </SidebarInset>

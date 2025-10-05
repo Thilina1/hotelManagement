@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, query, where, writeBatch, serverTimestamp, increment } from 'firebase/firestore';
+import { collection, doc, query, where, writeBatch, serverTimestamp, increment, addDoc } from 'firebase/firestore';
 import type { Table as TableType, MenuItem, Order, OrderItem } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -46,7 +46,7 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
     const orderItemsRef = useMemoFirebase(() => {
         if (!firestore || !openOrder?.id) return null;
         return collection(firestore, 'orders', openOrder.id, 'items');
-    }, [firestore, openOrder]);
+    }, [firestore, openOrder?.id]);
 
     const { data: orderItems, isLoading: areOrderItemsLoading } = useCollection<OrderItem>(orderItemsRef);
 
@@ -85,13 +85,12 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
         if (!firestore) return;
 
         const batch = writeBatch(firestore);
-        let currentOrder = openOrder;
-        
-        let newOrderTotalPrice = openOrder?.totalPrice || 0;
+        let currentOrderId = openOrder?.id;
+        let currentOrderPrice = openOrder?.totalPrice || 0;
 
         try {
             // If no open order exists, create one
-            if (!currentOrder) {
+            if (!currentOrderId) {
                 const newOrderRef = doc(collection(firestore, 'orders'));
                 batch.set(newOrderRef, {
                     tableId: table.id,
@@ -100,28 +99,26 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                     createdAt: serverTimestamp(),
                     updatedAt: serverTimestamp(),
                 });
-                currentOrder = { id: newOrderRef.id, tableId: table.id, status: 'open', totalPrice: 0, createdAt: new Date().toISOString() };
+                currentOrderId = newOrderRef.id;
             }
-
-            if (!currentOrder) throw new Error("Failed to create or find order.");
             
-            const orderIdForItems = currentOrder.id;
+            let newItemsPrice = 0;
 
             for (const menuItemId in localOrder) {
                 const quantity = localOrder[menuItemId];
                 const menuItem = menuItems?.find(m => m.id === menuItemId);
 
-                if (menuItem) {
-                    const orderItemRef = doc(collection(firestore, 'orders', orderIdForItems, 'items'));
+                if (menuItem && currentOrderId) {
+                    const orderItemRef = doc(collection(firestore, 'orders', currentOrderId, 'items'));
                     batch.set(orderItemRef, {
-                        orderId: orderIdForItems,
+                        orderId: currentOrderId,
                         menuItemId,
                         name: menuItem.name,
                         price: menuItem.price,
                         quantity,
                     });
 
-                    newOrderTotalPrice += menuItem.price * quantity;
+                    newItemsPrice += menuItem.price * quantity;
 
                     if (menuItem.stockType === 'Inventoried') {
                         const menuItemRef = doc(firestore, 'menuItems', menuItem.id);
@@ -130,8 +127,10 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                 }
             }
 
-            const orderRef = doc(firestore, 'orders', orderIdForItems);
-            batch.update(orderRef, { totalPrice: newOrderTotalPrice, updatedAt: serverTimestamp() });
+            if (currentOrderId) {
+                const orderRef = doc(firestore, 'orders', currentOrderId);
+                batch.update(orderRef, { totalPrice: currentOrderPrice + newItemsPrice, updatedAt: serverTimestamp() });
+            }
             
             if (table.status === 'available') {
                 const tableDocRef = doc(firestore, 'tables', table.id);

@@ -22,7 +22,7 @@ import { Badge } from '@/components/ui/badge';
 import type { User, UserRole } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, doc, deleteDoc, setDoc, updateDoc, serverTimestamp, getDoc } from 'firebase/firestore';
-import { createUserWithEmailAndPassword, getAuth } from 'firebase/auth';
+import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth'; // Correct import
 import { Skeleton } from '@/components/ui/skeleton';
 import { UserForm } from '@/components/dashboard/user-management/user-form';
 import {
@@ -100,7 +100,7 @@ export default function UserManagementPage() {
       try {
         await deleteDoc(doc(firestore, 'users', id));
         // Note: This does not delete the user from Firebase Auth.
-        // A cloud function would be needed for that.
+        // A cloud function would be needed for that for a production app.
       } catch (error) {
         console.error("Error deleting user: ", error);
         alert("Failed to delete user.");
@@ -110,51 +110,52 @@ export default function UserManagementPage() {
 
   const handleFormSubmit = async (values: Partial<User> & { email?: string; password?: string }) => {
     if (!firestore || !currentUser || !auth) return;
-
+  
     try {
-        if (editingUser) {
-            // Update user in Firestore
-            const userDocRef = doc(firestore, 'users', editingUser.id);
-            const { email, password, ...firestoreData } = values;
-            await updateDoc(userDocRef, {
-                ...firestoreData,
-                updatedAt: serverTimestamp(),
-                updatedBy: currentUser.id,
-            });
-            // Password updates should be handled by a dedicated, secure flow
-            // For this example, we are not updating the password from this form
-            // to avoid handling sensitive data directly.
-        } else {
-            // Create user in Auth and Firestore
-            if (!values.email || !values.password) {
-                throw new Error("Email and password are required for new users.");
-            }
-            
-            const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-            const newUser = userCredential.user;
-            
-            const { email, password, ...firestoreData } = values;
-            
-            await setDoc(doc(firestore, 'users', newUser.uid), {
-                name: firestoreData.name,
-                birthday: firestoreData.birthday,
-                role: firestoreData.role,
-                id: newUser.uid,
-                createdAt: serverTimestamp(),
-                createdBy: currentUser.id,
-                updatedAt: serverTimestamp(),
-                updatedBy: currentUser.id,
-            });
+      if (editingUser) {
+        // Update user in Firestore
+        const userDocRef = doc(firestore, 'users', editingUser.id);
+        const { email, password, ...firestoreData } = values;
+        await updateDoc(userDocRef, {
+          ...firestoreData,
+          updatedAt: serverTimestamp(),
+          updatedBy: currentUser.id,
+        });
+        // Password updates should be handled by a dedicated, secure flow
+        // and are not handled here to avoid complexity.
+      } else {
+        // Create user in Auth and Firestore
+        if (!values.email || !values.password) {
+          throw new Error("Email and password are required for new users.");
         }
-        setIsDialogOpen(false);
-        setEditingUser(null);
+        
+        // Use the standard createUserWithEmailAndPassword which does NOT sign the new user in,
+        // thus preserving the admin's session.
+        const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+        const newUser = userCredential.user;
+        
+        const { email, password, ...firestoreData } = values;
+        
+        await setDoc(doc(firestore, 'users', newUser.uid), {
+            name: firestoreData.name,
+            birthday: firestoreData.birthday,
+            role: firestoreData.role,
+            id: newUser.uid,
+            createdAt: serverTimestamp(),
+            createdBy: currentUser.id,
+            updatedAt: serverTimestamp(),
+            updatedBy: currentUser.id,
+        });
+      }
+      setIsDialogOpen(false);
+      setEditingUser(null);
     } catch (error: any) {
-        console.error("Error saving user:", error);
-        if (error.code === 'auth/email-already-in-use') {
-            alert('This email address is already in use by another account.');
-        } else {
-            alert(`Failed to save user. ${error.message}`);
-        }
+      console.error("Error saving user:", error);
+      if (error.code === 'auth/email-already-in-use') {
+        alert('This email address is already in use by another account.');
+      } else {
+        alert(`Failed to save user. ${error.message}`);
+      }
     }
   };
 
@@ -295,3 +296,5 @@ export default function UserManagementPage() {
     </div>
   );
 }
+
+    

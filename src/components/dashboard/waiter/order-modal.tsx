@@ -20,7 +20,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 interface OrderModalProps {
@@ -38,15 +37,24 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
     const [selectedCategory, setSelectedCategory] = useState<MenuCategory | null>(null);
     const fallbackImage = PlaceHolderImages.find(p => p.id === 'login-background');
     const [refetchToggle, setRefetchToggle] = useState(false);
+    
+    // State to manage local menu item data for optimistic UI updates
+    const [localMenuItems, setLocalMenuItems] = useState<MenuItem[] | null>(null);
 
     const refetchOrderData = useCallback(() => {
         setRefetchToggle(prev => !prev);
     }, []);
 
-
     // Fetch menu items
     const menuItemsRef = useMemoFirebase(() => firestore ? collection(firestore, 'menuItems') : null, [firestore]);
     const { data: menuItems, isLoading: areMenuItemsLoading } = useCollection<MenuItem>(menuItemsRef);
+
+    // Initialize local menu items when fetched from Firestore
+    useEffect(() => {
+        if (menuItems) {
+            setLocalMenuItems(menuItems);
+        }
+    }, [menuItems]);
 
     // Fetch current open order for this table
     const openOrderQuery = useMemoFirebase(() => {
@@ -67,38 +75,56 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
 
     const [localOrder, setLocalOrder] = useState<Record<string, number>>({});
     
-    // Clear local order when modal is closed or table changes
     useEffect(() => {
         if (!isOpen) {
             setLocalOrder({});
             setSearchTerm('');
             setSelectedCategory(null);
+            setLocalMenuItems(menuItems); // Reset local stock on close
         }
-    }, [isOpen]);
+    }, [isOpen, menuItems]);
     
     const filteredMenuItems = useMemo(() => {
-        if (!menuItems) return [];
-        return menuItems
+        if (!localMenuItems) return [];
+        return localMenuItems
             .filter(item => item.availability)
             .filter(item => selectedCategory ? item.category === selectedCategory : true)
             .filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
-    }, [menuItems, searchTerm, selectedCategory]);
+    }, [localMenuItems, searchTerm, selectedCategory]);
 
     const handleAddItem = (menuItem: MenuItem) => {
-        if (menuItem.stockType === 'Inventoried' && (menuItem.stock ?? 0) <= 0) {
-            toast({ variant: 'destructive', title: 'Out of Stock', description: `${menuItem.name} is currently unavailable.` });
-            return;
+        if (menuItem.stockType === 'Inventoried') {
+            const currentStock = menuItem.stock ?? 0;
+            if (currentStock <= 0) {
+                 toast({ variant: 'destructive', title: 'Out of Stock', description: `${menuItem.name} is currently unavailable.` });
+                 return;
+            }
+            // Optimistically update local menu item stock
+            setLocalMenuItems(prevItems => 
+                prevItems?.map(item => 
+                    item.id === menuItem.id ? { ...item, stock: (item.stock ?? 0) - 1 } : item
+                ) ?? null
+            );
         }
-        setLocalOrder(prev => {
-            const currentQuantity = prev[menuItem.id] || 0;
-            return {
-                ...prev,
-                [menuItem.id]: currentQuantity + 1,
-            };
-        });
+
+        setLocalOrder(prev => ({
+            ...prev,
+            [menuItem.id]: (prev[menuItem.id] || 0) + 1,
+        }));
     };
 
     const handleRemoveItem = (menuItemId: string) => {
+        const menuItem = localMenuItems?.find(item => item.id === menuItemId);
+        
+        if (menuItem?.stockType === 'Inventoried') {
+            // Optimistically update local menu item stock
+            setLocalMenuItems(prevItems => 
+                prevItems?.map(item => 
+                    item.id === menuItemId ? { ...item, stock: (item.stock ?? 0) + 1 } : item
+                ) ?? null
+            );
+        }
+
         setLocalOrder(prev => {
             const newCount = (prev[menuItemId] || 0) - 1;
             if (newCount <= 0) {
@@ -115,10 +141,8 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
         const batch = writeBatch(firestore);
         let orderExisted = !!openOrder;
         let currentOrderId = openOrder?.id;
-        let currentOrderPrice = openOrder?.totalPrice || 0;
 
         try {
-            // If no open order exists, create one
             if (!currentOrderId) {
                 const newOrderRef = doc(collection(firestore, 'orders'));
                 batch.set(newOrderRef, {
@@ -131,13 +155,13 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                 currentOrderId = newOrderRef.id;
             }
             
-            let newItemsPrice = 0;
+            if (!currentOrderId) throw new Error("Order ID could not be established.");
 
             for (const menuItemId in localOrder) {
                 const quantity = localOrder[menuItemId];
                 const menuItem = menuItems?.find(m => m.id === menuItemId);
 
-                if (menuItem && currentOrderId) {
+                if (menuItem) {
                     const orderItemRef = doc(collection(firestore, 'orders', currentOrderId, 'items'));
                     batch.set(orderItemRef, {
                         orderId: currentOrderId,
@@ -147,7 +171,9 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                         quantity,
                     });
 
-                    newItemsPrice += menuItem.price * quantity;
+                    // Use increment to update total price and stock
+                    const orderRef = doc(firestore, 'orders', currentOrderId);
+                    batch.update(orderRef, { totalPrice: increment(menuItem.price * quantity) });
 
                     if (menuItem.stockType === 'Inventoried') {
                         const menuItemRef = doc(firestore, 'menuItems', menuItem.id);
@@ -155,21 +181,29 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                     }
                 }
             }
-
-            if (currentOrderId) {
-                const orderRef = doc(firestore, 'orders', currentOrderId);
-                batch.update(orderRef, { totalPrice: increment(newItemsPrice), updatedAt: serverTimestamp() });
-            }
             
+            const orderRef = doc(firestore, 'orders', currentOrderId);
+            batch.update(orderRef, { updatedAt: serverTimestamp() });
+
             if (table.status === 'available') {
                 const tableDocRef = doc(firestore, 'tables', table.id);
                 batch.update(tableDocRef, { status: 'occupied' });
             }
 
+            // Create a bill document
+            const billRef = doc(collection(firestore, 'bills'));
+            batch.set(billRef, {
+                orderId: currentOrderId,
+                tableId: table.id,
+                tableNumber: table.tableNumber,
+                createdAt: serverTimestamp(),
+            });
+
+
             await batch.commit();
 
             setLocalOrder({});
-            toast({ title: 'Order Confirmed', description: 'Items have been added to the order.' });
+            toast({ title: 'Order Confirmed', description: 'Items have been added and bill created.' });
             
             if (!orderExisted) {
               refetchOrderData();
@@ -178,6 +212,8 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
         } catch (error: any) {
             console.error("Error confirming order", error);
             toast({ variant: 'destructive', title: 'Order Failed', description: 'Could not confirm the order.' });
+            // Revert optimistic UI updates on failure
+            setLocalMenuItems(menuItems);
         }
     };
     
@@ -338,3 +374,5 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
         </Dialog>
     );
 }
+
+    

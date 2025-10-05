@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, query, where, writeBatch, serverTimestamp, increment, addDoc } from 'firebase/firestore';
+import { collection, doc, query, where, writeBatch, serverTimestamp, increment, setDoc } from 'firebase/firestore';
 import type { Table as TableType, MenuItem, Order, OrderItem, MenuCategory } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,9 +21,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
-
 
 interface OrderModalProps {
     table: TableType;
@@ -78,9 +75,27 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
             setLocalOrder({});
             setSearchTerm('');
             setSelectedCategory(null);
-            setLocalMenuItems(menuItems);
         }
-    }, [isOpen, menuItems]);
+    }, [isOpen]);
+
+    useEffect(() => {
+        if (menuItems) {
+            // When menu items are loaded or reloaded, update the local copy
+            let currentLocalItems = menuItems;
+    
+            // If there's an open order with items, reduce stock for those
+            if (orderItems) {
+                currentLocalItems = currentLocalItems.map(menuItem => {
+                    const orderedItem = orderItems.find(oi => oi.menuItemId === menuItem.id);
+                    if (orderedItem && menuItem.stockType === 'Inventoried') {
+                        return { ...menuItem, stock: (menuItem.stock || 0) - orderedItem.quantity };
+                    }
+                    return menuItem;
+                });
+            }
+            setLocalMenuItems(currentLocalItems);
+        }
+    }, [menuItems, orderItems]);
     
     const filteredMenuItems = useMemo(() => {
         if (!localMenuItems) return [];
@@ -91,19 +106,27 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
     }, [localMenuItems, searchTerm, selectedCategory]);
 
     const handleAddItem = (menuItem: MenuItem) => {
-        if (menuItem.stockType === 'Inventoried') {
-            const currentStock = menuItem.stock ?? 0;
-            const itemsInCart = localOrder[menuItem.id] || 0;
-            if (currentStock - itemsInCart <= 0) {
-                 toast({ variant: 'destructive', title: 'Out of Stock', description: `${menuItem.name} is currently unavailable.` });
-                 return;
-            }
+        const itemInLocalMenu = localMenuItems?.find(m => m.id === menuItem.id);
+        const currentStock = itemInLocalMenu?.stock ?? 0;
+
+        if (menuItem.stockType === 'Inventoried' && currentStock <= 0) {
+             toast({ variant: 'destructive', title: 'Out of Stock', description: `${menuItem.name} is currently unavailable.` });
+             return;
         }
 
         setLocalOrder(prev => ({
             ...prev,
             [menuItem.id]: (prev[menuItem.id] || 0) + 1,
         }));
+        
+        // Decrement stock in local state for UI feedback
+        if (menuItem.stockType === 'Inventoried') {
+            setLocalMenuItems(prevItems => 
+                prevItems?.map(item => 
+                    item.id === menuItem.id ? { ...item, stock: (item.stock ?? 0) - 1 } : item
+                ) || null
+            );
+        }
     };
 
     const handleRemoveItem = (menuItemId: string) => {
@@ -115,116 +138,108 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
             }
             return { ...prev, [menuItemId]: newCount };
         });
+
+        const menuItem = menuItems?.find(m => m.id === menuItemId);
+        if (menuItem && menuItem.stockType === 'Inventoried') {
+             setLocalMenuItems(prevItems => 
+                prevItems?.map(item => 
+                    item.id === menuItemId ? { ...item, stock: (item.stock ?? 0) + 1 } : item
+                ) || null
+            );
+        }
     };
 
     const handleConfirmOrder = async () => {
         if (!firestore || Object.keys(localOrder).length === 0) return;
-
+    
         let currentOrder = openOrder;
         const orderExisted = !!currentOrder;
-
-        try {
-            if (!currentOrder) {
-                const newOrderRef = doc(collection(firestore, 'orders'));
-                await writeBatch(firestore).set(newOrderRef, {
-                    tableId: table.id,
-                    status: 'open',
-                    totalPrice: 0,
-                    createdAt: serverTimestamp(),
-                    updatedAt: serverTimestamp(),
-                }).commit();
-                currentOrder = { id: newOrderRef.id, tableId: table.id, status: 'open', totalPrice: 0, createdAt: new Date().toISOString() };
-            }
-            
-            if (!currentOrder) {
-                throw new Error("Order could not be created or found.");
-            }
-
-            const batch = writeBatch(firestore);
-            
-            for (const menuItemId in localOrder) {
-                const quantity = localOrder[menuItemId];
-                const menuItem = menuItems?.find(m => m.id === menuItemId);
-
-                if (menuItem) {
-                    const orderItemRef = doc(collection(firestore, 'orders', currentOrder.id, 'items'));
-                    batch.set(orderItemRef, {
-                        orderId: currentOrder.id,
-                        menuItemId,
-                        name: menuItem.name,
-                        price: menuItem.price,
-                        quantity,
-                    });
-
-                    const orderRef = doc(firestore, 'orders', currentOrder.id);
-                    batch.update(orderRef, { totalPrice: increment(menuItem.price * quantity) });
-
-                    if (menuItem.stockType === 'Inventoried') {
-                        const menuItemRef = doc(firestore, 'menuItems', menuItem.id);
-                        batch.update(menuItemRef, { stock: increment(-quantity) });
-                    }
+    
+        if (!currentOrder) {
+            const newOrderRef = doc(collection(firestore, 'orders'));
+            await setDoc(newOrderRef, {
+                tableId: table.id,
+                status: 'open',
+                totalPrice: 0,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+            });
+            // This is a simplified version for the next step.
+            currentOrder = { id: newOrderRef.id, tableId: table.id, status: 'open', totalPrice: 0, createdAt: new Date().toISOString() };
+        }
+        
+        if (!currentOrder) {
+            toast({ variant: 'destructive', title: 'Order Failed', description: 'Could not find or create an order.' });
+            return;
+        }
+    
+        const batch = writeBatch(firestore);
+        
+        for (const menuItemId in localOrder) {
+            const quantity = localOrder[menuItemId];
+            const menuItem = menuItems?.find(m => m.id === menuItemId);
+    
+            if (menuItem) {
+                const orderItemRef = doc(collection(firestore, 'orders', currentOrder.id, 'items'));
+                batch.set(orderItemRef, {
+                    orderId: currentOrder.id,
+                    menuItemId,
+                    name: menuItem.name,
+                    price: menuItem.price,
+                    quantity,
+                });
+    
+                const orderRef = doc(firestore, 'orders', currentOrder.id);
+                batch.update(orderRef, { totalPrice: increment(menuItem.price * quantity) });
+    
+                if (menuItem.stockType === 'Inventoried') {
+                    const menuItemRef = doc(firestore, 'menuItems', menuItem.id);
+                    batch.update(menuItemRef, { stock: increment(-quantity) });
                 }
             }
-
-            const orderRef = doc(firestore, 'orders', currentOrder.id);
-            batch.update(orderRef, { updatedAt: serverTimestamp() });
-            
-            if (table.status === 'available') {
-                const tableDocRef = doc(firestore, 'tables', table.id);
-                batch.update(tableDocRef, { status: 'occupied' });
-            }
-            
-            const billRef = doc(collection(firestore, 'bills'));
-             batch.set(billRef, {
-                orderId: currentOrder.id,
-                tableId: table.id,
-                tableNumber: table.tableNumber,
-                createdAt: serverTimestamp(),
-            });
-
-            await batch.commit();
-
-            setLocalOrder({});
-            toast({ title: 'Order Confirmed', description: 'Items have been added and bill created.' });
-            
-            if (!orderExisted) {
-              refetchOrderData();
-            }
-
-        } catch (error: any) {
-            console.error("Error confirming order", error);
-            const permissionError = new FirestorePermissionError({
-              path: 'orders',
-              operation: 'write',
-              requestResourceData: localOrder,
-            });
-            errorEmitter.emit('permission-error', permissionError);
-            toast({ variant: 'destructive', title: 'Order Failed', description: 'Could not confirm the order.' });
+        }
+    
+        const orderRef = doc(firestore, 'orders', currentOrder.id);
+        batch.update(orderRef, { updatedAt: serverTimestamp() });
+        
+        if (table.status === 'available') {
+            const tableDocRef = doc(firestore, 'tables', table.id);
+            batch.update(tableDocRef, { status: 'occupied' });
+        }
+        
+        const billRef = doc(collection(firestore, 'bills'));
+        batch.set(billRef, {
+            orderId: currentOrder.id,
+            tableId: table.id,
+            tableNumber: table.tableNumber,
+            createdAt: serverTimestamp(),
+        });
+    
+        await batch.commit();
+    
+        setLocalOrder({});
+        toast({ title: 'Order Confirmed', description: 'Items have been added and bill created.' });
+        
+        if (!orderExisted) {
+            refetchOrderData();
         }
     };
     
     const handleMarkAsPaid = async () => {
         if (!firestore || !openOrder) return;
         
-        try {
-            const batch = writeBatch(firestore);
+        const batch = writeBatch(firestore);
 
-            const orderRef = doc(firestore, 'orders', openOrder.id);
-            batch.update(orderRef, { status: 'paid', updatedAt: serverTimestamp() });
-            
-            const tableRef = doc(firestore, 'tables', table.id);
-            batch.update(tableRef, { status: 'available' });
+        const orderRef = doc(firestore, 'orders', openOrder.id);
+        batch.update(orderRef, { status: 'paid', updatedAt: serverTimestamp() });
+        
+        const tableRef = doc(firestore, 'tables', table.id);
+        batch.update(tableRef, { status: 'available' });
 
-            await batch.commit();
-            
-            toast({ title: 'Payment Successful', description: `The bill for Table ${table.tableNumber} has been settled.`});
-            onClose();
-        } catch (error: any) {
-            console.error("Error marking as paid", error);
-            const permissionError = new FirestorePermissionError({ path: `orders/${openOrder.id}`, operation: 'update' });
-            errorEmitter.emit('permission-error', permissionError);
-            toast({ variant: 'destructive', title: 'Payment Failed', description: 'Could not process the payment.' });
-        }
+        await batch.commit();
+        
+        toast({ title: 'Payment Successful', description: `The bill for Table ${table.tableNumber} has been settled.`});
+        onClose();
     };
 
     const isLoading = areMenuItemsLoading || areOrdersLoading;
@@ -269,10 +284,7 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                                     {areMenuItemsLoading ? (
                                        [...Array(10)].map((_, i) => <Skeleton key={i} className="h-20 w-full" />)
                                     ) : filteredMenuItems.map(item => {
-                                        const itemsInCart = localOrder[item.id] || 0;
-                                        const availableStock = (item.stock ?? 0);
-                                        const displayStock = availableStock - itemsInCart;
-                                        const isOutOfStock = item.stockType === 'Inventoried' && displayStock <= 0;
+                                        const isOutOfStock = item.stockType === 'Inventoried' && (item.stock ?? 0) <= 0;
 
                                         return (
                                             <div key={item.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted">
@@ -287,7 +299,7 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                                                     <div>
                                                         <p className="font-semibold">{item.name}</p>
                                                         <p className="text-sm text-muted-foreground">${item.price.toFixed(2)}</p>
-                                                        {item.stockType === 'Inventoried' && <p className={`text-xs ${!isOutOfStock ? 'text-primary' : 'text-destructive'}`}>Stock: {displayStock}</p>}
+                                                        {item.stockType === 'Inventoried' && <p className={`text-xs ${!isOutOfStock ? 'text-primary' : 'text-destructive'}`}>Stock: {item.stock}</p>}
                                                     </div>
                                                 </div>
                                                 <Button size="sm" onClick={() => handleAddItem(item)} disabled={isOutOfStock}>

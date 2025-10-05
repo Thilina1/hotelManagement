@@ -20,8 +20,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { MoreHorizontal, UserPlus, Trash2, Edit } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { User, UserRole } from '@/lib/types';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, deleteDoc, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { useCollection, useFirestore, useMemoFirebase, useAuth as useFirebaseAuth } from '@/firebase';
+import { collection, doc, deleteDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { UserForm } from '@/components/dashboard/user-management/user-form';
 import { useAuth } from '@/hooks/use-auth';
@@ -42,6 +43,7 @@ const roleColors: Record<UserRole, string> = {
 export default function UserManagementPage() {
   const { user: currentUser } = useAuth();
   const firestore = useFirestore();
+  const auth = useFirebaseAuth();
   const usersCollection = useMemoFirebase(() => {
     if (!firestore) return null;
     return collection(firestore, 'users');
@@ -66,6 +68,8 @@ export default function UserManagementPage() {
     if(confirm('Are you sure you want to delete this user? This cannot be undone.')) {
       try {
         await deleteDoc(doc(firestore, 'users', id));
+        // Note: This does not delete the user from Firebase Auth.
+        // A cloud function would be needed for that.
       } catch (error) {
         console.error("Error deleting user: ", error);
         alert("Failed to delete user.");
@@ -73,22 +77,36 @@ export default function UserManagementPage() {
     }
   };
 
-  const handleFormSubmit = async (values: Partial<User>) => {
-    if (!firestore || !usersCollection || !currentUser) return;
+  const handleFormSubmit = async (values: Partial<User> & { email?: string; password?: string }) => {
+    if (!firestore || !usersCollection || !currentUser || !auth) return;
 
     try {
         if (editingUser) {
-            // Update user
+            // Update user in Firestore
             const userDocRef = doc(firestore, 'users', editingUser.id);
+            const { email, password, ...firestoreData } = values;
             await updateDoc(userDocRef, {
-                ...values,
+                ...firestoreData,
                 updatedAt: serverTimestamp(),
                 updatedBy: currentUser.id,
             });
+            // Password updates should be handled by a dedicated, secure flow
+            // For this example, we are not updating the password from this form
+            // to avoid handling sensitive data directly.
         } else {
-            // Create user
-            await addDoc(usersCollection, {
-                ...values,
+            // Create user in Auth and Firestore
+            if (!values.email || !values.password) {
+                throw new Error("Email and password are required for new users.");
+            }
+            
+            const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+            const newUser = userCredential.user;
+            
+            const { email, password, ...firestoreData } = values;
+            
+            await setDoc(doc(firestore, 'users', newUser.uid), {
+                ...firestoreData,
+                id: newUser.uid,
                 createdAt: serverTimestamp(),
                 createdBy: currentUser.id,
                 updatedAt: serverTimestamp(),
@@ -99,7 +117,7 @@ export default function UserManagementPage() {
         setEditingUser(null);
     } catch (error) {
         console.error("Error saving user:", error);
-        alert("Failed to save user.");
+        alert(`Failed to save user. ${error}`);
     }
   };
 

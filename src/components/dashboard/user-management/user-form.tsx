@@ -20,19 +20,41 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { User, UserRole } from '@/lib/types';
+import type { User } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, KeyRound } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useState } from 'react';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
+  email: z.string().email({ message: 'Please enter a valid email.'}),
   birthday: z.date({
     required_error: "A date of birth is required.",
   }),
   role: z.enum(['admin', 'waiter', 'payment']),
+  updatePassword: z.boolean().default(false),
+  password: z.string().optional(),
+  confirmPassword: z.string().optional(),
+}).refine((data) => {
+    if (data.updatePassword && (!data.password || data.password.length < 6)) {
+        return false;
+    }
+    return true;
+}, {
+    message: 'Password must be at least 6 characters.',
+    path: ['password'],
+}).refine((data) => {
+    if (data.updatePassword && data.password !== data.confirmPassword) {
+        return false;
+    }
+    return true;
+}, {
+    message: "Passwords don't match.",
+    path: ['confirmPassword'],
 });
 
 interface UserFormProps {
@@ -41,25 +63,35 @@ interface UserFormProps {
 }
 
 export function UserForm({ user, onSubmit }: UserFormProps) {
+  const [showPassword, setShowPassword] = useState(!user);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: user?.name || '',
+      email: user ? `${user.name.toLowerCase()}@example.com` : '',
       birthday: user?.birthday ? new Date(user.birthday) : new Date(),
       role: user?.role || 'waiter',
+      updatePassword: !user,
+      password: '',
+      confirmPassword: '',
     },
   });
 
   const handleSubmit = (values: z.infer<typeof formSchema>) => {
+    const { confirmPassword, updatePassword, ...submissionData } = values;
+    if (!updatePassword) {
+        delete submissionData.password;
+    }
     onSubmit({
-        ...values,
+        ...submissionData,
         birthday: format(values.birthday, 'yyyy-MM-dd')
     });
   };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
         <FormField
           control={form.control}
           name="name"
@@ -68,6 +100,19 @@ export function UserForm({ user, onSubmit }: UserFormProps) {
               <FormLabel>Name</FormLabel>
               <FormControl>
                 <Input placeholder="John Doe" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <FormControl>
+                <Input type="email" placeholder="john.doe@example.com" {...field} disabled={!!user} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -136,6 +181,67 @@ export function UserForm({ user, onSubmit }: UserFormProps) {
             </FormItem>
           )}
         />
+
+        {user && (
+            <FormField
+                control={form.control}
+                name="updatePassword"
+                render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                        <FormControl>
+                            <Checkbox
+                                checked={field.value}
+                                onCheckedChange={(checked) => {
+                                    field.onChange(checked);
+                                    setShowPassword(!!checked);
+                                }}
+                            />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                            <FormLabel>Update Password</FormLabel>
+                        </div>
+                    </FormItem>
+                )}
+            />
+        )}
+
+        {showPassword && (
+            <div className="space-y-4">
+                 <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Password</FormLabel>
+                        <FormControl>
+                            <div className="relative">
+                                <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input type="password" placeholder="••••••••" {...field} className="pl-10"/>
+                            </div>
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="confirmPassword"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Confirm Password</FormLabel>
+                        <FormControl>
+                             <div className="relative">
+                                <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input type="password" placeholder="••••••••" {...field} className="pl-10"/>
+                            </div>
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+            </div>
+        )}
+
         <Button type="submit" className="w-full">
             {user ? 'Update User' : 'Create User'}
         </Button>

@@ -1,16 +1,17 @@
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
+import Image from 'next/image';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, query, where, writeBatch, serverTimestamp, increment, addDoc } from 'firebase/firestore';
-import type { Table as TableType, MenuItem, Order, OrderItem } from '@/lib/types';
+import type { Table as TableType, MenuItem, Order, OrderItem, MenuCategory } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, MinusCircle, ShoppingCart, CheckCircle, Search } from 'lucide-react';
+import { PlusCircle, MinusCircle, ShoppingCart, CheckCircle, Search, Utensils } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -19,6 +20,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 interface OrderModalProps {
     table: TableType;
@@ -26,10 +29,15 @@ interface OrderModalProps {
     onClose: () => void;
 }
 
+const menuCategories: MenuCategory[] = ['Sri Lankan', 'Western', 'Bar'];
+
 export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
     const firestore = useFirestore();
     const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState<MenuCategory | null>(null);
+    const fallbackImage = PlaceHolderImages.find(p => p.id === 'login-background');
+
 
     // Fetch menu items
     const menuItemsRef = useMemoFirebase(() => firestore ? collection(firestore, 'menuItems') : null, [firestore]);
@@ -58,6 +66,8 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
     useEffect(() => {
         if (!isOpen) {
             setLocalOrder({});
+            setSearchTerm('');
+            setSelectedCategory(null);
         }
     }, [isOpen]);
     
@@ -65,8 +75,9 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
         if (!menuItems) return [];
         return menuItems
             .filter(item => item.availability)
+            .filter(item => selectedCategory ? item.category === selectedCategory : true)
             .filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
-    }, [menuItems, searchTerm]);
+    }, [menuItems, searchTerm, selectedCategory]);
 
     const handleAddItem = (menuItem: MenuItem) => {
         if (menuItem.stockType === 'Inventoried' && (menuItem.stock ?? 0) <= 0) {
@@ -198,27 +209,42 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                         <CardHeader>
                             <CardTitle>Menu</CardTitle>
                             <CardDescription>Select items to add to the order.</CardDescription>
-                            <div className="relative mt-2">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    placeholder="Search menu..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-10 w-full"
-                                />
+                            <div className="flex gap-2 items-center">
+                                <div className="relative flex-grow">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        placeholder="Search menu..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="pl-10 w-full"
+                                    />
+                                </div>
+                                <Button variant={!selectedCategory ? 'default' : 'outline'} onClick={() => setSelectedCategory(null)} size="sm">All</Button>
+                                {menuCategories.map(cat => (
+                                    <Button key={cat} variant={selectedCategory === cat ? 'default' : 'outline'} onClick={() => setSelectedCategory(cat)} size="sm">{cat}</Button>
+                                ))}
                             </div>
                         </CardHeader>
                         <CardContent className="flex-1 overflow-hidden">
                             <ScrollArea className="h-full">
                                 <div className="space-y-2 pr-4">
                                     {areMenuItemsLoading ? (
-                                       [...Array(10)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)
+                                       [...Array(10)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)
                                     ) : filteredMenuItems.map(item => (
                                         <div key={item.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted">
-                                            <div>
-                                                <p className="font-semibold">{item.name}</p>
-                                                <p className="text-sm text-muted-foreground">${item.price.toFixed(2)}</p>
-                                                {item.stockType === 'Inventoried' && <p className={`text-xs ${item.stock && item.stock > 0 ? 'text-primary' : 'text-destructive'}`}>Stock: {item.stock}</p>}
+                                            <div className="flex items-center gap-4">
+                                                <div className="relative w-14 h-14 rounded-md overflow-hidden bg-muted flex items-center justify-center">
+                                                    {fallbackImage ? (
+                                                        <Image src={fallbackImage.imageUrl} alt={item.name} fill className="object-cover" />
+                                                    ) : (
+                                                        <Utensils className="h-6 w-6 text-muted-foreground"/>
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <p className="font-semibold">{item.name}</p>
+                                                    <p className="text-sm text-muted-foreground">${item.price.toFixed(2)}</p>
+                                                    {item.stockType === 'Inventoried' && <p className={`text-xs ${item.stock && item.stock > 0 ? 'text-primary' : 'text-destructive'}`}>Stock: {item.stock}</p>}
+                                                </div>
                                             </div>
                                             <Button size="sm" onClick={() => handleAddItem(item)} disabled={item.stockType === 'Inventoried' && (item.stock ?? 0) <= 0}>
                                                 <PlusCircle className="mr-2 h-4 w-4" /> Add

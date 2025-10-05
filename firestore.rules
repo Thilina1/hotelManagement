@@ -1,162 +1,127 @@
 /**
- * @fileoverview Firestore Security Rules for the Restaurant Staff Management System.
+ * @fileoverview Firestore Security Rules for the restaurant staff management system.
  *
  * Core Philosophy:
- * This ruleset enforces a strict user-ownership model for user profiles and allows authenticated access to Rooms, MenuItems, and Tables.
+ * This ruleset enforces a strict user-ownership model for user profiles and public read access for menu items and tables.
  *
  * Data Structure:
- * - User profiles are stored in `/users/{userId}`, where `{userId}` is the Firebase Auth UID.
- * - Room, MenuItem, Table and Order information are stored in top-level collections.
+ * - User profiles are stored under `/users/{userId}`, where `{userId}` is the Firebase Auth UID.
+ * - Menu items, tables, orders, and bookings are stored in top-level collections (`/menuItems`, `/tables`, `/orders`, `/bookings`).
+ * - Order items are stored as subcollections of orders (`/orders/{orderId}/items/{orderItemId}`).
  *
  * Key Security Decisions:
- * - Users can only read and write their own profile data.
- * - Listing users is implicitly restricted as only admins (not covered in these basic rules) would have access to the entire `/users` collection.
- * - All authenticated users can read/write Rooms, MenuItems, and Tables.
- * - No data shape validation is performed in this prototyping phase.
+ * - Users can only access their own profile data.
+ * - Menu items and tables are publicly readable, but writes are not secured yet (TODO).
+ * - Listing all users is implicitly denied to non-admins via the user-ownership model.
+ * - Data validation is minimal, focusing on authorization and relational integrity.
  *
  * Denormalization for Authorization:
- *  - The user's role is stored directly within the user document itself to enable role-based access control without additional reads.
+ * This ruleset does not require denormalization. User ownership is determined by the path `/users/{userId}`,
+ * and roles are stored directly within the user document.  This simplifies authorization logic and avoids
+ * expensive `get()` calls.
  *
  * Structural Segregation:
- *  - User profiles are stored in a dedicated user subcollection to enforce clear ownership and prevent accidental data exposure.
+ * User profiles are stored in a dedicated, user-specific collection (`/users/{userId}`), ensuring that users can only
+ * access their own data. Public data, like menu items and tables, is stored in top-level collections, allowing
+ * for public read access without compromising user privacy.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows a user to read and write their own user profile.
-     * @path /users/{userId}
-     * @allow (get, create, update, delete) if the user is signed in and the requested userId matches their auth UID.
-     * @deny (get, create, update, delete) if the user is not signed in or the userId does not match their auth UID.
-     * @principle Enforces document ownership for user profiles.
+     * @description Secure access to user profiles. Only the authenticated user can access their own profile.
+     * @path /databases/{database}/documents/users/{userId}
+     * @allow (get, update, delete) User with UID 'qiNh1ZI8ifOUo4IRzxkQsLiUvWJ2' can access /users/qiNh1ZI8ifOUo4IRzxkQsLiUvWJ2.
+     * @allow (create) User with UID 'qiNh1ZI8ifOUo4IRzxkQsLiUvWJ2' can create /users/qiNh1ZI8ifOUo4IRzxkQsLiUvWJ2.
+     * @deny (get, update, delete) User with UID 'otherUserId' cannot access /users/qiNh1ZI8ifOUo4IRzxkQsLiUvWJ2.
+     * @deny (create) User with UID 'otherUserId' cannot create /users/qiNh1ZI8ifOUo4IRzxkQsLiUvWJ2.
+     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId} {
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if isSignedIn() && isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isOwner(userId) && isExistingOwner(userId);
-      allow delete: if isSignedIn() && isOwner(userId) && isExistingOwner(userId);
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if false; // Listing users is not allowed
+
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isOwner(userId) && resource != null && request.resource.data.id == resource.data.id;
+      allow delete: if isOwner(userId) && resource != null;
     }
 
     /**
-     * @description Allows any authenticated user to read and write Room data.
-     * @path /rooms/{roomId}
-     * @allow (get, list, create, update, delete) if the user is signed in.
-     * @deny (get, list, create, update, delete) if the user is not signed in.
-     * @principle Allows authenticated users to manage room information.
-     */
-    match /rooms/{roomId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
-    }
-
-    /**
-     * @description Allows any authenticated user to read and write Booking data.
-     * @path /bookings/{bookingId}
-     * @allow (get, list, create, update, delete) if the user is signed in.
-     * @deny (get, list, create, update, delete) if the user is not signed in.
-     * @principle Allows authenticated users to manage booking information.
-     */
-    match /bookings/{bookingId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
-    }
-
-    /**
-     * @description Allows any authenticated user to read and write MenuItem data.
-     * @path /menuItems/{menuItemId}
-     * @allow (get, list, create, update, delete) if the user is signed in.
-     * @deny (get, list, create, update, delete) if the user is not signed in.
-     * @principle Allows authenticated users to manage menu items.
+     * @description Allow public read access to menu items, but restrict writes.
+     * @path /databases/{database}/documents/menuItems/{menuItemId}
+     * @allow (get, list) Any user can read menu items.
+     * @deny (create, update, delete) No user can create, update, or delete menu items (currently).
+     * @principle Allows public read access with restricted writes.
      */
     match /menuItems/{menuItemId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Allows any authenticated user to read and write Table data.
-     * @path /tables/{tableId}
-     * @allow (get, list, create, update, delete) if the user is signed in.
-     * @deny (get, list, create, update, delete) if the user is not signed in.
-     * @principle Allows authenticated users to manage table information.
+     * @description Allow public read access to tables, but restrict writes.
+     * @path /databases/{database}/documents/tables/{tableId}
+     * @allow (get, list) Any user can read table information.
+     * @deny (create, update, delete) No user can create, update, or delete table information (currently).
+     * @principle Allows public read access with restricted writes.
      */
     match /tables/{tableId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
-    }
-      /**
-       * @description Allows any authenticated user to read and write order data.
-       * @path /orders/{orderId}
-       * @allow (get, list, create, update, delete) if the user is signed in.
-       * @deny (get, list, create, update, delete) if the user is not signed in.
-       * @principle Allows authenticated users to manage orders.
-       */
-    match /orders/{orderId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
-    }
-        /**
-         * @description Allows any authenticated user to read and write order item data.
-         * @path /orders/{orderId}/items/{orderItemId}
-         * @allow (get, list, create, update, delete) if the user is signed in.
-         * @deny (get, list, create, update, delete) if the user is not signed in.
-         * @principle Allows authenticated users to manage order items.
-         */
-    match /orders/{orderId}/items/{orderItemId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
-    // Fallback rule: Disallow all other reads and writes.
-    match /{path=**} {
-      allow read: if false;
-      allow write: if false;
+    /**
+     * @description Secure access to bookings. Only authenticated users can create bookings.
+     *  Reads, updates, and deletes are disallowed for prototyping.
+     * @path /databases/{database}/documents/bookings/{bookingId}
+     * @allow (create) Any authenticated user can create a booking.
+     * @deny (get, list, update, delete) No user can read, list, update, or delete bookings (currently).
+     * @principle Restricts read/write access for prototyping.
+     */
+    match /bookings/{bookingId} {
+      allow get, list: if false;
+      allow create: if isSignedIn();
+      allow update, delete: if false;
+    }
+
+     /**
+      * @description Secure access to orders. Only authenticated users can create orders.
+      *  Reads, updates, and deletes are disallowed for prototyping.
+      * @path /databases/{database}/documents/orders/{orderId}
+      * @allow (create) Any authenticated user can create an order.
+      * @deny (get, list, update, delete) No user can read, list, update, or delete orders (currently).
+      * @principle Restricts read/write access for prototyping.
+      */
+    match /orders/{orderId} {
+      allow get, list: if false;
+      allow create: if isSignedIn();
+      allow update, delete: if false;
+    }
+
+    /**
+     * @description Secure access to order items. Only authenticated users can create order items.
+     *  Reads, updates, and deletes are disallowed for prototyping.
+     * @path /databases/{database}/documents/orders/{orderId}/items/{orderItemId}
+     * @allow (create) Any authenticated user can create an order item.
+     * @deny (get, list, update, delete) No user can read, list, update, or delete order items (currently).
+     * @principle Restricts read/write access for prototyping.
+     */
+    match /orders/{orderId}/items/{orderItemId} {
+      allow get, list: if false;
+      allow create: if isSignedIn();
+      allow update, delete: if false;
+    }
+
+    /**
+     * @description Allow all read access when a user is signed in
+     */
+    function isSignedIn() {
+        return request.auth != null;
     }
   }
-}
-
-/**
- * @description Checks if the user is signed in.
- * @return {boolean} True if the user is signed in, false otherwise.
- */
-function isSignedIn() {
-  return request.auth != null;
-}
-
-/**
- * @description Checks if the requested user ID matches the authenticated user's ID.
- * @param {string} userId The user ID from the path.
- * @return {boolean} True if the user is the owner, false otherwise.
- */
-function isOwner(userId) {
-  return request.auth.uid == userId;
-}
-
-/**
- * @description Checks if the requested user ID matches the authenticated user's ID and the resource exists.
- * @param {string} userId The user ID from the path.
- * @return {boolean} True if the user is the existing owner, false otherwise.
- */
-function isExistingOwner(userId) {
-    return isOwner(userId) && resource != null;
 }

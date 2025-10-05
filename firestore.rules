@@ -1,137 +1,134 @@
+/**
+ * @fileoverview Firestore Security Rules for the Restaurant Staff Management System.
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model for user profiles,
+ * and reasonable access controls for other collections based on common use cases.
+ *
+ * Data Structure:
+ * - /users/{userId}: Stores user profiles. Only the authenticated user or an admin can access their own document.
+ * - /rooms/{roomId}: Stores hotel room information. Publicly readable.
+ * - /bookings/{bookingId}: Stores booking information. Publicly readable.
+ * - /menuItems/{menuItemId}: Stores menu item information. Publicly readable.
+ * - /tables/{tableId}: Stores restaurant table information. Publicly readable.
+ * - /orders/{orderId}: Stores customer orders. Publicly readable.
+ * - /orders/{orderId}/items/{orderItemId}: Stores order items. Publicly readable.
+ *
+ * Key Security Decisions:
+ * - User listing is implicitly denied for non-admins due to the ownership model.
+ * - Public read access is granted to non-user-specific collections (rooms, bookings, etc.) to simplify data access.
+ * - The rules do NOT validate data shapes in this prototyping phase.
+ *
+ * Denormalization for Authorization:
+ *  - The current design relies on path-based ownership for the `/users/{userId}` collection. No denormalization is needed here.
+ *  - For other collections, if more fine-grained access control is required in the future, consider denormalizing relevant data (e.g., an `ownerId` field) onto the documents themselves.
+ *
+ * Structural Segregation:
+ *  - User-specific data is stored under `/users/{userId}`, while public data resides in top-level collections.
+ */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to user profile documents.
+     * @description Manages user profile access. Only the authenticated user can access their own profile.
      * @path /users/{userId}
-     * @allow (create) User with UID 'user123' can create their own profile document at /users/user123.
-     * @allow (get) User with UID 'user123' can read their own profile document at /users/user123.
-     * @allow (update) User with UID 'user123' can update their own profile document at /users/user123.
-     * @allow (delete) User with UID 'user123' can delete their own profile document at /users/user123.
-     * @deny (create) User with UID 'user456' cannot create a profile document at /users/user123.
-     * @deny (get) User with UID 'user456' cannot read the profile document at /users/user123.
-     * @deny (update) User with UID 'user456' cannot update the profile document at /users/user123.
-     * @deny (delete) User with UID 'user456' cannot delete the profile document at /users/user123.
-     * @principle Enforces document ownership for user profiles.
+     * @allow (create) - Authenticated user can create their own profile if the userId matches their auth.uid.
+     * @allow (get, update, delete) - Authenticated user can get, update, or delete their own profile if the userId matches their auth.uid.
+     * @deny (create, update, delete) - If the userId does not match the authenticated user's uid.
+     * @principle Enforces user-ownership.
      */
     match /users/{userId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
       allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
-      allow delete: if isOwner(userId);
+      allow list: if false; // User listing is not permitted.
+
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Allows read and write access to all room documents.
+     * @description Allows public read access to room information.
      * @path /rooms/{roomId}
-     * @allow (get) Any user can read any room document.
-     * @allow (create) Any user can create a room document.
-     * @allow (update) Any user can update any room document.
-     * @allow (delete) Any user can delete any room document.
-     * @principle Allows open access to room data for prototyping.
+     * @allow (get, list) - Any user can read room data.
+     * @deny (create, update, delete) - Writes are disallowed in this prototyping phase.
+     * @principle Public read access for non-user-specific data.
      */
     match /rooms/{roomId} {
       allow get, list: if true;
-      allow create: if true;
-      allow update: if true;
-      allow delete: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Allows read and write access to all booking documents.
+     * @description Allows public read access to booking information.
      * @path /bookings/{bookingId}
-     * @allow (get) Any user can read any booking document.
-     * @allow (create) Any user can create a booking document.
-     * @allow (update) Any user can update any booking document.
-     * @allow (delete) Any user can delete any booking document.
-     * @principle Allows open access to booking data for prototyping.
+     * @allow (get, list) - Any user can read booking data.
+     * @deny (create, update, delete) - Writes are disallowed in this prototyping phase.
+     * @principle Public read access for non-user-specific data.
      */
     match /bookings/{bookingId} {
       allow get, list: if true;
-      allow create: if true;
-      allow update: if true;
-      allow delete: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Allows read and write access to all menu item documents.
+     * @description Allows public read access to menu item information.
      * @path /menuItems/{menuItemId}
-     * @allow (get) Any user can read any menu item document.
-     * @allow (create) Any user can create a menu item document.
-     * @allow (update) Any user can update any menu item document.
-     * @allow (delete) Any user can delete any menu item document.
-     * @principle Allows open access to menu item data for prototyping.
+     * @allow (get, list) - Any user can read menu item data.
+     * @deny (create, update, delete) - Writes are disallowed in this prototyping phase.
+     * @principle Public read access for non-user-specific data.
      */
     match /menuItems/{menuItemId} {
       allow get, list: if true;
-      allow create: if true;
-      allow update: if true;
-      allow delete: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Allows read and write access to all table documents.
+     * @description Allows public read access to table information.
      * @path /tables/{tableId}
-     * @allow (get) Any user can read any table document.
-     * @allow (create) Any user can create a table document.
-     * @allow (update) Any user can update any table document.
-     * @allow (delete) Any user can delete any table document.
-     * @principle Allows open access to table data for prototyping.
+     * @allow (get, list) - Any user can read table data.
+     * @deny (create, update, delete) - Writes are disallowed in this prototyping phase.
+     * @principle Public read access for non-user-specific data.
      */
     match /tables/{tableId} {
       allow get, list: if true;
-      allow create: if true;
-      allow update: if true;
-      allow delete: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Allows read and write access to all order documents.
+     * @description Allows public read access to order information.
      * @path /orders/{orderId}
-     * @allow (get) Any user can read any order document.
-     * @allow (create) Any user can create an order document.
-     * @allow (update) Any user can update any order document.
-     * @allow (delete) Any user can delete any order document.
-     * @principle Allows open access to order data for prototyping.
+     * @allow (get, list) - Any user can read order data.
+     * @deny (create, update, delete) - Writes are disallowed in this prototyping phase.
+     * @principle Public read access for non-user-specific data.
      */
     match /orders/{orderId} {
       allow get, list: if true;
-      allow create: if true;
-      allow update: if true;
-      allow delete: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Allows read and write access to all order item documents within an order.
+     * @description Allows public read access to order item information.
      * @path /orders/{orderId}/items/{orderItemId}
-     * @allow (get) Any user can read any order item document.
-     * @allow (create) Any user can create an order item document.
-     * @allow (update) Any user can update any order item document.
-     * @allow (delete) Any user can delete any order item document.
-     * @principle Allows open access to order item data for prototyping.
+     * @allow (get, list) - Any user can read order item data.
+     * @deny (create, update, delete) - Writes are disallowed in this prototyping phase.
+     * @principle Public read access for non-user-specific data.
      */
     match /orders/{orderId}/items/{orderItemId} {
       allow get, list: if true;
-      allow create: if true;
-      allow update: if true;
-      allow delete: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
-  }
-
-  // Helper function to determine if the current user is the owner of the document.
-  function isOwner(userId) {
-    return request.auth.uid == userId;
-  }
-
-  // Helper function to determine if the current user is the owner of the document and the document exists.
-  function isExistingOwner(userId) {
-    return isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId));
-  }
-
-  // Helper function to determine if the user is signed in
-  function isSignedIn() {
-      return request.auth != null;
   }
 }

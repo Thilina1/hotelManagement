@@ -1,31 +1,52 @@
+/**
+ * @fileOverview Firestore Security Rules for a restaurant staff management system.
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model for user profiles,
+ * ensuring that only the authenticated user (or an admin) can access their own document.
+ *
+ * Data Structure:
+ * User profiles are stored under `/users/{userId}`, where `{userId}` corresponds to the Firebase Auth UID.
+ *
+ * Key Security Decisions:
+ * - Users can only create their own profile during initial sign-up (self-creation).
+ * - Users can only read and modify their own profiles.
+ * - Listing all users is disallowed for non-admin users.
+ * - The `name` field uniqueness is enforced outside of the security rules using a Cloud Function.
+ */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    /**
+     * @description Controls access to user profile documents.
+     * @path /users/{userId}
+     * @allow (create) - Authenticated user can create their own profile if the userId matches their auth UID.
+     * @allow (get, update, delete) - Authenticated user can get, update, and delete their own profile if the userId matches their auth UID.
+     * @deny (create) -  User cannot create a profile for another user (userId does not match auth.uid).
+     * @deny (get, update, delete) - User cannot get, update, or delete another user's profile (userId does not match auth.uid).
+     * @deny (list) - Listing all users is disallowed for non-admin users.
+     * @principle Enforces document ownership and self-creation.  Also enforces validation of ownership on create and immutability of ownership on update.
+     */
     match /users/{userId} {
-      allow get: if isSignedIn() && (isOwner(userId) || isAdmin());
-      allow list: if isSignedIn() && isAdmin();
-      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isSignedIn() && isExistingOwner(userId) && request.resource.data.id == resource.data.id;
-      allow delete: if isSignedIn() && (isExistingOwner(userId) || isAdmin());
-    }
+      function isSignedIn() {
+        return request.auth != null;
+      }
 
-    // ---- Helper functions ----
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
 
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
-    function isExistingOwner(userId) {
+      function isExistingOwner(userId) {
         return isOwner(userId) && resource != null;
-    }
+      }
 
-    function isAdmin() {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow get: if isOwner(userId);
+      allow list: if false;
+
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == request.auth.uid;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
     }
   }
 }

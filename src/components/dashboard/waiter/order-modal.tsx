@@ -38,25 +38,21 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
     const fallbackImage = PlaceHolderImages.find(p => p.id === 'login-background');
     const [refetchToggle, setRefetchToggle] = useState(false);
     
-    // State to manage local menu item data for optimistic UI updates
     const [localMenuItems, setLocalMenuItems] = useState<MenuItem[] | null>(null);
 
     const refetchOrderData = useCallback(() => {
         setRefetchToggle(prev => !prev);
     }, []);
 
-    // Fetch menu items
     const menuItemsRef = useMemoFirebase(() => firestore ? collection(firestore, 'menuItems') : null, [firestore]);
     const { data: menuItems, isLoading: areMenuItemsLoading } = useCollection<MenuItem>(menuItemsRef);
 
-    // Initialize local menu items when fetched from Firestore
     useEffect(() => {
         if (menuItems) {
             setLocalMenuItems(menuItems);
         }
     }, [menuItems]);
 
-    // Fetch current open order for this table
     const openOrderQuery = useMemoFirebase(() => {
         if (!firestore) return null;
         return query(collection(firestore, 'orders'), where('tableId', '==', table.id), where('status', '==', 'open'));
@@ -65,7 +61,6 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
     const { data: openOrders, isLoading: areOrdersLoading } = useCollection<Order>(openOrderQuery);
     const openOrder = useMemo(() => (openOrders && openOrders.length > 0) ? openOrders[0] : null, [openOrders]);
 
-    // Fetch items for the open order
     const orderItemsRef = useMemoFirebase(() => {
         if (!firestore || !openOrder?.id) return null;
         return collection(firestore, 'orders', openOrder.id, 'items');
@@ -80,7 +75,7 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
             setLocalOrder({});
             setSearchTerm('');
             setSelectedCategory(null);
-            setLocalMenuItems(menuItems); // Reset local stock on close
+            setLocalMenuItems(menuItems);
         }
     }, [isOpen, menuItems]);
     
@@ -99,7 +94,6 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                  toast({ variant: 'destructive', title: 'Out of Stock', description: `${menuItem.name} is currently unavailable.` });
                  return;
             }
-            // Optimistically update local menu item stock
             setLocalMenuItems(prevItems => 
                 prevItems?.map(item => 
                     item.id === menuItem.id ? { ...item, stock: (item.stock ?? 0) - 1 } : item
@@ -117,7 +111,6 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
         const menuItem = localMenuItems?.find(item => item.id === menuItemId);
         
         if (menuItem?.stockType === 'Inventoried') {
-            // Optimistically update local menu item stock
             setLocalMenuItems(prevItems => 
                 prevItems?.map(item => 
                     item.id === menuItemId ? { ...item, stock: (item.stock ?? 0) + 1 } : item
@@ -136,35 +129,38 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
     };
 
     const handleConfirmOrder = async () => {
-        if (!firestore) return;
+        if (!firestore || Object.keys(localOrder).length === 0) return;
 
-        const batch = writeBatch(firestore);
-        let orderExisted = !!openOrder;
-        let currentOrderId = openOrder?.id;
+        let currentOrder = openOrder;
+        let orderExisted = !!currentOrder;
 
         try {
-            if (!currentOrderId) {
-                const newOrderRef = doc(collection(firestore, 'orders'));
-                batch.set(newOrderRef, {
+            // Step 1: Ensure an order exists. Create one if it doesn't.
+            if (!currentOrder) {
+                const newOrderRef = await addDoc(collection(firestore, 'orders'), {
                     tableId: table.id,
                     status: 'open',
                     totalPrice: 0,
                     createdAt: serverTimestamp(),
                     updatedAt: serverTimestamp(),
                 });
-                currentOrderId = newOrderRef.id;
+                currentOrder = { id: newOrderRef.id, tableId: table.id, status: 'open', totalPrice: 0 };
             }
             
-            if (!currentOrderId) throw new Error("Order ID could not be established.");
+            if (!currentOrder) throw new Error("Order could not be created or found.");
 
+            // Step 2: Batch write all subsequent operations.
+            const batch = writeBatch(firestore);
+
+            // Add new items to the order
             for (const menuItemId in localOrder) {
                 const quantity = localOrder[menuItemId];
                 const menuItem = menuItems?.find(m => m.id === menuItemId);
 
                 if (menuItem) {
-                    const orderItemRef = doc(collection(firestore, 'orders', currentOrderId, 'items'));
+                    const orderItemRef = doc(collection(firestore, 'orders', currentOrder.id, 'items'));
                     batch.set(orderItemRef, {
-                        orderId: currentOrderId,
+                        orderId: currentOrder.id,
                         menuItemId,
                         name: menuItem.name,
                         price: menuItem.price,
@@ -172,7 +168,7 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                     });
 
                     // Use increment to update total price and stock
-                    const orderRef = doc(firestore, 'orders', currentOrderId);
+                    const orderRef = doc(firestore, 'orders', currentOrder.id);
                     batch.update(orderRef, { totalPrice: increment(menuItem.price * quantity) });
 
                     if (menuItem.stockType === 'Inventoried') {
@@ -181,10 +177,12 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                     }
                 }
             }
-            
-            const orderRef = doc(firestore, 'orders', currentOrderId);
-            batch.update(orderRef, { updatedAt: serverTimestamp() });
 
+            // Update order timestamp
+            const orderRef = doc(firestore, 'orders', currentOrder.id);
+            batch.update(orderRef, { updatedAt: serverTimestamp() });
+            
+            // Update table status if needed
             if (table.status === 'available') {
                 const tableDocRef = doc(firestore, 'tables', table.id);
                 batch.update(tableDocRef, { status: 'occupied' });
@@ -193,12 +191,11 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
             // Create a bill document
             const billRef = doc(collection(firestore, 'bills'));
             batch.set(billRef, {
-                orderId: currentOrderId,
+                orderId: currentOrder.id,
                 tableId: table.id,
                 tableNumber: table.tableNumber,
                 createdAt: serverTimestamp(),
             });
-
 
             await batch.commit();
 
@@ -374,5 +371,3 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
         </Dialog>
     );
 }
-
-    

@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { AuthProvider } from '@/hooks/use-auth';
 import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
@@ -23,10 +22,8 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <FirebaseClientProvider>
-          <AuthProvider>
             {children}
             <Toaster />
-          </AuthProvider>
         </FirebaseClientProvider>
       </body>
     </html>

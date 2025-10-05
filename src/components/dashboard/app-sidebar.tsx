@@ -10,9 +10,11 @@ import {
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, LayoutDashboard, UserCog, ClipboardList, CreditCard, Users } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, UserCog } from 'lucide-react';
 import type { User } from '@/lib/types';
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth } from '@/firebase';
+import { signOut } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
 import { Logo } from '../icons';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Link from 'next/link';
@@ -23,15 +25,20 @@ interface AppSidebarProps {
 }
 
 export default function AppSidebar({ user }: AppSidebarProps) {
-    const { logout } = useAuth();
+    const auth = useAuth();
+    const router = useRouter();
     const pathname = usePathname();
     const avatar = PlaceHolderImages.find(p => p.id === 'avatar-1');
+
+    const logout = async () => {
+        await signOut(auth);
+        router.push('/');
+    };
 
     const menuItems = [
       { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', roles: ['admin', 'waiter', 'payment'] },
       { href: '/dashboard/user-management', icon: Users, label: 'User Management', roles: ['admin'] },
-      { href: '#', icon: ClipboardList, label: 'Orders', roles: ['waiter'] },
-      { href: '#', icon: CreditCard, label: 'Payments', roles: ['payment'] },
+      { href: '/dashboard/profile', icon: UserCog, label: 'Profile', roles: ['admin', 'waiter', 'payment'] },
     ];
 
     return (

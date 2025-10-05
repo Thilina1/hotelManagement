@@ -3,8 +3,10 @@
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { User, LogOut } from 'lucide-react';
+import type { User as UserType } from '@/lib/types';
+import { useAuth } from '@/firebase';
+import { signOut } from 'firebase/auth';
 
-import { useAuth } from '@/hooks/use-auth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -31,15 +33,18 @@ const getPageTitle = (pathname: string) => {
     }
 }
 
+interface DashboardHeaderProps {
+    user: UserType | null;
+}
 
-export default function DashboardHeader() {
-  const { user, logout } = useAuth();
+export default function DashboardHeader({ user }: DashboardHeaderProps) {
+  const auth = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const avatar = PlaceHolderImages.find(p => p.id === 'avatar-1');
 
   const handleLogout = async () => {
-    await logout();
+    await signOut(auth);
     router.push('/');
   };
 

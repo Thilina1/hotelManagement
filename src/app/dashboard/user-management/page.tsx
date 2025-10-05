@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Table,
   TableBody,
@@ -20,12 +20,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { MoreHorizontal, UserPlus, Trash2, Edit } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { User, UserRole } from '@/lib/types';
-import { useCollection, useFirestore, useMemoFirebase, useAuth as useFirebaseAuth } from '@/firebase';
-import { collection, doc, deleteDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { collection, doc, deleteDoc, setDoc, updateDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, getAuth } from 'firebase/auth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { UserForm } from '@/components/dashboard/user-management/user-form';
-import { useAuth } from '@/hooks/use-auth';
 import {
   Dialog,
   DialogContent,
@@ -41,9 +40,11 @@ const roleColors: Record<UserRole, string> = {
 };
 
 export default function UserManagementPage() {
-  const { user: currentUser } = useAuth();
+  const { user: firebaseUser, isUserLoading } = useUser();
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const firestore = useFirestore();
-  const auth = useFirebaseAuth();
+  const auth = getAuth();
+
   const usersCollection = useMemoFirebase(() => {
     if (!firestore) return null;
     return collection(firestore, 'users');
@@ -52,6 +53,18 @@ export default function UserManagementPage() {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      if (firebaseUser) {
+        const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
+        if (userDoc.exists()) {
+          setCurrentUser({ id: firebaseUser.uid, ...userDoc.data() } as User);
+        }
+      }
+    };
+    fetchCurrentUser();
+  }, [firebaseUser, firestore]);
 
   const handleAddUserClick = () => {
     setEditingUser(null);
@@ -125,6 +138,34 @@ export default function UserManagementPage() {
     }
   };
 
+  if (isUserLoading || !currentUser) {
+     return (
+       <div className="space-y-6">
+        <div className="flex justify-between items-start">
+            <Skeleton className="h-12 w-1/2" />
+            <Skeleton className="h-10 w-28" />
+        </div>
+        <Card className="glassy rounded-2xl">
+            <CardHeader>
+                <Skeleton className="h-8 w-1/4" />
+                <Skeleton className="h-4 w-1/2" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-48 w-full" />
+            </CardContent>
+        </Card>
+      </div>
+     )
+  }
+
+  if (currentUser?.role !== 'admin') {
+      return (
+          <div className="text-center">
+              <h2 className="text-2xl font-bold">Access Denied</h2>
+              <p>You do not have permission to view this page.</p>
+          </div>
+      )
+  }
 
   return (
     <div className="space-y-6">

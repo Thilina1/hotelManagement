@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { doc, collection, writeBatch, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import type { Bill, OrderItem } from '@/lib/types';
+import type { Bill, OrderItem, PaymentMethod } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
@@ -13,7 +13,8 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, Receipt } from 'lucide-react';
+import { CheckCircle, Receipt, CreditCard, Wallet } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 interface PaymentModalProps {
   bill: Bill;
@@ -27,6 +28,7 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
   const [discount, setDiscount] = useState(bill.discount || 0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [cashReceived, setCashReceived] = useState<number | string>('');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
 
 
   const orderItemsRef = useMemoFirebase(() => {
@@ -42,7 +44,10 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
   
   const cashReceivedNumber = Number(cashReceived);
   const balance = cashReceivedNumber > 0 ? cashReceivedNumber - total : 0;
-  const canProcessPayment = cashReceivedNumber >= total && !isProcessing;
+  
+  const canProcessCashPayment = cashReceivedNumber >= total && !isProcessing;
+  const canProcessCardPayment = total > 0 && !isProcessing;
+  const canProcessPayment = paymentMethod === 'cash' ? canProcessCashPayment : canProcessCardPayment;
 
 
   const handleProcessPayment = async () => {
@@ -58,6 +63,7 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
       total: total,
       status: 'paid',
       paidAt: serverTimestamp(),
+      paymentMethod: paymentMethod,
     });
 
     // Update order
@@ -91,6 +97,7 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
     // When a new bill is selected, reset the states from the new bill's data.
     setDiscount(bill.discount || 0);
     setCashReceived('');
+    setPaymentMethod('cash');
   }, [bill]);
 
 
@@ -142,22 +149,38 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
                     <span>Total</span>
                     <span>${total.toFixed(2)}</span>
                 </div>
-                 <div className="flex justify-between items-center">
-                    <Label htmlFor="cash-received">Cash Received</Label>
-                    <Input 
-                        id="cash-received"
-                        type="number"
-                        placeholder='0.00'
-                        value={cashReceived}
-                        onChange={(e) => setCashReceived(e.target.value)}
-                        className="w-32 h-9 text-right"
-                        disabled={isProcessing}
-                    />
-                </div>
-                 <div className="flex justify-between font-medium text-lg">
-                    <span>Balance</span>
-                    <span className={balance > 0 ? 'text-green-600 font-bold' : ''}>${balance > 0 ? balance.toFixed(2) : '0.00'}</span>
-                </div>
+                
+                <RadioGroup defaultValue="cash" onValueChange={(value: PaymentMethod) => setPaymentMethod(value)} className="flex gap-4 pt-2">
+                    <Label htmlFor="cash" className="flex items-center gap-2 p-3 border rounded-md has-[:checked]:bg-accent has-[:checked]:text-accent-foreground has-[:checked]:border-primary flex-1 cursor-pointer">
+                        <RadioGroupItem value="cash" id="cash" />
+                        <Wallet /> Cash
+                    </Label>
+                    <Label htmlFor="card" className="flex items-center gap-2 p-3 border rounded-md has-[:checked]:bg-accent has-[:checked]:text-accent-foreground has-[:checked]:border-primary flex-1 cursor-pointer">
+                         <RadioGroupItem value="card" id="card" />
+                        <CreditCard /> Card
+                    </Label>
+                </RadioGroup>
+
+                {paymentMethod === 'cash' && (
+                    <div className="space-y-3 pt-2">
+                        <div className="flex justify-between items-center">
+                            <Label htmlFor="cash-received">Cash Received</Label>
+                            <Input 
+                                id="cash-received"
+                                type="number"
+                                placeholder='0.00'
+                                value={cashReceived}
+                                onChange={(e) => setCashReceived(e.target.value)}
+                                className="w-32 h-9 text-right"
+                                disabled={isProcessing}
+                            />
+                        </div>
+                        <div className="flex justify-between font-medium text-lg">
+                            <span>Balance</span>
+                            <span className={balance > 0 ? 'text-green-600 font-bold' : ''}>${balance > 0 ? balance.toFixed(2) : '0.00'}</span>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
         <DialogFooter>

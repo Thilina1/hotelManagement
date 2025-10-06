@@ -91,6 +91,7 @@ export type OrderItem = {
 };
 
 export type BillStatus = 'unpaid' | 'paid';
+export type PaymentMethod = 'cash' | 'card';
 
 export type Bill = {
   id: string;
@@ -98,6 +99,7 @@ export type Bill = {
   tableId: string;
   tableNumber: string;
   status: BillStatus;
+  paymentMethod?: PaymentMethod;
   subtotal: number;
   discount: number; // Percentage
   total: number;

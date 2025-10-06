@@ -21,6 +21,7 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useUserContext } from '@/context/user-context';
+import { SidebarRail } from '../ui/sidebar';
 
 export default function AppSidebar() {
     const auth = useAuth();
@@ -35,19 +36,20 @@ export default function AppSidebar() {
     };
 
     const menuItems = [
-      { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', roles: ['admin', 'waiter', 'payment'] },
-      { href: '/dashboard/reports', icon: BarChart, label: 'Reports', roles: ['admin', 'payment'] },
-      { href: '/dashboard/billing', icon: CreditCard, label: 'Billing', roles: ['admin', 'payment'] },
-      { href: '/dashboard/user-management', icon: Users, label: 'User Management', roles: ['admin'] },
-      { href: '/dashboard/room-management', icon: BedDouble, label: 'Room Management', roles: ['admin'] },
-      { href: '/dashboard/menu-management', icon: UtensilsCrossed, label: 'Menu Management', roles: ['admin'] },
-      { href: '/dashboard/table-management', icon: TableIcon, label: 'Table Management', roles: ['admin'] },
-      { href: '/dashboard/inventory-management', icon: Boxes, label: 'Inventory', roles: ['admin'] },
-      { href: '/dashboard/profile', icon: UserCog, label: 'Profile', roles: ['admin', 'waiter', 'payment'] },
+      { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+      { href: '/dashboard/reports', icon: BarChart, label: 'Reports' },
+      { href: '/dashboard/billing', icon: CreditCard, label: 'Billing' },
+      { href: '/dashboard/user-management', icon: Users, label: 'User Management' },
+      { href: '/dashboard/room-management', icon: BedDouble, label: 'Room Management' },
+      { href: '/dashboard/menu-management', icon: UtensilsCrossed, label: 'Menu Management' },
+      { href: '/dashboard/table-management', icon: TableIcon, label: 'Table Management' },
+      { href: '/dashboard/inventory-management', icon: Boxes, label: 'Inventory' },
+      { href: '/dashboard/profile', icon: UserCog, label: 'Profile' },
     ];
 
     return (
         <Sidebar collapsible="icon">
+            <SidebarRail />
             <SidebarHeader>
                 <div className="flex items-center gap-2">
                     <Logo className="w-8 h-8 text-primary" />
@@ -56,7 +58,7 @@ export default function AppSidebar() {
             </SidebarHeader>
             <SidebarContent>
                 <SidebarMenu>
-                  {menuItems.filter(item => user?.role && item.roles.includes(user.role)).map(item => (
+                  {menuItems.map(item => (
                      <SidebarMenuItem key={item.href}>
                         <SidebarMenuButton asChild tooltip={item.label} isActive={pathname === item.href}>
                           <Link href={item.href}>

@@ -2,180 +2,167 @@
  * @file Firestore Security Rules for Restaurant Staff Management System
  *
  * Core Philosophy:
- * This ruleset prioritizes data privacy and restricts access based on user roles and ownership.
- * Users can only read their own data. No user can create, update, or delete users.
- * All other collections allow public reads.
+ * This ruleset enforces a strict user-ownership model for user profiles and defaults to denying all access to other collections,
+ * pending a more specific security review. This provides a highly secure starting point.
  *
  * Data Structure:
- * - /users/{userId}: Stores user profiles, accessible only to the user and potentially admins (not yet implemented).
- * - /rooms/{roomId}: Stores room information, publicly readable.
- * - /bookings/{bookingId}: Stores booking information, publicly readable.
- * - /menuItems/{menuItemId}: Stores menu item information, publicly readable.
- * - /tables/{tableId}: Stores table information, publicly readable.
- * - /orders/{orderId}: Stores order information, publicly readable.
- * - /orders/{orderId}/items/{orderItemId}: Stores order items, publicly readable.
- * - /bills/{billId}: Stores bill information, publicly readable.
+ * - User profiles are stored under `/users/{userId}`, where `{userId}` is the Firebase Auth UID, ensuring path-based ownership.
+ * - Other collections (rooms, bookings, menuItems, tables, orders, orderItems, bills) exist at the top level.
  *
  * Key Security Decisions:
- * - Strict user ownership for user profiles.
- * - Public read access for all other collections, assuming no sensitive information is stored in them.
- * - No user listing is allowed except for admins (not yet implemented).
+ * - User listing is implicitly denied by the owner-only access to the `/users/{userId}` collection.
+ * - Other collections have all access explicitly denied for now. The rules will be updated later
+ *   to implement the correct access control for those collections, after further clarification of
+ *   the application's security requirements and access patterns.
+ * - The default security posture for ambiguous relationships is strict denial.
  *
  * Denormalization for Authorization:
- * N/A in this simplified model.
- *
- * Structural Segregation:
- * User profiles are stored in a dedicated collection (/users/{userId}) to enforce ownership.
+ * - Not used in the current rules, but could be implemented in future rules for other collections.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to user profiles. Only the authenticated user can read their own profile. No user can create, update, or delete users.
+     * @description Secures user profiles. Only the authenticated user can access their own document.
      * @path /users/{userId}
-     * @allow (get) User A with UID "userA" can read their profile at /users/userA.
-     * @deny (get) User B with UID "userB" cannot read User A's profile at /users/userA.
-     * @allow (list) User A with UID "userA" can list own profile at /users/userA.
-     * @deny (create) User A with UID "userA" cannot create a user profile.
-     * @deny (update) User A with UID "userA" cannot update a user profile.
-     * @deny (delete) User A with UID "userA" cannot delete a user profile.
-     * @principle Enforces strict user ownership for reads. No write allowed.
+     * @allow (get) User with UID 'user_abc' can read their own profile (e.g., /users/user_abc).
+     * @allow (create) User with UID 'user_abc' can create their own profile (e.g., /users/user_abc) if the document id matches their user id.
+     * @allow (update) User with UID 'user_abc' can update their own profile (e.g., /users/user_abc).
+     * @allow (delete) User with UID 'user_abc' can delete their own profile (e.g., /users/user_abc).
+     * @deny (get) User with UID 'user_xyz' cannot read user profile with ID 'user_abc' (e.g., /users/user_abc).
+     * @deny (create) User with UID 'user_xyz' cannot create user profile with ID 'user_abc' (e.g., /users/user_abc).
+     * @deny (update) User with UID 'user_xyz' cannot update user profile with ID 'user_abc' (e.g., /users/user_abc).
+     * @deny (delete) User with UID 'user_xyz' cannot delete user profile with ID 'user_abc' (e.g., /users/user_abc).
+     * @principle Enforces document ownership for writes and restricts access to a user's own data tree.
      */
     match /users/{userId} {
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if isSignedIn() && isOwner(userId);
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      // Helper function to check if the user is signed in
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      // Helper function to check if the user is the owner of the document
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      // Helper function to check if the user is the owner of the existing document
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource.data != null;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if false; // Listing users is not allowed
+
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Allows public read access to rooms.
+     * @description Explicitly denies all access to the `/rooms` collection.
      * @path /rooms/{roomId}
-     * @allow (get) Any user can read a room's information.
-     * @allow (list) Any user can list rooms.
-     * @deny (create) No user can create a room.
-     * @deny (update) No user can update a room.
-     * @deny (delete) No user can delete a room.
-     * @principle Allows public reads with no writes.
+     * @allow None. All operations are denied.
+     * @deny Any operation on any document in the `/rooms` collection.
+     * @principle Secures the `/rooms` collection by denying all access as a default security posture.
      */
     match /rooms/{roomId} {
-      allow get, list: if true;
+      allow get: if false;
+      allow list: if false;
       allow create: if false;
       allow update: if false;
       allow delete: if false;
     }
 
     /**
-     * @description Allows public read access to bookings.
+     * @description Explicitly denies all access to the `/bookings` collection.
      * @path /bookings/{bookingId}
-     * @allow (get) Any user can read a booking's information.
-     * @allow (list) Any user can list bookings.
-     * @deny (create) No user can create a booking.
-     * @deny (update) No user can update a booking.
-     * @deny (delete) No user can delete a booking.
-     * @principle Allows public reads with no writes.
+     * @allow None. All operations are denied.
+     * @deny Any operation on any document in the `/bookings` collection.
+     * @principle Secures the `/bookings` collection by denying all access as a default security posture.
      */
     match /bookings/{bookingId} {
-      allow get, list: if true;
+      allow get: if false;
+      allow list: if false;
       allow create: if false;
       allow update: if false;
       allow delete: if false;
     }
 
     /**
-     * @description Allows public read access to menu items.
+     * @description Explicitly denies all access to the `/menuItems` collection.
      * @path /menuItems/{menuItemId}
-     * @allow (get) Any user can read a menu item's information.
-     * @allow (list) Any user can list menu items.
-     * @deny (create) No user can create a menu item.
-     * @deny (update) No user can update a menu item.
-     * @deny (delete) No user can delete a menu item.
-     * @principle Allows public reads with no writes.
+     * @allow None. All operations are denied.
+     * @deny Any operation on any document in the `/menuItems` collection.
+     * @principle Secures the `/menuItems` collection by denying all access as a default security posture.
      */
     match /menuItems/{menuItemId} {
-      allow get, list: if true;
+      allow get: if false;
+      allow list: if false;
       allow create: if false;
       allow update: if false;
       allow delete: if false;
     }
 
     /**
-     * @description Allows public read access to tables.
+     * @description Explicitly denies all access to the `/tables` collection.
      * @path /tables/{tableId}
-     * @allow (get) Any user can read a table's information.
-     * @allow (list) Any user can list tables.
-     * @deny (create) No user can create a table.
-     * @deny (update) No user can update a table.
-     * @deny (delete) No user can delete a table.
-     * @principle Allows public reads with no writes.
+     * @allow None. All operations are denied.
+     * @deny Any operation on any document in the `/tables` collection.
+     * @principle Secures the `/tables` collection by denying all access as a default security posture.
      */
     match /tables/{tableId} {
-      allow get, list: if true;
+      allow get: if false;
+      allow list: if false;
       allow create: if false;
       allow update: if false;
       allow delete: if false;
     }
 
     /**
-     * @description Allows public read access to orders.
+     * @description Explicitly denies all access to the `/orders` collection.
      * @path /orders/{orderId}
-     * @allow (get) Any user can read an order's information.
-     * @allow (list) Any user can list orders.
-     * @deny (create) No user can create an order.
-     * @deny (update) No user can update an order.
-     * @deny (delete) No user can delete an order.
-     * @principle Allows public reads with no writes.
+     * @allow None. All operations are denied.
+     * @deny Any operation on any document in the `/orders` collection.
+     * @principle Secures the `/orders` collection by denying all access as a default security posture.
      */
     match /orders/{orderId} {
-      allow get, list: if true;
+      allow get: if false;
+      allow list: if false;
       allow create: if false;
       allow update: if false;
       allow delete: if false;
     }
 
     /**
-     * @description Allows public read access to order items.
+     * @description Explicitly denies all access to the `/orders/{orderId}/items` subcollection.
      * @path /orders/{orderId}/items/{orderItemId}
-     * @allow (get) Any user can read an order item's information.
-     * @allow (list) Any user can list order items.
-     * @deny (create) No user can create an order item.
-     * @deny (update) No user can update an order item.
-     * @deny (delete) No user can delete an order item.
-     * @principle Allows public reads with no writes.
+     * @allow None. All operations are denied.
+     * @deny Any operation on any document in the `/orders/{orderId}/items` subcollection.
+     * @principle Secures the `/orders/{orderId}/items` subcollection by denying all access as a default security posture.
      */
     match /orders/{orderId}/items/{orderItemId} {
-      allow get, list: if true;
+      allow get: if false;
+      allow list: if false;
       allow create: if false;
       allow update: if false;
       allow delete: if false;
     }
 
     /**
-     * @description Allows public read access to bills.
+     * @description Explicitly denies all access to the `/bills` collection.
      * @path /bills/{billId}
-     * @allow (get) Any user can read a bill's information.
-     * @allow (list) Any user can list bills.
-     * @deny (create) No user can create a bill.
-     * @deny (update) No user can update a bill.
-     * @deny (delete) No user can delete a bill.
-     * @principle Allows public reads with no writes.
+     * @allow None. All operations are denied.
+     * @deny Any operation on any document in the `/bills` collection.
+     * @principle Secures the `/bills` collection by denying all access as a default security posture.
      */
     match /bills/{billId} {
-      allow get, list: if true;
+      allow get: if false;
+      allow list: if false;
       allow create: if false;
       allow update: if false;
       allow delete: if false;
-    }
-
-    // Helper functions
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return request.auth.uid == userId;
     }
   }
 }

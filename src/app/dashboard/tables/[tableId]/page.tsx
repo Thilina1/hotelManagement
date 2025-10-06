@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -20,8 +21,6 @@ export default function TableOrderPage() {
     const firestore = useFirestore();
     const { toast } = useToast();
     const { user: currentUser } = useUserContext();
-
-    const isWaiter = currentUser?.role === 'waiter' || currentUser?.role === 'admin';
 
     // Fetch table details
     const tableRef = useMemoFirebase(() => firestore && tableId ? doc(firestore, 'tables', tableId) : null, [firestore, tableId]);
@@ -214,22 +213,6 @@ export default function TableOrderPage() {
         )
     }
 
-    if (!isWaiter) {
-      return (
-          <div className="text-center flex flex-col items-center justify-center h-full">
-              <Card className="p-8 max-w-md w-full">
-                <CardHeader>
-                    <CardTitle className="text-2xl font-bold">Access Denied</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-muted-foreground">You do not have permission to view this page.</p>
-                </CardContent>
-              </Card>
-          </div>
-      )
-    }
-
-
     return (
         <div className="container mx-auto p-4 space-y-6">
             <header>
@@ -314,7 +297,7 @@ export default function TableOrderPage() {
                         </div>
                         <Button className="w-full" onClick={handleConfirmOrder} disabled={Object.keys(localOrder).length === 0}>Confirm New Items</Button>
                         <Button className="w-full" variant="secondary" onClick={handleMarkAsPaid} disabled={!openOrder || totalBill === 0}>
-                           <CheckCircle className="mr-2"/> Mark as Paid
+                           <CheckCircle className="mr-2"/> Confirm
                         </Button>
                     </CardFooter>
                 </Card>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, type ReactNode, useState } from 'react';
@@ -15,42 +16,48 @@ import { UserProvider } from '@/context/user-context';
 export default function DashboardLayout({ children }: { children: ReactNode }) {
     const { user: firebaseUser, isUserLoading: isAuthLoading } = useAuthUser();
     const [user, setUser] = useState<User | null>(null);
-    const [isRoleLoading, setIsRoleLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(true);
     const router = useRouter();
     const firestore = useFirestore();
 
     useEffect(() => {
-        const fetchUserRole = async () => {
+        const fetchUser = async () => {
             if (firebaseUser) {
                 try {
                     const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
                     if (userDoc.exists()) {
                         setUser({ id: firebaseUser.uid, ...userDoc.data() } as User);
                     } else {
-                        setUser(null);
+                        // If no user doc, maybe they are just an auth user without a firestore entry
+                        // For this app, we'll treat them as a base user.
+                         setUser({
+                            id: firebaseUser.uid,
+                            name: firebaseUser.email || 'User',
+                            role: 'waiter', // default role
+                            birthday: '',
+                         });
                     }
                 } catch (e) {
-                     console.error("Error fetching user role:", e);
+                     console.error("Error fetching user data:", e);
                      setUser(null);
                 }
             } else {
                 setUser(null);
             }
-            setIsRoleLoading(false);
+            setIsLoading(false);
         };
 
         if (!isAuthLoading && firestore) {
-            fetchUserRole();
+            fetchUser();
         }
-    }, [firebaseUser, isAuthLoading, firestore, router]);
+    }, [firebaseUser, isAuthLoading, firestore]);
 
     useEffect(() => {
-        if (!isAuthLoading && !isRoleLoading && !user) {
+        if (!isLoading && !firebaseUser) {
             router.push('/');
         }
-    }, [user, isAuthLoading, isRoleLoading, router]);
+    }, [firebaseUser, isLoading, router]);
 
-    const isLoading = isAuthLoading || isRoleLoading;
 
     if (isLoading || !user) {
         return (

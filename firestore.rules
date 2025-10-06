@@ -1,183 +1,192 @@
 /**
- * @file Firebase Security Rules for a Restaurant Staff Management System
+ * @fileoverview Firestore Security Rules for Restaurant Staff Management System.
  *
  * Core Philosophy:
- * This ruleset enforces a strict user-ownership model for user profiles,
- * and open access to other restaurant data like rooms, menus, and tables.
- * Only the authenticated user can manage their own profile data, while
- * administrative functions are not yet explicitly implemented.
+ * This ruleset implements a strict user-ownership model for user profiles
+ * and public read access to restaurant data (rooms, bookings, menu items, tables, orders, and bills).
  *
  * Data Structure:
- * - /users/{userId}: Stores user profile data, with {userId} matching the Firebase Auth UID.
- * - /rooms/{roomId}: Stores hotel room information.
- * - /bookings/{bookingId}: Stores booking information.
- * - /menuItems/{menuItemId}: Stores menu item information.
- * - /tables/{tableId}: Stores restaurant table information.
- * - /orders/{orderId}: Stores customer order information.
- * - /orders/{orderId}/items/{orderItemId}: Stores individual items within an order.
- * - /bills/{billId}: Stores finalized bills for payment processing.
+ * - User profiles are stored under `/users/{userId}`, where `{userId}` corresponds to the Firebase Auth UID.
+ * - Restaurant data (rooms, bookings, menu items, tables, orders, and bills) are stored in top-level collections.
  *
  * Key Security Decisions:
- * - User listing is implicitly denied (no `allow list: if true;` on `/users`).
- * - The system defaults to open read access for restaurant-related data
- *   to allow for easy prototyping and data exploration.
- * - Write access to restaurant-related data is currently open, but MUST be secured
- *   in subsequent development phases.
+ * - User listing is restricted to admins (not implemented in this ruleset, requires admin role management).
+ * - Public read access is granted to restaurant data collections to allow easy browsing and display,
+ *   but writes are generally restricted to authenticated users.
+ * - The `bills` collection should have restricted access, to prevent unauthorized modification of bills
  *
  * Denormalization for Authorization:
- * - N/A: The current ruleset does not require denormalization. Ownership is
- *   determined by the document path (/users/{userId}).
+ *  - Not explicitly used, but the `id` field of the User document is validated against the `{userId}` path
+ *    to ensure ownership.
  *
  * Structural Segregation:
- * - User profile data is segregated under the /users collection, enabling
- *   straightforward ownership-based security rules.
+ *  - User profiles are stored in a separate collection (`/users/{userId}`) to keep private data isolated from public restaurant data.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to user profile documents.
+     * @description Defines whether the user is signed in.
+     * @path N/A
+     * @allow N/A
+     * @deny N/A
+     * @principle Verifies that the user is signed in.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Checks if the request is made by the owner of the resource.
+     * @path N/A
+     * @allow N/A
+     * @deny N/A
+     * @principle Enforces ownership.
+     */
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    /**
+     * @description Checks if the user is the owner of the existing document.
+     * @path N/A
+     * @allow N/A
+     * @deny N/A
+     * @principle Prevents modification of non-existent documents
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Rules for the /users/{userId} collection.
      * @path /users/{userId}
-     * @allow (create) User with UID 'user123' can create their profile.
-     * @allow (get) User with UID 'user123' can read their profile.
-     * @allow (update) User with UID 'user123' can update their profile.
-     * @allow (delete) User with UID 'user123' can delete their profile.
-     * @deny (create) User with UID 'user456' cannot create a profile with ID 'user123'.
-     * @principle Enforces document ownership for writes, restricts access to a user's own data tree.
+     * @allow (create) - Authenticated user creates their own profile.
+     * @deny (create) - Authenticated user tries to create a profile with a different ID.
+     * @allow (get, update, delete) - Authenticated user accesses their own profile.
+     * @deny (get, update, delete) - Authenticated user tries to access another user's profile.
+     * @principle Enforces document ownership for writes and restricts access to a user's own data tree.
      */
     match /users/{userId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
+      allow get: if isOwner(userId);
+      allow list: if false; // Prevent listing of all users
 
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
-      function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-      }
-
-      // Allow a user to create their own profile if the userId matches their auth.uid
-      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == request.auth.uid;
-
-      // Allow a user to read their own profile
-      allow get: if isSignedIn() && isOwner(userId);
-
-      // Allow a user to list their own profile
-      allow list: if false;
-
-      // Allow a user to update their own profile
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
       allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
-
-      // Allow a user to delete their own profile
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Allows public read access to room documents. Write access is open and MUST be secured later.
+     * @description Rules for the /rooms/{roomId} collection.
      * @path /rooms/{roomId}
-     * @allow (get) Any user can read room details.
-     * @allow (list) Any user can list rooms.
-     * @allow (create) Any user can create a room (TEMPORARY - MUST BE SECURED).
-     * @allow (update) Any user can update a room (TEMPORARY - MUST BE SECURED).
-     * @allow (delete) Any user can delete a room (TEMPORARY - MUST BE SECURED).
-     * @principle Allows public read access for easy prototyping, with a placeholder for write security.
+     * @allow (get, list) - Anyone can read room information.
+     * @allow (create) - Authenticated users can create rooms.
+     * @allow (update, delete) - Authenticated users can update/delete rooms.
+     * @deny (create, update, delete) - Unauthenticated users cannot write rooms.
+     * @principle Allows public read access but restricts writes to authenticated users.
      */
     match /rooms/{roomId} {
       allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add proper authorization checks for room management.
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Allows public read access to booking documents. Write access is open and MUST be secured later.
+     * @description Rules for the /bookings/{bookingId} collection.
      * @path /bookings/{bookingId}
-     * @allow (get) Any user can read booking details.
-     * @allow (list) Any user can list bookings.
-     * @allow (create) Any user can create a booking (TEMPORARY - MUST BE SECURED).
-     * @allow (update) Any user can update a booking (TEMPORARY - MUST BE SECURED).
-     * @allow (delete) Any user can delete a booking (TEMPORARY - MUST BE SECURED).
-     * @principle Allows public read access for easy prototyping, with a placeholder for write security.
+     * @allow (get, list) - Anyone can read booking information.
+     * @allow (create) - Authenticated users can create bookings.
+     * @allow (update, delete) - Authenticated users can update/delete bookings.
+     * @deny (create, update, delete) - Unauthenticated users cannot write bookings.
+     * @principle Allows public read access but restricts writes to authenticated users.
      */
     match /bookings/{bookingId} {
       allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add proper authorization checks for booking management.
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Allows public read access to menu item documents. Write access is open and MUST be secured later.
+     * @description Rules for the /menuItems/{menuItemId} collection.
      * @path /menuItems/{menuItemId}
-     * @allow (get) Any user can read menu item details.
-     * @allow (list) Any user can list menu items.
-     * @allow (create) Any user can create a menu item (TEMPORARY - MUST BE SECURED).
-     * @allow (update) Any user can update a menu item (TEMPORARY - MUST BE SECURED).
-     * @allow (delete) Any user can delete a menu item (TEMPORARY - MUST BE SECURED).
-     * @principle Allows public read access for easy prototyping, with a placeholder for write security.
+     * @allow (get, list) - Anyone can read menu item information.
+     * @allow (create) - Authenticated users can create menu items.
+     * @allow (update, delete) - Authenticated users can update/delete menu items.
+     * @deny (create, update, delete) - Unauthenticated users cannot write menu items.
+     * @principle Allows public read access but restricts writes to authenticated users.
      */
     match /menuItems/{menuItemId} {
       allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add proper authorization checks for menu item management.
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Allows public read access to table documents. Write access is open and MUST be secured later.
+     * @description Rules for the /tables/{tableId} collection.
      * @path /tables/{tableId}
-     * @allow (get) Any user can read table details.
-     * @allow (list) Any user can list tables.
-     * @allow (create) Any user can create a table (TEMPORARY - MUST BE SECURED).
-     * @allow (update) Any user can update a table (TEMPORARY - MUST BE SECURED).
-     * @allow (delete) Any user can delete a table (TEMPORARY - MUST BE SECURED).
-     * @principle Allows public read access for easy prototyping, with a placeholder for write security.
+     * @allow (get, list) - Anyone can read table information.
+     * @allow (create) - Authenticated users can create tables.
+     * @allow (update, delete) - Authenticated users can update/delete tables.
+     * @deny (create, update, delete) - Unauthenticated users cannot write tables.
+     * @principle Allows public read access but restricts writes to authenticated users.
      */
     match /tables/{tableId} {
       allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add proper authorization checks for table management.
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Allows public read access to order documents. Write access is open and MUST be secured later.
+     * @description Rules for the /orders/{orderId} collection.
      * @path /orders/{orderId}
-     * @allow (get) Any user can read order details.
-     * @allow (list) Any user can list orders.
-     * @allow (create) Any user can create an order (TEMPORARY - MUST BE SECURED).
-     * @allow (update) Any user can update an order (TEMPORARY - MUST BE SECURED).
-     * @allow (delete) Any user can delete an order (TEMPORARY - MUST BE SECURED).
-     * @principle Allows public read access for easy prototyping, with a placeholder for write security.
+     * @allow (get, list) - Anyone can read order information.
+     * @allow (create) - Authenticated users can create orders.
+     * @allow (update, delete) - Authenticated users can update/delete orders.
+     * @deny (create, update, delete) - Unauthenticated users cannot write orders.
+     * @principle Allows public read access but restricts writes to authenticated users.
      */
     match /orders/{orderId} {
       allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add proper authorization checks for order management.
-
-      /**
-       * @description Allows public read access to order item documents. Write access is open and MUST be secured later.
-       * @path /orders/{orderId}/items/{orderItemId}
-       * @allow (get) Any user can read order item details.
-       * @allow (list) Any user can list order items.
-       * @allow (create) Any user can create an order item (TEMPORARY - MUST BE SECURED).
-       * @allow (update) Any user can update an order item (TEMPORARY - MUST BE SECURED).
-       * @allow (delete) Any user can delete an order item (TEMPORARY - MUST BE SECURED).
-       * @principle Allows public read access for easy prototyping, with a placeholder for write security.
-       */
-      match /items/{orderItemId} {
-        allow get, list: if true;
-        allow create, update, delete: if false; // TODO: Add proper authorization checks for order item management.
-      }
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Allows public read access to bill documents. Write access is open and MUST be secured later.
+     * @description Rules for the /orders/{orderId}/items/{orderItemId} subcollection.
+     * @path /orders/{orderId}/items/{orderItemId}
+     * @allow (get, list) - Anyone can read order item information.
+     * @allow (create) - Authenticated users can create order items.
+     * @allow (update, delete) - Authenticated users can update/delete order items.
+     * @deny (create, update, delete) - Unauthenticated users cannot write order items.
+     * @principle Allows public read access but restricts writes to authenticated users.
+     */
+    match /orders/{orderId}/items/{orderItemId} {
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
+    }
+
+    /**
+     * @description Rules for the /bills/{billId} collection.
      * @path /bills/{billId}
-     * @allow (get) Any user can read bill details.
-     * @allow (list) Any user can list bills.
-     * @allow (create) Any user can create a bill (TEMPORARY - MUST BE SECURED).
-     * @allow (update) Any user can update a bill (TEMPORARY - MUST BE SECURED).
-     * @allow (delete) Any user can delete a bill (TEMPORARY - MUST BE SECURED).
-     * @principle Allows public read access for easy prototyping, with a placeholder for write security.
+     * @allow (get, list) - Anyone can read bill information.
+     * @allow (create) - Authenticated users can create bills.
+     * @allow (update, delete) - Authenticated users can update/delete bills.
+     * @deny (create, update, delete) - Unauthenticated users cannot write bills.
+     * @principle Allows public read access but restricts writes to authenticated users.
      */
     match /bills/{billId} {
       allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add proper authorization checks for bill management.
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
   }
 }

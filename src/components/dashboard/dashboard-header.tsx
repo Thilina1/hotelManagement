@@ -39,6 +39,8 @@ const getPageTitle = (pathname: string) => {
             return 'Inventory Management';
         case '/dashboard/billing':
             return 'Billing';
+        case '/dashboard/reports':
+            return 'Reports';
         default:
              if (pathname.startsWith('/dashboard/tables/')) {
                 return 'Table Order';
@@ -75,7 +77,7 @@ export default function DashboardHeader() {
             className="overflow-hidden rounded-full"
           >
             <Avatar>
-              {avatar && <AvatarImage src={avatar.imageUrl} alt={user?.name ?? 'User'} />}
+              {avatar && <AvatarImage src={user?.name} />}
               <AvatarFallback>{user?.name ? user.name.charAt(0).toUpperCase() : 'U'}</AvatarFallback>
             </Avatar>
           </Button>

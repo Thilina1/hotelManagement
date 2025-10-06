@@ -13,16 +13,17 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, Receipt, CreditCard, Wallet } from 'lucide-react';
+import { CheckCircle, Receipt, CreditCard, Wallet, Printer } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 interface PaymentModalProps {
   bill: Bill;
   isOpen: boolean;
   onClose: () => void;
+  onPaymentSuccess: (bill: Bill, items: OrderItem[]) => void;
 }
 
-export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
+export function PaymentModal({ bill, isOpen, onClose, onPaymentSuccess }: PaymentModalProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [discount, setDiscount] = useState(bill.discount || 0);
@@ -51,24 +52,26 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
 
 
   const handleProcessPayment = async () => {
-    if (!firestore || !canProcessPayment) return;
+    if (!firestore || !canProcessPayment || !orderItems) return;
     setIsProcessing(true);
 
     const batch = writeBatch(firestore);
+    const paidAtTimestamp = serverTimestamp();
 
     // Update bill
     const billRef = doc(firestore, 'bills', bill.id);
-    batch.update(billRef, {
+    const finalBillData = {
       discount: discount,
       total: total,
-      status: 'paid',
-      paidAt: serverTimestamp(),
+      status: 'paid' as const,
+      paidAt: paidAtTimestamp,
       paymentMethod: paymentMethod,
-    });
+    };
+    batch.update(billRef, finalBillData);
 
     // Update order
     const orderRef = doc(firestore, 'orders', bill.orderId);
-    batch.update(orderRef, { status: 'paid', updatedAt: serverTimestamp() });
+    batch.update(orderRef, { status: 'paid', updatedAt: paidAtTimestamp });
 
     // Update table
     const tableRef = doc(firestore, 'tables', bill.tableId);
@@ -81,6 +84,8 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
         description: `Bill for Table ${bill.tableNumber} has been paid.`,
       });
       onClose();
+      // Pass final bill data back for receipt printing
+      onPaymentSuccess({ ...bill, ...finalBillData, paidAt: new Date().toISOString() }, orderItems);
     } catch (error) {
       console.error("Error processing payment:", error);
       toast({
@@ -94,7 +99,6 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
   };
   
    useEffect(() => {
-    // When a new bill is selected, reset the states from the new bill's data.
     setDiscount(bill.discount || 0);
     setCashReceived('');
     setPaymentMethod('cash');
@@ -186,8 +190,8 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={isProcessing}>Cancel</Button>
           <Button onClick={handleProcessPayment} disabled={!canProcessPayment}>
-            <CheckCircle className="mr-2 h-4 w-4"/>
-            {isProcessing ? 'Processing...' : 'Mark as Paid'}
+            <Printer className="mr-2 h-4 w-4"/>
+            {isProcessing ? 'Processing...' : 'Pay & Print Receipt'}
           </Button>
         </DialogFooter>
       </DialogContent>

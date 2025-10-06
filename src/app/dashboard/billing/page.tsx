@@ -42,7 +42,7 @@ export default function BillingPage() {
 
   const paidBillsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    return query(collection(firestore, 'bills'), where('status', '==', 'paid'), orderBy('paidAt', 'desc'));
+    return query(collection(firestore, 'bills'), where('status', '==', 'paid'));
   }, [firestore]);
 
   const { data: unpaidBills, isLoading: isLoadingUnpaid } = useCollection<Bill>(unpaidBillsQuery);

@@ -48,8 +48,7 @@ export default function ReportsPage() {
         collection(firestore, 'bills'), 
         where('status', '==', 'paid'),
         where('paidAt', '>=', dateRange.from),
-        where('paidAt', '<=', dateRange.to),
-        orderBy('paidAt', 'desc')
+        where('paidAt', '<=', dateRange.to)
     );
   }, [firestore, dateRange]);
 

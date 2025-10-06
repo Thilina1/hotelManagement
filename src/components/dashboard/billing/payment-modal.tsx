@@ -1,9 +1,10 @@
 
+
 'use client';
 
 import { useEffect, useState } from 'react';
 import { doc, collection, writeBatch, serverTimestamp, updateDoc } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useFirestore } from '@/firebase';
 import type { Bill, OrderItem, PaymentMethod } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -31,14 +32,6 @@ export function PaymentModal({ bill, isOpen, onClose, onPaymentSuccess }: Paymen
   const [cashReceived, setCashReceived] = useState<number | string>('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
 
-
-  const orderItemsRef = useMemoFirebase(() => {
-    if (!firestore || !bill) return null;
-    return collection(firestore, 'orders', bill.orderId, 'items');
-  }, [firestore, bill]);
-
-  const { data: orderItems, isLoading: areItemsLoading } = useCollection<OrderItem>(orderItemsRef);
-
   const subtotal = bill.subtotal;
   const discountAmount = (subtotal * discount) / 100;
   const total = subtotal - discountAmount;
@@ -52,7 +45,7 @@ export function PaymentModal({ bill, isOpen, onClose, onPaymentSuccess }: Paymen
 
 
   const handleProcessPayment = async () => {
-    if (!firestore || !canProcessPayment || !orderItems) return;
+    if (!firestore || !canProcessPayment) return;
     setIsProcessing(true);
 
     const batch = writeBatch(firestore);
@@ -60,7 +53,7 @@ export function PaymentModal({ bill, isOpen, onClose, onPaymentSuccess }: Paymen
 
     // Update bill
     const billRef = doc(firestore, 'bills', bill.id);
-    const finalBillData = {
+    const finalBillData: Partial<Bill> = {
       discount: discount,
       total: total,
       status: 'paid' as const,
@@ -85,7 +78,8 @@ export function PaymentModal({ bill, isOpen, onClose, onPaymentSuccess }: Paymen
       });
       onClose();
       // Pass final bill data back for receipt printing
-      onPaymentSuccess({ ...bill, ...finalBillData, paidAt: new Date().toISOString() }, orderItems);
+      const completedBill = { ...bill, ...finalBillData, paidAt: new Date().toISOString() };
+      onPaymentSuccess(completedBill as Bill, bill.items);
     } catch (error) {
       console.error("Error processing payment:", error);
       toast({
@@ -119,8 +113,7 @@ export function PaymentModal({ bill, isOpen, onClose, onPaymentSuccess }: Paymen
         </DialogHeader>
         <div className="py-4 space-y-4">
             <div className="max-h-40 overflow-y-auto space-y-2 pr-2">
-                {areItemsLoading && <Skeleton className="h-24 w-full" />}
-                {orderItems && orderItems.map(item => (
+                {bill.items && bill.items.map(item => (
                     <div key={item.id} className="flex justify-between items-center text-sm">
                         <span>{item.name} x{item.quantity}</span>
                         <span>${(item.price * item.quantity).toFixed(2)}</span>

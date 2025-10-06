@@ -32,7 +32,6 @@ export default function BillingPage() {
   const firestore = useFirestore();
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
   const [receiptData, setReceiptData] = useState<{ bill: Bill, items: OrderItem[] } | null>(null);
-  const [viewingReceipt, setViewingReceipt] = useState<Bill | null>(null);
 
   const receiptRef = useRef(null);
 
@@ -60,11 +59,7 @@ export default function BillingPage() {
   
   const handleViewReceiptClick = async (bill: Bill) => {
     if (!firestore) return;
-    setViewingReceipt(bill);
-    // Fetch items for the receipt
-    const itemsSnapshot = await getDocs(collection(firestore, 'orders', bill.orderId, 'items'));
-    const items = itemsSnapshot.docs.map(doc => doc.data() as OrderItem);
-    setReceiptData({ bill, items });
+    setReceiptData({ bill, items: bill.items });
     setTimeout(() => handlePrint(), 100);
   };
 

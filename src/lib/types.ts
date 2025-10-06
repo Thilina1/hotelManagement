@@ -1,4 +1,5 @@
 
+
 export type UserRole = 'admin' | 'waiter' | 'payment';
 
 export type User = {
@@ -98,6 +99,7 @@ export type Bill = {
   orderId: string;
   tableId: string;
   tableNumber: string;
+  items: OrderItem[];
   status: BillStatus;
   paymentMethod?: PaymentMethod;
   subtotal: number;

@@ -159,13 +159,18 @@
     },
     "Bill": {
         "title": "Bill",
-        "description": "Represents a finalized bill for an order, including discounts and totals.",
+        "description": "Represents a finalized bill for an order, including discounts, items, and totals.",
         "type": "object",
         "properties": {
             "id": { "type": "string", "description": "Document ID." },
             "orderId": { "type": "string", "description": "The ID of the corresponding order." },
             "tableId": { "type": "string", "description": "The ID of the table." },
             "tableNumber": { "type": "string", "description": "The number of the table." },
+            "items": {
+              "type": "array",
+              "description": "A list of all items included in the bill.",
+              "items": { "$ref": "#/entities/OrderItem" }
+            },
             "status": { "type": "string", "enum": ["unpaid", "paid"], "description": "The payment status of the bill." },
             "paymentMethod": { "type": "string", "enum": ["cash", "card"], "description": "The method of payment." },
             "subtotal": { "type": "number", "description": "The total price of all items before discount." },
@@ -174,7 +179,7 @@
             "createdAt": { "type": "string", "format": "date-time" },
             "paidAt": { "type": "string", "format": "date-time", "description": "Timestamp when the bill was paid." }
         },
-        "required": ["orderId", "tableId", "tableNumber", "status", "subtotal", "discount", "total", "createdAt"]
+        "required": ["orderId", "tableId", "tableNumber", "items", "status", "subtotal", "discount", "total", "createdAt"]
     }
   },
   "auth": {

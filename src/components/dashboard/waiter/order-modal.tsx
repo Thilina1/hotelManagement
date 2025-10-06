@@ -155,77 +155,81 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
         let currentOrder = openOrder;
         const orderExisted = !!currentOrder;
     
-        if (!currentOrder) {
-            const newOrderRef = doc(collection(firestore, 'orders'));
-            await setDoc(newOrderRef, {
-                tableId: table.id,
-                status: 'open',
-                totalPrice: 0,
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp(),
-            });
-            // This is a simplified version for the next step.
-            currentOrder = { id: newOrderRef.id, tableId: table.id, status: 'open', totalPrice: 0, createdAt: new Date().toISOString() };
-        }
-        
-        if (!currentOrder) {
-            toast({ variant: 'destructive', title: 'Order Failed', description: 'Could not find or create an order.' });
-            return;
-        }
-    
-        const batch = writeBatch(firestore);
-        
-        for (const menuItemId in localOrder) {
-            const quantity = localOrder[menuItemId];
-            const menuItem = menuItems?.find(m => m.id === menuItemId);
-    
-            if (menuItem) {
-                const orderItemRef = doc(collection(firestore, 'orders', currentOrder.id, 'items'));
-                batch.set(orderItemRef, {
-                    orderId: currentOrder.id,
-                    menuItemId,
-                    name: menuItem.name,
-                    price: menuItem.price,
-                    quantity,
+        try {
+            if (!currentOrder) {
+                const newOrderRef = doc(collection(firestore, 'orders'));
+                await setDoc(newOrderRef, {
+                    tableId: table.id,
+                    status: 'open',
+                    totalPrice: 0,
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp(),
                 });
-    
-                const orderRef = doc(firestore, 'orders', currentOrder.id);
-                batch.update(orderRef, { totalPrice: increment(menuItem.price * quantity) });
-    
-                if (menuItem.stockType === 'Inventoried') {
-                    const menuItemRef = doc(firestore, 'menuItems', menuItem.id);
-                    batch.update(menuItemRef, { stock: increment(-quantity) });
+                currentOrder = { id: newOrderRef.id, tableId: table.id, status: 'open', totalPrice: 0, createdAt: new Date().toISOString() };
+            }
+            
+            if (!currentOrder) {
+                throw new Error("Failed to create or find order.");
+            }
+        
+            const batch = writeBatch(firestore);
+            
+            for (const menuItemId in localOrder) {
+                const quantity = localOrder[menuItemId];
+                const menuItem = menuItems?.find(m => m.id === menuItemId);
+        
+                if (menuItem) {
+                    const orderItemRef = doc(collection(firestore, 'orders', currentOrder.id, 'items'));
+                    batch.set(orderItemRef, {
+                        orderId: currentOrder.id,
+                        menuItemId,
+                        name: menuItem.name,
+                        price: menuItem.price,
+                        quantity,
+                    });
+        
+                    const orderRef = doc(firestore, 'orders', currentOrder.id);
+                    batch.update(orderRef, { totalPrice: increment(menuItem.price * quantity) });
+        
+                    if (menuItem.stockType === 'Inventoried') {
+                        const menuItemRef = doc(firestore, 'menuItems', menuItem.id);
+                        batch.update(menuItemRef, { stock: increment(-quantity) });
+                    }
                 }
             }
-        }
-    
-        const orderRef = doc(firestore, 'orders', currentOrder.id);
-        batch.update(orderRef, { updatedAt: serverTimestamp() });
         
-        if (table.status === 'available') {
-            const tableDocRef = doc(firestore, 'tables', table.id);
-            batch.update(tableDocRef, { status: 'occupied' });
-        }
+            const orderRef = doc(firestore, 'orders', currentOrder.id);
+            batch.update(orderRef, { updatedAt: serverTimestamp() });
+            
+            if (table.status === 'available') {
+                const tableDocRef = doc(firestore, 'tables', table.id);
+                batch.update(tableDocRef, { status: 'occupied' });
+            }
+            
+            const billRef = doc(collection(firestore, 'bills'));
+            batch.set(billRef, {
+                orderId: currentOrder.id,
+                tableId: table.id,
+                tableNumber: table.tableNumber,
+                createdAt: serverTimestamp(),
+            });
         
-        const billRef = doc(collection(firestore, 'bills'));
-        batch.set(billRef, {
-            orderId: currentOrder.id,
-            tableId: table.id,
-            tableNumber: table.tableNumber,
-            createdAt: serverTimestamp(),
-        });
-    
-        await batch.commit();
-    
-        setLocalOrder({});
-        toast({ title: 'Order Confirmed', description: 'Items have been added and bill created.' });
+            await batch.commit();
         
-        if (!orderExisted) {
-            refetchOrderData();
+            setLocalOrder({});
+            toast({ title: 'Order Confirmed', description: 'Items have been added and bill created.' });
+            
+            if (!orderExisted) {
+                refetchOrderData();
+            }
+
+        } catch (error) {
+            console.error('Error confirming order:', error);
+            toast({ variant: 'destructive', title: 'Order Failed', description: 'Could not confirm the order.' });
         }
     };
     
-    const handleMarkAsPaid = async () => {
+    const handleMarkAsPaid = () => {
         if (!firestore || !openOrder) return;
         
         const batch = writeBatch(firestore);
@@ -236,10 +240,12 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
         const tableRef = doc(firestore, 'tables', table.id);
         batch.update(tableRef, { status: 'available' });
 
-        await batch.commit();
-        
-        toast({ title: 'Payment Successful', description: `The bill for Table ${table.tableNumber} has been settled.`});
-        onClose();
+        batch.commit().then(() => {
+            toast({ title: 'Payment Successful', description: `The bill for Table ${table.tableNumber} has been settled.`});
+            onClose();
+        }).catch(() => {
+            toast({ variant: 'destructive', title: 'Payment Failed', description: 'Could not process the payment.' });
+        });
     };
 
     const isLoading = areMenuItemsLoading || areOrdersLoading;
@@ -372,7 +378,7 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                             </div>
                             <Button className="w-full" onClick={handleConfirmOrder} disabled={Object.keys(localOrder).length === 0}>Confirm New Items</Button>
                             <Button className="w-full" variant="secondary" onClick={handleMarkAsPaid} disabled={!openOrder || totalBill === 0}>
-                               <CheckCircle className="mr-2"/> Mark as Paid
+                               <CheckCircle className="mr-2"/> Confirm
                             </Button>
                         </CardFooter>
                     </Card>

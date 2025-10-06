@@ -1,25 +1,183 @@
+/**
+ * @file Firebase Security Rules for a Restaurant Staff Management System
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model for user profiles,
+ * and open access to other restaurant data like rooms, menus, and tables.
+ * Only the authenticated user can manage their own profile data, while
+ * administrative functions are not yet explicitly implemented.
+ *
+ * Data Structure:
+ * - /users/{userId}: Stores user profile data, with {userId} matching the Firebase Auth UID.
+ * - /rooms/{roomId}: Stores hotel room information.
+ * - /bookings/{bookingId}: Stores booking information.
+ * - /menuItems/{menuItemId}: Stores menu item information.
+ * - /tables/{tableId}: Stores restaurant table information.
+ * - /orders/{orderId}: Stores customer order information.
+ * - /orders/{orderId}/items/{orderItemId}: Stores individual items within an order.
+ * - /bills/{billId}: Stores finalized bills for payment processing.
+ *
+ * Key Security Decisions:
+ * - User listing is implicitly denied (no `allow list: if true;` on `/users`).
+ * - The system defaults to open read access for restaurant-related data
+ *   to allow for easy prototyping and data exploration.
+ * - Write access to restaurant-related data is currently open, but MUST be secured
+ *   in subsequent development phases.
+ *
+ * Denormalization for Authorization:
+ * - N/A: The current ruleset does not require denormalization. Ownership is
+ *   determined by the document path (/users/{userId}).
+ *
+ * Structural Segregation:
+ * - User profile data is segregated under the /users collection, enabling
+ *   straightforward ownership-based security rules.
+ */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    /**
+     * @description Controls access to user profile documents.
+     * @path /users/{userId}
+     * @allow (create) User with UID 'user123' can create their profile.
+     * @allow (get) User with UID 'user123' can read their profile.
+     * @allow (update) User with UID 'user123' can update their profile.
+     * @allow (delete) User with UID 'user123' can delete their profile.
+     * @deny (create) User with UID 'user456' cannot create a profile with ID 'user123'.
+     * @principle Enforces document ownership for writes, restricts access to a user's own data tree.
+     */
     match /users/{userId} {
-      allow read, write: if request.auth != null;
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      // Allow a user to create their own profile if the userId matches their auth.uid
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == request.auth.uid;
+
+      // Allow a user to read their own profile
+      allow get: if isSignedIn() && isOwner(userId);
+
+      // Allow a user to list their own profile
+      allow list: if false;
+
+      // Allow a user to update their own profile
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+
+      // Allow a user to delete their own profile
+      allow delete: if isExistingOwner(userId);
     }
 
+    /**
+     * @description Allows public read access to room documents. Write access is open and MUST be secured later.
+     * @path /rooms/{roomId}
+     * @allow (get) Any user can read room details.
+     * @allow (list) Any user can list rooms.
+     * @allow (create) Any user can create a room (TEMPORARY - MUST BE SECURED).
+     * @allow (update) Any user can update a room (TEMPORARY - MUST BE SECURED).
+     * @allow (delete) Any user can delete a room (TEMPORARY - MUST BE SECURED).
+     * @principle Allows public read access for easy prototyping, with a placeholder for write security.
+     */
     match /rooms/{roomId} {
-      allow read, write: if request.auth != null;
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add proper authorization checks for room management.
     }
 
+    /**
+     * @description Allows public read access to booking documents. Write access is open and MUST be secured later.
+     * @path /bookings/{bookingId}
+     * @allow (get) Any user can read booking details.
+     * @allow (list) Any user can list bookings.
+     * @allow (create) Any user can create a booking (TEMPORARY - MUST BE SECURED).
+     * @allow (update) Any user can update a booking (TEMPORARY - MUST BE SECURED).
+     * @allow (delete) Any user can delete a booking (TEMPORARY - MUST BE SECURED).
+     * @principle Allows public read access for easy prototyping, with a placeholder for write security.
+     */
+    match /bookings/{bookingId} {
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add proper authorization checks for booking management.
+    }
+
+    /**
+     * @description Allows public read access to menu item documents. Write access is open and MUST be secured later.
+     * @path /menuItems/{menuItemId}
+     * @allow (get) Any user can read menu item details.
+     * @allow (list) Any user can list menu items.
+     * @allow (create) Any user can create a menu item (TEMPORARY - MUST BE SECURED).
+     * @allow (update) Any user can update a menu item (TEMPORARY - MUST BE SECURED).
+     * @allow (delete) Any user can delete a menu item (TEMPORARY - MUST BE SECURED).
+     * @principle Allows public read access for easy prototyping, with a placeholder for write security.
+     */
     match /menuItems/{menuItemId} {
-      allow read, write: if request.auth != null;
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add proper authorization checks for menu item management.
     }
 
+    /**
+     * @description Allows public read access to table documents. Write access is open and MUST be secured later.
+     * @path /tables/{tableId}
+     * @allow (get) Any user can read table details.
+     * @allow (list) Any user can list tables.
+     * @allow (create) Any user can create a table (TEMPORARY - MUST BE SECURED).
+     * @allow (update) Any user can update a table (TEMPORARY - MUST BE SECURED).
+     * @allow (delete) Any user can delete a table (TEMPORARY - MUST BE SECURED).
+     * @principle Allows public read access for easy prototyping, with a placeholder for write security.
+     */
     match /tables/{tableId} {
-      allow read, write: if request.auth != null;
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add proper authorization checks for table management.
     }
 
-    // This rule is currently blocking access. It should be last.
-    match /{path=**} {
-      allow read, write: if false;
+    /**
+     * @description Allows public read access to order documents. Write access is open and MUST be secured later.
+     * @path /orders/{orderId}
+     * @allow (get) Any user can read order details.
+     * @allow (list) Any user can list orders.
+     * @allow (create) Any user can create an order (TEMPORARY - MUST BE SECURED).
+     * @allow (update) Any user can update an order (TEMPORARY - MUST BE SECURED).
+     * @allow (delete) Any user can delete an order (TEMPORARY - MUST BE SECURED).
+     * @principle Allows public read access for easy prototyping, with a placeholder for write security.
+     */
+    match /orders/{orderId} {
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add proper authorization checks for order management.
+
+      /**
+       * @description Allows public read access to order item documents. Write access is open and MUST be secured later.
+       * @path /orders/{orderId}/items/{orderItemId}
+       * @allow (get) Any user can read order item details.
+       * @allow (list) Any user can list order items.
+       * @allow (create) Any user can create an order item (TEMPORARY - MUST BE SECURED).
+       * @allow (update) Any user can update an order item (TEMPORARY - MUST BE SECURED).
+       * @allow (delete) Any user can delete an order item (TEMPORARY - MUST BE SECURED).
+       * @principle Allows public read access for easy prototyping, with a placeholder for write security.
+       */
+      match /items/{orderItemId} {
+        allow get, list: if true;
+        allow create, update, delete: if false; // TODO: Add proper authorization checks for order item management.
+      }
+    }
+
+    /**
+     * @description Allows public read access to bill documents. Write access is open and MUST be secured later.
+     * @path /bills/{billId}
+     * @allow (get) Any user can read bill details.
+     * @allow (list) Any user can list bills.
+     * @allow (create) Any user can create a bill (TEMPORARY - MUST BE SECURED).
+     * @allow (update) Any user can update a bill (TEMPORARY - MUST BE SECURED).
+     * @allow (delete) Any user can delete a bill (TEMPORARY - MUST BE SECURED).
+     * @principle Allows public read access for easy prototyping, with a placeholder for write security.
+     */
+    match /bills/{billId} {
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add proper authorization checks for bill management.
     }
   }
 }

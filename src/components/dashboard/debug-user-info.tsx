@@ -10,7 +10,7 @@ export default function DebugUserInfo() {
     // This component now gets the user prop from the layout if available,
     // but primarily relies on the useUser hook for the auth state.
     // It's kept for debugging purposes.
-
+   
     if (isUserLoading) {
         return <p>Loading debug info...</p>
     }

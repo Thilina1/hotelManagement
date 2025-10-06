@@ -26,6 +26,8 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
   const { toast } = useToast();
   const [discount, setDiscount] = useState(bill.discount || 0);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [cashReceived, setCashReceived] = useState<number | string>('');
+
 
   const orderItemsRef = useMemoFirebase(() => {
     if (!firestore || !bill) return null;
@@ -37,9 +39,14 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
   const subtotal = bill.subtotal;
   const discountAmount = (subtotal * discount) / 100;
   const total = subtotal - discountAmount;
+  
+  const cashReceivedNumber = Number(cashReceived);
+  const balance = cashReceivedNumber > 0 ? cashReceivedNumber - total : 0;
+  const canProcessPayment = cashReceivedNumber >= total && !isProcessing;
+
 
   const handleProcessPayment = async () => {
-    if (!firestore) return;
+    if (!firestore || !canProcessPayment) return;
     setIsProcessing(true);
 
     const batch = writeBatch(firestore);
@@ -81,8 +88,9 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
   };
   
    useEffect(() => {
-    // When a new bill is selected, reset the discount from the new bill's data.
+    // When a new bill is selected, reset the states from the new bill's data.
     setDiscount(bill.discount || 0);
+    setCashReceived('');
   }, [bill]);
 
 
@@ -99,7 +107,7 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
           </DialogDescription>
         </DialogHeader>
         <div className="py-4 space-y-4">
-            <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
+            <div className="max-h-40 overflow-y-auto space-y-2 pr-2">
                 {areItemsLoading && <Skeleton className="h-24 w-full" />}
                 {orderItems && orderItems.map(item => (
                     <div key={item.id} className="flex justify-between items-center text-sm">
@@ -109,7 +117,7 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
                 ))}
             </div>
             <Separator />
-            <div className="space-y-2">
+            <div className="space-y-3">
                 <div className="flex justify-between">
                     <span className="font-medium">Subtotal</span>
                     <span>${subtotal.toFixed(2)}</span>
@@ -122,6 +130,7 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
                         value={discount}
                         onChange={(e) => setDiscount(Math.max(0, Math.min(100, Number(e.target.value))))}
                         className="w-24 h-8"
+                        disabled={isProcessing}
                     />
                 </div>
                  <div className="flex justify-between text-sm text-muted-foreground">
@@ -133,11 +142,27 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
                     <span>Total</span>
                     <span>${total.toFixed(2)}</span>
                 </div>
+                 <div className="flex justify-between items-center">
+                    <Label htmlFor="cash-received">Cash Received</Label>
+                    <Input 
+                        id="cash-received"
+                        type="number"
+                        placeholder='0.00'
+                        value={cashReceived}
+                        onChange={(e) => setCashReceived(e.target.value)}
+                        className="w-32 h-9 text-right"
+                        disabled={isProcessing}
+                    />
+                </div>
+                 <div className="flex justify-between font-medium text-lg">
+                    <span>Balance</span>
+                    <span className={balance > 0 ? 'text-green-600 font-bold' : ''}>${balance > 0 ? balance.toFixed(2) : '0.00'}</span>
+                </div>
             </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={isProcessing}>Cancel</Button>
-          <Button onClick={handleProcessPayment} disabled={isProcessing}>
+          <Button onClick={handleProcessPayment} disabled={!canProcessPayment}>
             <CheckCircle className="mr-2 h-4 w-4"/>
             {isProcessing ? 'Processing...' : 'Mark as Paid'}
           </Button>
@@ -146,5 +171,3 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
     </Dialog>
   );
 }
-
-    

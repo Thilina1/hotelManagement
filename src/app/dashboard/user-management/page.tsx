@@ -48,13 +48,10 @@ export default function UserManagementPage() {
   const { toast } = useToast();
   const { user: currentUser } = useUserContext();
   
-  const isAllowedToView = currentUser?.role === 'admin';
-
   const usersCollection = useMemoFirebase(() => {
-    // Only create the collection reference if the user is an admin
-    if (!firestore || !isAllowedToView) return null;
+    if (!firestore) return null;
     return collection(firestore, 'users');
-  }, [firestore, isAllowedToView]);
+  }, [firestore]);
   
   const { data: users, isLoading: areUsersLoading } = useCollection<User>(usersCollection);
 
@@ -157,7 +154,7 @@ export default function UserManagementPage() {
     }
   };
 
-  if (!currentUser) {
+  if (!currentUser || areUsersLoading) {
      return (
        <div className="space-y-6">
         <div className="flex justify-between items-start">
@@ -175,21 +172,6 @@ export default function UserManagementPage() {
         </Card>
       </div>
      )
-  }
-
-  if (!isAllowedToView) {
-      return (
-          <div className="text-center flex flex-col items-center justify-center h-full">
-              <Card className="p-8 max-w-md w-full">
-                <CardHeader>
-                    <CardTitle className="text-2xl font-bold">Access Denied</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-muted-foreground">You do not have permission to view this page. Please contact an administrator.</p>
-                </CardContent>
-              </Card>
-          </div>
-      )
   }
 
   return (

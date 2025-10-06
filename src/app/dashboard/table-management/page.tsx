@@ -51,12 +51,10 @@ export default function TableManagementPage() {
   const { toast } = useToast();
   const { user: currentUser } = useUserContext();
   
-  const isAllowedToView = currentUser?.role === 'admin';
-
   const tablesCollection = useMemoFirebase(() => {
-    if (!firestore || !isAllowedToView) return null;
+    if (!firestore) return null;
     return collection(firestore, 'tables');
-  }, [firestore, isAllowedToView]);
+  }, [firestore]);
   
   const { data: tables, isLoading: areTablesLoading } = useCollection<TableType>(tablesCollection);
 
@@ -141,7 +139,7 @@ export default function TableManagementPage() {
     setEditingTable(null);
   };
 
-  if (!currentUser) {
+  if (!currentUser || areTablesLoading) {
      return (
        <div className="space-y-6">
         <div className="flex justify-between items-start">
@@ -159,21 +157,6 @@ export default function TableManagementPage() {
         </Card>
       </div>
      )
-  }
-
-  if (!isAllowedToView) {
-      return (
-          <div className="text-center flex flex-col items-center justify-center h-full">
-              <Card className="p-8 max-w-md w-full">
-                <CardHeader>
-                    <CardTitle className="text-2xl font-bold">Access Denied</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-muted-foreground">You do not have permission to view this page. Please contact an administrator.</p>
-                </CardContent>
-              </Card>
-          </div>
-      )
   }
   
   const renderTableForSection = (section: TableSection) => {

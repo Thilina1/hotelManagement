@@ -45,15 +45,13 @@ export default function MenuManagementPage() {
   const { toast } = useToast();
   const { user: currentUser } = useUserContext();
   
-  const isAllowedToView = currentUser?.role === 'admin';
-
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItemType | null>(null);
   
   const menuItemsCollection = useMemoFirebase(() => {
-    if (!firestore || !isAllowedToView) return null;
+    if (!firestore) return null;
     return collection(firestore, 'menuItems');
-  }, [firestore, isAllowedToView]);
+  }, [firestore]);
 
   const { data: menuItems, isLoading: areMenuItemsLoading } = useCollection<MenuItemType>(menuItemsCollection);
 
@@ -163,7 +161,7 @@ export default function MenuManagementPage() {
         });
   }
 
-  if (!currentUser) {
+  if (!currentUser || areMenuItemsLoading) {
      return (
        <div className="space-y-6">
         <div className="flex justify-between items-start">
@@ -181,21 +179,6 @@ export default function MenuManagementPage() {
         </Card>
       </div>
      )
-  }
-
-  if (!isAllowedToView) {
-      return (
-          <div className="text-center flex flex-col items-center justify-center h-full">
-              <Card className="p-8 max-w-md w-full">
-                <CardHeader>
-                    <CardTitle className="text-2xl font-bold">Access Denied</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-muted-foreground">You do not have permission to view this page. Please contact an administrator.</p>
-                </CardContent>
-              </Card>
-          </div>
-      )
   }
 
   const renderTableForCategory = (category: MenuCategory) => {

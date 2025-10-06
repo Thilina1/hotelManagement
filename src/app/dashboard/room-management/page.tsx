@@ -56,13 +56,10 @@ export default function RoomManagementPage() {
   const { toast } = useToast();
   const { user: currentUser } = useUserContext();
   
-  const isAllowedToView = currentUser?.role === 'admin';
-
   const roomsCollection = useMemoFirebase(() => {
-    // Only create the collection reference if the user is an admin
-    if (!firestore || !isAllowedToView) return null;
+    if (!firestore) return null;
     return collection(firestore, 'rooms');
-  }, [firestore, isAllowedToView]);
+  }, [firestore]);
   
   const { data: rooms, isLoading: areRoomsLoading } = useCollection<Room>(roomsCollection);
 
@@ -176,22 +173,6 @@ export default function RoomManagementPage() {
         </Card>
       </div>
      )
-  }
-
-  // Once the user is loaded, check for permissions
-  if (!isAllowedToView) {
-      return (
-          <div className="text-center flex flex-col items-center justify-center h-full">
-              <Card className="p-8 max-w-md w-full">
-                <CardHeader>
-                    <CardTitle className="text-2xl font-bold">Access Denied</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-muted-foreground">You do not have permission to view this page. Please contact an administrator.</p>
-                </CardContent>
-              </Card>
-          </div>
-      )
   }
 
   return (

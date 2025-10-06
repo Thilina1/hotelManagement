@@ -42,10 +42,8 @@ export default function ReportsPage() {
   const today = new Date();
   const [dateRange, setDateRange] = useState<DateRange | undefined>({ from: startOfDay(today), to: endOfDay(today) });
 
-  const isAllowedToView = currentUser?.role === 'admin' || currentUser?.role === 'payment';
-
   const paidBillsQuery = useMemoFirebase(() => {
-    if (!firestore || !dateRange?.from || !dateRange?.to || !isAllowedToView) return null;
+    if (!firestore || !dateRange?.from || !dateRange?.to) return null;
     return query(
         collection(firestore, 'bills'), 
         where('status', '==', 'paid'),
@@ -53,7 +51,7 @@ export default function ReportsPage() {
         where('paidAt', '<=', dateRange.to),
         orderBy('paidAt', 'desc')
     );
-  }, [firestore, dateRange, isAllowedToView]);
+  }, [firestore, dateRange]);
 
   const { data: bills, isLoading } = useCollection<Bill>(paidBillsQuery);
 
@@ -92,22 +90,6 @@ export default function ReportsPage() {
        </div>
      )
   }
-
-  if (!isAllowedToView) {
-      return (
-          <div className="text-center flex flex-col items-center justify-center h-full">
-              <Card className="p-8 max-w-md w-full">
-                <CardHeader>
-                    <CardTitle className="text-2xl font-bold">Access Denied</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-muted-foreground">You do not have permission to view this page.</p>
-                </CardContent>
-              </Card>
-          </div>
-      )
-  }
-
 
   return (
     <>

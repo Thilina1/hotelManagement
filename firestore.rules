@@ -1,192 +1,181 @@
 /**
- * @fileoverview Firestore Security Rules for Restaurant Staff Management System.
+ * @file Firestore Security Rules for Restaurant Staff Management System
  *
  * Core Philosophy:
- * This ruleset implements a strict user-ownership model for user profiles
- * and public read access to restaurant data (rooms, bookings, menu items, tables, orders, and bills).
+ * This ruleset prioritizes data privacy and restricts access based on user roles and ownership.
+ * Users can only read their own data. No user can create, update, or delete users.
+ * All other collections allow public reads.
  *
  * Data Structure:
- * - User profiles are stored under `/users/{userId}`, where `{userId}` corresponds to the Firebase Auth UID.
- * - Restaurant data (rooms, bookings, menu items, tables, orders, and bills) are stored in top-level collections.
+ * - /users/{userId}: Stores user profiles, accessible only to the user and potentially admins (not yet implemented).
+ * - /rooms/{roomId}: Stores room information, publicly readable.
+ * - /bookings/{bookingId}: Stores booking information, publicly readable.
+ * - /menuItems/{menuItemId}: Stores menu item information, publicly readable.
+ * - /tables/{tableId}: Stores table information, publicly readable.
+ * - /orders/{orderId}: Stores order information, publicly readable.
+ * - /orders/{orderId}/items/{orderItemId}: Stores order items, publicly readable.
+ * - /bills/{billId}: Stores bill information, publicly readable.
  *
  * Key Security Decisions:
- * - User listing is restricted to admins (not implemented in this ruleset, requires admin role management).
- * - Public read access is granted to restaurant data collections to allow easy browsing and display,
- *   but writes are generally restricted to authenticated users.
- * - The `bills` collection should have restricted access, to prevent unauthorized modification of bills
+ * - Strict user ownership for user profiles.
+ * - Public read access for all other collections, assuming no sensitive information is stored in them.
+ * - No user listing is allowed except for admins (not yet implemented).
  *
  * Denormalization for Authorization:
- *  - Not explicitly used, but the `id` field of the User document is validated against the `{userId}` path
- *    to ensure ownership.
+ * N/A in this simplified model.
  *
  * Structural Segregation:
- *  - User profiles are stored in a separate collection (`/users/{userId}`) to keep private data isolated from public restaurant data.
+ * User profiles are stored in a dedicated collection (/users/{userId}) to enforce ownership.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Defines whether the user is signed in.
-     * @path N/A
-     * @allow N/A
-     * @deny N/A
-     * @principle Verifies that the user is signed in.
+     * @description Controls access to user profiles. Only the authenticated user can read their own profile. No user can create, update, or delete users.
+     * @path /users/{userId}
+     * @allow (get) User A with UID "userA" can read their profile at /users/userA.
+     * @deny (get) User B with UID "userB" cannot read User A's profile at /users/userA.
+     * @allow (list) User A with UID "userA" can list own profile at /users/userA.
+     * @deny (create) User A with UID "userA" cannot create a user profile.
+     * @deny (update) User A with UID "userA" cannot update a user profile.
+     * @deny (delete) User A with UID "userA" cannot delete a user profile.
+     * @principle Enforces strict user ownership for reads. No write allowed.
      */
+    match /users/{userId} {
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if isSignedIn() && isOwner(userId);
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Allows public read access to rooms.
+     * @path /rooms/{roomId}
+     * @allow (get) Any user can read a room's information.
+     * @allow (list) Any user can list rooms.
+     * @deny (create) No user can create a room.
+     * @deny (update) No user can update a room.
+     * @deny (delete) No user can delete a room.
+     * @principle Allows public reads with no writes.
+     */
+    match /rooms/{roomId} {
+      allow get, list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Allows public read access to bookings.
+     * @path /bookings/{bookingId}
+     * @allow (get) Any user can read a booking's information.
+     * @allow (list) Any user can list bookings.
+     * @deny (create) No user can create a booking.
+     * @deny (update) No user can update a booking.
+     * @deny (delete) No user can delete a booking.
+     * @principle Allows public reads with no writes.
+     */
+    match /bookings/{bookingId} {
+      allow get, list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Allows public read access to menu items.
+     * @path /menuItems/{menuItemId}
+     * @allow (get) Any user can read a menu item's information.
+     * @allow (list) Any user can list menu items.
+     * @deny (create) No user can create a menu item.
+     * @deny (update) No user can update a menu item.
+     * @deny (delete) No user can delete a menu item.
+     * @principle Allows public reads with no writes.
+     */
+    match /menuItems/{menuItemId} {
+      allow get, list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Allows public read access to tables.
+     * @path /tables/{tableId}
+     * @allow (get) Any user can read a table's information.
+     * @allow (list) Any user can list tables.
+     * @deny (create) No user can create a table.
+     * @deny (update) No user can update a table.
+     * @deny (delete) No user can delete a table.
+     * @principle Allows public reads with no writes.
+     */
+    match /tables/{tableId} {
+      allow get, list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Allows public read access to orders.
+     * @path /orders/{orderId}
+     * @allow (get) Any user can read an order's information.
+     * @allow (list) Any user can list orders.
+     * @deny (create) No user can create an order.
+     * @deny (update) No user can update an order.
+     * @deny (delete) No user can delete an order.
+     * @principle Allows public reads with no writes.
+     */
+    match /orders/{orderId} {
+      allow get, list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Allows public read access to order items.
+     * @path /orders/{orderId}/items/{orderItemId}
+     * @allow (get) Any user can read an order item's information.
+     * @allow (list) Any user can list order items.
+     * @deny (create) No user can create an order item.
+     * @deny (update) No user can update an order item.
+     * @deny (delete) No user can delete an order item.
+     * @principle Allows public reads with no writes.
+     */
+    match /orders/{orderId}/items/{orderItemId} {
+      allow get, list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Allows public read access to bills.
+     * @path /bills/{billId}
+     * @allow (get) Any user can read a bill's information.
+     * @allow (list) Any user can list bills.
+     * @deny (create) No user can create a bill.
+     * @deny (update) No user can update a bill.
+     * @deny (delete) No user can delete a bill.
+     * @principle Allows public reads with no writes.
+     */
+    match /bills/{billId} {
+      allow get, list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // Helper functions
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * @description Checks if the request is made by the owner of the resource.
-     * @path N/A
-     * @allow N/A
-     * @deny N/A
-     * @principle Enforces ownership.
-     */
     function isOwner(userId) {
       return request.auth.uid == userId;
-    }
-
-    /**
-     * @description Checks if the user is the owner of the existing document.
-     * @path N/A
-     * @allow N/A
-     * @deny N/A
-     * @principle Prevents modification of non-existent documents
-     */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
-
-    /**
-     * @description Rules for the /users/{userId} collection.
-     * @path /users/{userId}
-     * @allow (create) - Authenticated user creates their own profile.
-     * @deny (create) - Authenticated user tries to create a profile with a different ID.
-     * @allow (get, update, delete) - Authenticated user accesses their own profile.
-     * @deny (get, update, delete) - Authenticated user tries to access another user's profile.
-     * @principle Enforces document ownership for writes and restricts access to a user's own data tree.
-     */
-    match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if false; // Prevent listing of all users
-
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Rules for the /rooms/{roomId} collection.
-     * @path /rooms/{roomId}
-     * @allow (get, list) - Anyone can read room information.
-     * @allow (create) - Authenticated users can create rooms.
-     * @allow (update, delete) - Authenticated users can update/delete rooms.
-     * @deny (create, update, delete) - Unauthenticated users cannot write rooms.
-     * @principle Allows public read access but restricts writes to authenticated users.
-     */
-    match /rooms/{roomId} {
-      allow get, list: if true;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
-    }
-
-    /**
-     * @description Rules for the /bookings/{bookingId} collection.
-     * @path /bookings/{bookingId}
-     * @allow (get, list) - Anyone can read booking information.
-     * @allow (create) - Authenticated users can create bookings.
-     * @allow (update, delete) - Authenticated users can update/delete bookings.
-     * @deny (create, update, delete) - Unauthenticated users cannot write bookings.
-     * @principle Allows public read access but restricts writes to authenticated users.
-     */
-    match /bookings/{bookingId} {
-      allow get, list: if true;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
-    }
-
-    /**
-     * @description Rules for the /menuItems/{menuItemId} collection.
-     * @path /menuItems/{menuItemId}
-     * @allow (get, list) - Anyone can read menu item information.
-     * @allow (create) - Authenticated users can create menu items.
-     * @allow (update, delete) - Authenticated users can update/delete menu items.
-     * @deny (create, update, delete) - Unauthenticated users cannot write menu items.
-     * @principle Allows public read access but restricts writes to authenticated users.
-     */
-    match /menuItems/{menuItemId} {
-      allow get, list: if true;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
-    }
-
-    /**
-     * @description Rules for the /tables/{tableId} collection.
-     * @path /tables/{tableId}
-     * @allow (get, list) - Anyone can read table information.
-     * @allow (create) - Authenticated users can create tables.
-     * @allow (update, delete) - Authenticated users can update/delete tables.
-     * @deny (create, update, delete) - Unauthenticated users cannot write tables.
-     * @principle Allows public read access but restricts writes to authenticated users.
-     */
-    match /tables/{tableId} {
-      allow get, list: if true;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
-    }
-
-    /**
-     * @description Rules for the /orders/{orderId} collection.
-     * @path /orders/{orderId}
-     * @allow (get, list) - Anyone can read order information.
-     * @allow (create) - Authenticated users can create orders.
-     * @allow (update, delete) - Authenticated users can update/delete orders.
-     * @deny (create, update, delete) - Unauthenticated users cannot write orders.
-     * @principle Allows public read access but restricts writes to authenticated users.
-     */
-    match /orders/{orderId} {
-      allow get, list: if true;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
-    }
-
-    /**
-     * @description Rules for the /orders/{orderId}/items/{orderItemId} subcollection.
-     * @path /orders/{orderId}/items/{orderItemId}
-     * @allow (get, list) - Anyone can read order item information.
-     * @allow (create) - Authenticated users can create order items.
-     * @allow (update, delete) - Authenticated users can update/delete order items.
-     * @deny (create, update, delete) - Unauthenticated users cannot write order items.
-     * @principle Allows public read access but restricts writes to authenticated users.
-     */
-    match /orders/{orderId}/items/{orderItemId} {
-      allow get, list: if true;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
-    }
-
-    /**
-     * @description Rules for the /bills/{billId} collection.
-     * @path /bills/{billId}
-     * @allow (get, list) - Anyone can read bill information.
-     * @allow (create) - Authenticated users can create bills.
-     * @allow (update, delete) - Authenticated users can update/delete bills.
-     * @deny (create, update, delete) - Unauthenticated users cannot write bills.
-     * @principle Allows public read access but restricts writes to authenticated users.
-     */
-    match /bills/{billId} {
-      allow get, list: if true;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
     }
   }
 }

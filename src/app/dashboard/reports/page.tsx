@@ -42,17 +42,21 @@ export default function ReportsPage() {
   const today = new Date();
   const [dateRange, setDateRange] = useState<DateRange | undefined>({ from: startOfDay(today), to: endOfDay(today) });
 
-  const paidBillsQuery = useMemoFirebase(() => {
+  const billsInDateRangeQuery = useMemoFirebase(() => {
     if (!firestore || !dateRange?.from || !dateRange?.to) return null;
     return query(
-        collection(firestore, 'bills'), 
-        where('status', '==', 'paid'),
+        collection(firestore, 'bills'),
         where('paidAt', '>=', dateRange.from),
         where('paidAt', '<=', dateRange.to)
     );
   }, [firestore, dateRange]);
 
-  const { data: bills, isLoading } = useCollection<Bill>(paidBillsQuery);
+  const { data: allBills, isLoading } = useCollection<Bill>(billsInDateRangeQuery);
+
+  const bills = useMemo(() => {
+    if (!allBills) return [];
+    return allBills.filter(bill => bill.status === 'paid');
+  }, [allBills]);
 
   const kpiData = useMemo(() => {
     if (!bills) return { totalRevenue: 0, totalBills: 0, avgBillValue: 0 };
@@ -66,7 +70,7 @@ export default function ReportsPage() {
     if (!bills) return [];
     const sales: { [key: string]: { total: number; bills: number } } = {};
     bills.forEach(bill => {
-        if (bill.paidAt) {
+        if (bill.paidAt && (bill.paidAt as Timestamp).seconds) {
             const date = format(new Date((bill.paidAt as Timestamp).seconds * 1000), 'yyyy-MM-dd');
             if (!sales[date]) {
                 sales[date] = { total: 0, bills: 0 };
@@ -264,3 +268,5 @@ export default function ReportsPage() {
 
     
 }
+
+    

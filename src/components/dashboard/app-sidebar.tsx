@@ -8,7 +8,7 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarRail,
+  SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { LogOut, LayoutDashboard, Users, UserCog, BedDouble, UtensilsCrossed, Boxes } from 'lucide-react';
@@ -44,8 +44,7 @@ export default function AppSidebar() {
     ];
 
     return (
-        <Sidebar>
-            <SidebarRail />
+        <Sidebar collapsible="icon">
             <SidebarHeader>
                 <div className="flex items-center gap-2">
                     <Logo className="w-8 h-8 text-primary" />
@@ -83,6 +82,7 @@ export default function AppSidebar() {
                         <span className="text-xs text-muted-foreground capitalize">{user?.role}</span>
                     </div>
                 </Link>
+                 <SidebarTrigger className="w-full" />
             </SidebarFooter>
         </Sidebar>
     );

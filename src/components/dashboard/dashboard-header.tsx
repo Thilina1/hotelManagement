@@ -16,9 +16,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { SidebarTrigger } from '../ui/sidebar';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useUserContext } from '@/context/user-context';
+import { SidebarTrigger } from '../ui/sidebar';
 
 const getPageTitle = (pathname: string) => {
     switch (pathname) {
@@ -58,7 +58,7 @@ export default function DashboardHeader() {
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
-      <SidebarTrigger />
+      <SidebarTrigger className="sm:hidden" />
       <div className="flex-1">
         <h1 className="font-semibold text-lg">{getPageTitle(pathname)}</h1>
       </div>

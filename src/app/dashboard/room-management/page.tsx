@@ -33,8 +33,6 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from '@/hooks/use-toast';
 import { useUserContext } from '@/context/user-context';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 
 const statusColors: Record<RoomStatus, string> = {
     available: 'bg-green-500 text-white',
@@ -79,8 +77,7 @@ export default function RoomManagementPage() {
   const handleDeleteRoom = async (id: string) => {
     if(!firestore) return;
     if(confirm('Are you sure you want to delete this room? This cannot be undone.')) {
-      const roomDocRef = doc(firestore, 'rooms', id);
-      deleteDoc(roomDocRef)
+      deleteDoc(doc(firestore, 'rooms', id))
         .then(() => {
             toast({
                 title: 'Room Deleted',
@@ -89,11 +86,6 @@ export default function RoomManagementPage() {
         })
         .catch(error => {
             console.error("Error deleting room: ", error);
-            const permissionError = new FirestorePermissionError({
-                path: roomDocRef.path,
-                operation: 'delete',
-            });
-            errorEmitter.emit('permission-error', permissionError);
             toast({
                 variant: "destructive",
                 title: "Error",
@@ -109,8 +101,7 @@ export default function RoomManagementPage() {
     try {
       if (editingRoom) {
         // Update existing room
-        const roomDocRef = doc(firestore, 'rooms', editingRoom.id);
-        await updateDoc(roomDocRef, {
+        await updateDoc(doc(firestore, 'rooms', editingRoom.id), {
           ...values,
           updatedAt: serverTimestamp(),
         });
@@ -120,27 +111,15 @@ export default function RoomManagementPage() {
         });
       } else {
         // Create new room
-        const dataToSave = {
+        await addDoc(collection(firestore, 'rooms'), {
             ...values,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
-        };
-        const collectionRef = collection(firestore, 'rooms');
-        addDoc(collectionRef, dataToSave)
-          .then(() => {
-              toast({
-                title: "Room Created",
-                description: "A new room has been successfully added.",
-              });
-          })
-          .catch(error => {
-              const permissionError = new FirestorePermissionError({
-                  path: collectionRef.path,
-                  operation: 'create',
-                  requestResourceData: dataToSave,
-              });
-              errorEmitter.emit('permission-error', permissionError);
-          });
+        });
+        toast({
+            title: "Room Created",
+            description: "A new room has been successfully added.",
+        });
       }
       setIsDialogOpen(false);
       setEditingRoom(null);

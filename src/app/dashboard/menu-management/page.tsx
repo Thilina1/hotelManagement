@@ -34,8 +34,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useUserContext } from '@/context/user-context';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from '@/components/ui/switch';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 
 
 const menuCategories: MenuCategory[] = ['Sri Lankan', 'Western', 'Bar'];
@@ -68,8 +66,7 @@ export default function MenuManagementPage() {
   const handleDeleteItem = (id: string) => {
     if(!firestore) return;
     if(confirm('Are you sure you want to delete this menu item? This cannot be undone.')) {
-        const itemDocRef = doc(firestore, 'menuItems', id);
-        deleteDoc(itemDocRef)
+        deleteDoc(doc(firestore, 'menuItems', id))
             .then(() => {
                 toast({
                     title: 'Menu Item Deleted',
@@ -77,8 +74,7 @@ export default function MenuManagementPage() {
                 });
             })
             .catch(error => {
-                const permissionError = new FirestorePermissionError({ path: itemDocRef.path, operation: 'delete' });
-                errorEmitter.emit('permission-error', permissionError);
+                console.error("Error deleting menu item: ", error);
                 toast({
                     variant: "destructive",
                     title: "Error",
@@ -98,12 +94,10 @@ export default function MenuManagementPage() {
 
     if (editingItem) {
         // Update existing item
-        const itemDocRef = doc(firestore, 'menuItems', editingItem.id);
-        const updateData = {
+        updateDoc(doc(firestore, 'menuItems', editingItem.id), {
           ...dataToSave,
           updatedAt: serverTimestamp(),
-        };
-        updateDoc(itemDocRef, updateData)
+        })
             .then(() => {
                 toast({
                   title: "Menu Item Updated",
@@ -111,19 +105,21 @@ export default function MenuManagementPage() {
                 });
             })
             .catch(error => {
-                const permissionError = new FirestorePermissionError({ path: itemDocRef.path, operation: 'update', requestResourceData: updateData });
-                errorEmitter.emit('permission-error', permissionError);
+                console.error("Error updating menu item: ", error);
+                toast({
+                    variant: "destructive",
+                    title: "Error",
+                    description: "Failed to update menu item.",
+                });
             });
 
     } else {
         // Create new item
-        const createData = {
+        addDoc(collection(firestore, 'menuItems'), {
             ...dataToSave,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
-        };
-        const collectionRef = collection(firestore, 'menuItems');
-        addDoc(collectionRef, createData)
+        })
             .then(() => {
                 toast({
                   title: "Menu Item Created",
@@ -131,8 +127,12 @@ export default function MenuManagementPage() {
                 });
             })
             .catch(error => {
-                 const permissionError = new FirestorePermissionError({ path: collectionRef.path, operation: 'create', requestResourceData: createData });
-                 errorEmitter.emit('permission-error', permissionError);
+                 console.error("Error creating menu item: ", error);
+                 toast({
+                    variant: "destructive",
+                    title: "Error",
+                    description: "Failed to create menu item.",
+                });
             });
     }
     setIsDialogOpen(false);
@@ -141,9 +141,7 @@ export default function MenuManagementPage() {
 
   const handleAvailabilityChange = (item: MenuItemType, checked: boolean) => {
      if (!firestore) return;
-     const itemDocRef = doc(firestore, 'menuItems', item.id);
-     const updateData = { availability: checked };
-     updateDoc(itemDocRef, updateData)
+     updateDoc(doc(firestore, 'menuItems', item.id), { availability: checked })
         .then(() => {
              toast({
               title: "Availability Updated",
@@ -151,8 +149,7 @@ export default function MenuManagementPage() {
             });
         })
         .catch(error => {
-             const permissionError = new FirestorePermissionError({ path: itemDocRef.path, operation: 'update', requestResourceData: updateData });
-             errorEmitter.emit('permission-error', permissionError);
+             console.error("Error updating availability: ", error);
              toast({
                 variant: "destructive",
                 title: "Error",

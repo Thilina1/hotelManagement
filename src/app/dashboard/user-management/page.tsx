@@ -34,8 +34,6 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from '@/hooks/use-toast';
 import { useUserContext } from '@/context/user-context';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 
 const roleColors: Record<UserRole, string> = {
     admin: 'bg-primary text-primary-foreground',
@@ -71,8 +69,7 @@ export default function UserManagementPage() {
   const handleDeleteUser = async (id: string) => {
     if(!firestore) return;
     if(confirm('Are you sure you want to delete this user? This cannot be undone.')) {
-      const userDocRef = doc(firestore, 'users', id);
-      deleteDoc(userDocRef)
+      deleteDoc(doc(firestore, 'users', id))
         .then(() => {
             toast({
                 title: 'User Deleted',
@@ -81,11 +78,6 @@ export default function UserManagementPage() {
         })
         .catch(error => {
             console.error("Error deleting user: ", error);
-            const permissionError = new FirestorePermissionError({
-              path: userDocRef.path,
-              operation: 'delete',
-            });
-            errorEmitter.emit('permission-error', permissionError);
             toast({
                 variant: "destructive",
                 title: "Error",
@@ -101,9 +93,8 @@ export default function UserManagementPage() {
     try {
       if (editingUser) {
         // Update existing user
-        const userDocRef = doc(firestore, 'users', editingUser.id);
         const { email, password, ...firestoreData } = values; // email and password are not updated here
-        await updateDoc(userDocRef, {
+        await updateDoc(doc(firestore, 'users', editingUser.id), {
           ...firestoreData,
           updatedAt: serverTimestamp(),
           updatedBy: currentUser.id,

@@ -34,8 +34,6 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useUserContext } from '@/context/user-context';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 
 const statusColors: Record<TableStatus, string> = {
     available: 'bg-green-500 text-white',
@@ -74,8 +72,7 @@ export default function TableManagementPage() {
   const handleDeleteTable = async (id: string) => {
     if(!firestore) return;
     if(confirm('Are you sure you want to delete this table? This cannot be undone.')) {
-      const tableDocRef = doc(firestore, 'tables', id);
-      deleteDoc(tableDocRef)
+      deleteDoc(doc(firestore, 'tables', id))
         .then(() => {
             toast({
                 title: 'Table Deleted',
@@ -84,8 +81,6 @@ export default function TableManagementPage() {
         })
         .catch(error => {
             console.error("Error deleting table: ", error);
-            const permissionError = new FirestorePermissionError({ path: tableDocRef.path, operation: 'delete' });
-            errorEmitter.emit('permission-error', permissionError);
             toast({
                 variant: "destructive",
                 title: "Error",
@@ -99,12 +94,10 @@ export default function TableManagementPage() {
     if (!firestore || !currentUser) return;
   
     if (editingTable) {
-        const tableDocRef = doc(firestore, 'tables', editingTable.id);
-        const updateData = {
+        updateDoc(doc(firestore, 'tables', editingTable.id), {
           ...values,
           updatedAt: serverTimestamp(),
-        };
-        updateDoc(tableDocRef, updateData)
+        })
             .then(() => {
                 toast({
                   title: "Table Updated",
@@ -112,18 +105,19 @@ export default function TableManagementPage() {
                 });
             })
             .catch(error => {
-                const permissionError = new FirestorePermissionError({ path: tableDocRef.path, operation: 'update', requestResourceData: updateData });
-                errorEmitter.emit('permission-error', permissionError);
+                console.error("Error updating table: ", error);
+                toast({
+                    variant: "destructive",
+                    title: "Error",
+                    description: "Failed to update table.",
+                });
             });
     } else {
-        // Create new table
-        const createData = {
+        addDoc(collection(firestore, 'tables'), {
             ...values,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
-        };
-        const collectionRef = collection(firestore, 'tables');
-        addDoc(collectionRef, createData)
+        })
             .then(() => {
                 toast({
                   title: "Table Created",
@@ -131,8 +125,12 @@ export default function TableManagementPage() {
                 });
             })
             .catch(error => {
-                const permissionError = new FirestorePermissionError({ path: collectionRef.path, operation: 'create', requestResourceData: createData });
-                errorEmitter.emit('permission-error', permissionError);
+                console.error("Error creating table: ", error);
+                toast({
+                    variant: "destructive",
+                    title: "Error",
+                    description: "Failed to create table.",
+                });
             });
     }
     setIsDialogOpen(false);

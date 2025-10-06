@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
@@ -22,8 +21,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 
 interface OrderModalProps {
     table: TableType;
@@ -233,8 +230,7 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
             onClose();
 
         } catch (error: any) {
-            const permissionError = new FirestorePermissionError({ path: `orders/${openOrder?.id || 'new'}`, operation: 'write', requestResourceData: localOrder });
-            errorEmitter.emit('permission-error', permissionError);
+            console.error("Error confirming order:", error);
             toast({ variant: 'destructive', title: 'Order Failed', description: 'Could not confirm the order.' });
         }
     };

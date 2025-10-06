@@ -8,6 +8,7 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  SidebarRail,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { LogOut, LayoutDashboard, Users, UserCog, BedDouble, UtensilsCrossed, Boxes } from 'lucide-react';
@@ -44,6 +45,7 @@ export default function AppSidebar() {
 
     return (
         <Sidebar>
+            <SidebarRail />
             <SidebarHeader>
                 <div className="flex items-center gap-2">
                     <Logo className="w-8 h-8 text-primary" />

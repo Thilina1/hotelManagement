@@ -74,6 +74,17 @@ export default function BillingPage() {
         handlePrint();
     }, 100);
   };
+  
+  const getFormattedDate = (dateValue: any) => {
+    if (!dateValue) return 'N/A';
+    if (typeof dateValue === 'string') {
+        return format(new Date(dateValue), 'Pp');
+    }
+    if (dateValue.seconds) {
+        return format(new Date(dateValue.seconds * 1000), 'Pp');
+    }
+    return 'Invalid Date';
+  };
 
   return (
     <>
@@ -189,7 +200,7 @@ export default function BillingPage() {
                                             </Badge>
                                         </TableCell>
                                         <TableCell>
-                                            {bill.paidAt ? format(new Date((bill.paidAt as Timestamp).seconds * 1000), 'Pp') : 'N/A'}
+                                            {getFormattedDate(bill.paidAt)}
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <Button variant="ghost" size="sm" onClick={() => handleViewReceiptClick(bill)}>

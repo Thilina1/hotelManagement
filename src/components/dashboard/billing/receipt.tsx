@@ -10,6 +10,25 @@ interface ReceiptProps {
 }
 
 export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ bill, items }, ref) => {
+  const getPaidAtDate = () => {
+    if (!bill.paidAt) return 'N/A';
+    
+    let date;
+    if (typeof bill.paidAt === 'string') {
+      date = new Date(bill.paidAt);
+    } else if (bill.paidAt.seconds) {
+      date = new Date(bill.paidAt.seconds * 1000);
+    } else {
+      return 'N/A';
+    }
+
+    if (isNaN(date.getTime())) {
+      return 'Invalid Date';
+    }
+    
+    return format(date, 'PPP p');
+  };
+
   return (
     <div ref={ref} className="p-8 font-mono text-sm bg-white text-black">
       <div className="text-center space-y-2 mb-8">
@@ -26,7 +45,7 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ bill, i
       <div className="mb-6">
           <p><strong>Receipt ID:</strong> {bill.id}</p>
           <p><strong>Table No:</strong> {bill.tableNumber}</p>
-          <p><strong>Date:</strong> {bill.paidAt ? format(new Date(bill.paidAt as string), 'PPP p') : 'N/A'}</p>
+          <p><strong>Date:</strong> {getPaidAtDate()}</p>
       </div>
 
       <table className="w-full mb-6">

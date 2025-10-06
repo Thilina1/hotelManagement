@@ -159,16 +159,21 @@
     },
     "Bill": {
         "title": "Bill",
-        "description": "Represents a finalized bill for an order.",
+        "description": "Represents a finalized bill for an order, including discounts and totals.",
         "type": "object",
         "properties": {
             "id": { "type": "string", "description": "Document ID." },
             "orderId": { "type": "string", "description": "The ID of the corresponding order." },
             "tableId": { "type": "string", "description": "The ID of the table." },
             "tableNumber": { "type": "string", "description": "The number of the table." },
-            "createdAt": { "type": "string", "format": "date-time" }
+            "status": { "type": "string", "enum": ["unpaid", "paid"], "description": "The payment status of the bill." },
+            "subtotal": { "type": "number", "description": "The total price of all items before discount." },
+            "discount": { "type": "number", "description": "The discount percentage applied to the bill (0-100)." },
+            "total": { "type": "number", "description": "The final amount to be paid after discount." },
+            "createdAt": { "type": "string", "format": "date-time" },
+            "paidAt": { "type": "string", "format": "date-time", "description": "Timestamp when the bill was paid." }
         },
-        "required": ["orderId", "tableId", "tableNumber", "createdAt"]
+        "required": ["orderId", "tableId", "tableNumber", "status", "subtotal", "discount", "total", "createdAt"]
     }
   },
   "auth": {
@@ -241,7 +246,7 @@
         "path": "/bills/{billId}",
         "definition": {
             "schema": { "$ref": "#/backend/entities/Bill" },
-            "description": "Stores records of finalized bills."
+            "description": "Stores records of finalized bills for payment processing."
         }
       }
     ],

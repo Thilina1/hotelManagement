@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -11,7 +12,7 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, LayoutDashboard, Users, UserCog, BedDouble, UtensilsCrossed, Boxes } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, UserCog, BedDouble, UtensilsCrossed, Boxes, CreditCard } from 'lucide-react';
 import { useAuth } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
@@ -35,6 +36,7 @@ export default function AppSidebar() {
 
     const menuItems = [
       { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', roles: ['admin', 'waiter', 'payment'] },
+      { href: '/dashboard/billing', icon: CreditCard, label: 'Billing', roles: ['admin', 'payment'] },
       { href: '/dashboard/user-management', icon: Users, label: 'User Management', roles: ['admin'] },
       { href: '/dashboard/room-management', icon: BedDouble, label: 'Room Management', roles: ['admin'] },
       { href: '/dashboard/menu-management', icon: UtensilsCrossed, label: 'Menu Management', roles: ['admin'] },
@@ -87,3 +89,5 @@ export default function AppSidebar() {
         </Sidebar>
     );
 }
+
+    

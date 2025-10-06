@@ -1,9 +1,10 @@
+
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, query, where, writeBatch, serverTimestamp, increment, setDoc } from 'firebase/firestore';
+import { collection, doc, query, where, writeBatch, serverTimestamp, increment, addDoc } from 'firebase/firestore';
 import type { Table as TableType, MenuItem, Order, OrderItem, MenuCategory } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, MinusCircle, ShoppingCart, CheckCircle, Search, Utensils } from 'lucide-react';
+import { PlusCircle, MinusCircle, ShoppingCart, Search, Utensils } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -21,6 +22,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 interface OrderModalProps {
     table: TableType;
@@ -80,10 +83,7 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
 
     useEffect(() => {
         if (menuItems) {
-            // When menu items are loaded or reloaded, update the local copy
             let currentLocalItems = menuItems;
-    
-            // If there's an open order with items, reduce stock for those
             if (orderItems) {
                 currentLocalItems = currentLocalItems.map(menuItem => {
                     const orderedItem = orderItems.find(oi => oi.menuItemId === menuItem.id);
@@ -108,8 +108,9 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
     const handleAddItem = (menuItem: MenuItem) => {
         const itemInLocalMenu = localMenuItems?.find(m => m.id === menuItem.id);
         const currentStock = itemInLocalMenu?.stock ?? 0;
+        const currentCountInCart = localOrder[menuItem.id] || 0;
 
-        if (menuItem.stockType === 'Inventoried' && currentStock <= 0) {
+        if (menuItem.stockType === 'Inventoried' && currentStock <= 0 && (menuItem.stock ?? 0) - currentCountInCart <= 0) {
              toast({ variant: 'destructive', title: 'Out of Stock', description: `${menuItem.name} is currently unavailable.` });
              return;
         }
@@ -118,15 +119,6 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
             ...prev,
             [menuItem.id]: (prev[menuItem.id] || 0) + 1,
         }));
-        
-        // Decrement stock in local state for UI feedback
-        if (menuItem.stockType === 'Inventoried') {
-            setLocalMenuItems(prevItems => 
-                prevItems?.map(item => 
-                    item.id === menuItem.id ? { ...item, stock: (item.stock ?? 0) - 1 } : item
-                ) || null
-            );
-        }
     };
 
     const handleRemoveItem = (menuItemId: string) => {
@@ -138,15 +130,6 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
             }
             return { ...prev, [menuItemId]: newCount };
         });
-
-        const menuItem = menuItems?.find(m => m.id === menuItemId);
-        if (menuItem && menuItem.stockType === 'Inventoried') {
-             setLocalMenuItems(prevItems => 
-                prevItems?.map(item => 
-                    item.id === menuItemId ? { ...item, stock: (item.stock ?? 0) + 1 } : item
-                ) || null
-            );
-        }
     };
 
     const handleConfirmOrder = async () => {
@@ -154,98 +137,96 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
     
         let currentOrder = openOrder;
         const orderExisted = !!currentOrder;
+        let newOrderId: string | undefined = undefined;
     
-        try {
-            if (!currentOrder) {
-                const newOrderRef = doc(collection(firestore, 'orders'));
-                await setDoc(newOrderRef, {
+        // Step 1: Create a new order if one doesn't exist
+        if (!currentOrder) {
+            try {
+                const newOrderRef = await addDoc(collection(firestore, 'orders'), {
                     tableId: table.id,
                     status: 'open',
                     totalPrice: 0,
                     createdAt: serverTimestamp(),
                     updatedAt: serverTimestamp(),
                 });
-                currentOrder = { id: newOrderRef.id, tableId: table.id, status: 'open', totalPrice: 0, createdAt: new Date().toISOString() };
+                newOrderId = newOrderRef.id;
+            } catch (error) {
+                console.error("Error creating new order:", error);
+                toast({ variant: 'destructive', title: 'Order Failed', description: 'Could not create a new order.' });
+                return;
             }
-            
-            if (!currentOrder) {
-                throw new Error("Failed to create or find order.");
-            }
-        
+        }
+    
+        const orderId = currentOrder?.id || newOrderId;
+        if (!orderId) {
+            toast({ variant: 'destructive', title: 'Order Failed', description: 'Could not determine order ID.' });
+            return;
+        }
+    
+        // Step 2: Batch write all the item additions and updates
+        try {
             const batch = writeBatch(firestore);
-            
+            let subtotalForBill = openOrder?.totalPrice || 0;
+    
             for (const menuItemId in localOrder) {
                 const quantity = localOrder[menuItemId];
                 const menuItem = menuItems?.find(m => m.id === menuItemId);
-        
+    
                 if (menuItem) {
-                    const orderItemRef = doc(collection(firestore, 'orders', currentOrder.id, 'items'));
+                    const orderItemRef = doc(collection(firestore, 'orders', orderId, 'items'));
                     batch.set(orderItemRef, {
-                        orderId: currentOrder.id,
+                        orderId: orderId,
                         menuItemId,
                         name: menuItem.name,
                         price: menuItem.price,
                         quantity,
                     });
-        
-                    const orderRef = doc(firestore, 'orders', currentOrder.id);
-                    batch.update(orderRef, { totalPrice: increment(menuItem.price * quantity) });
-        
+                    
+                    subtotalForBill += menuItem.price * quantity;
+    
                     if (menuItem.stockType === 'Inventoried') {
                         const menuItemRef = doc(firestore, 'menuItems', menuItem.id);
                         batch.update(menuItemRef, { stock: increment(-quantity) });
                     }
                 }
             }
-        
-            const orderRef = doc(firestore, 'orders', currentOrder.id);
-            batch.update(orderRef, { updatedAt: serverTimestamp() });
+    
+            const orderRef = doc(firestore, 'orders', orderId);
+            batch.update(orderRef, { totalPrice: subtotalForBill, status: 'billed', updatedAt: serverTimestamp() });
             
             if (table.status === 'available') {
                 const tableDocRef = doc(firestore, 'tables', table.id);
                 batch.update(tableDocRef, { status: 'occupied' });
             }
             
+            // Create a bill document
             const billRef = doc(collection(firestore, 'bills'));
             batch.set(billRef, {
-                orderId: currentOrder.id,
+                orderId: orderId,
                 tableId: table.id,
                 tableNumber: table.tableNumber,
+                status: 'unpaid',
+                subtotal: subtotalForBill,
+                discount: 0,
+                total: subtotalForBill,
                 createdAt: serverTimestamp(),
             });
         
             await batch.commit();
         
             setLocalOrder({});
-            toast({ title: 'Order Confirmed', description: 'Items have been added and bill created.' });
+            toast({ title: 'Order Confirmed', description: 'Items have been added and bill is ready for payment.' });
             
             if (!orderExisted) {
                 refetchOrderData();
             }
+            onClose();
 
-        } catch (error) {
-            console.error('Error confirming order:', error);
+        } catch (error: any) {
+            const permissionError = new FirestorePermissionError({ path: `orders/${orderId}`, operation: 'write', requestResourceData: localOrder });
+            errorEmitter.emit('permission-error', permissionError);
             toast({ variant: 'destructive', title: 'Order Failed', description: 'Could not confirm the order.' });
         }
-    };
-    
-    const handleMarkAsPaid = () => {
-        if (!firestore || !openOrder) return;
-        
-        const batch = writeBatch(firestore);
-
-        const orderRef = doc(firestore, 'orders', openOrder.id);
-        batch.update(orderRef, { status: 'paid', updatedAt: serverTimestamp() });
-        
-        const tableRef = doc(firestore, 'tables', table.id);
-        batch.update(tableRef, { status: 'available' });
-
-        batch.commit().then(() => {
-            toast({ title: 'Payment Successful', description: `The bill for Table ${table.tableNumber} has been settled.`});
-            onClose();
-        }).catch(() => {
-            toast({ variant: 'destructive', title: 'Payment Failed', description: 'Could not process the payment.' });
-        });
     };
 
     const isLoading = areMenuItemsLoading || areOrdersLoading;
@@ -290,7 +271,9 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                                     {areMenuItemsLoading ? (
                                        [...Array(10)].map((_, i) => <Skeleton key={i} className="h-20 w-full" />)
                                     ) : filteredMenuItems.map(item => {
-                                        const isOutOfStock = item.stockType === 'Inventoried' && (item.stock ?? 0) <= 0;
+                                        const currentCountInCart = localOrder[item.id] || 0;
+                                        const effectiveStock = (item.stock ?? 0);
+                                        const isOutOfStock = item.stockType === 'Inventoried' && effectiveStock - currentCountInCart <= 0;
 
                                         return (
                                             <div key={item.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted">
@@ -305,7 +288,7 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                                                     <div>
                                                         <p className="font-semibold">{item.name}</p>
                                                         <p className="text-sm text-muted-foreground">${item.price.toFixed(2)}</p>
-                                                        {item.stockType === 'Inventoried' && <p className={`text-xs ${!isOutOfStock ? 'text-primary' : 'text-destructive'}`}>Stock: {item.stock}</p>}
+                                                        {item.stockType === 'Inventoried' && <p className={`text-xs ${!isOutOfStock ? 'text-primary' : 'text-destructive'}`}>Stock: {effectiveStock - currentCountInCart}</p>}
                                                     </div>
                                                 </div>
                                                 <Button size="sm" onClick={() => handleAddItem(item)} disabled={isOutOfStock}>
@@ -377,9 +360,6 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                                 <span>${totalBill.toFixed(2)}</span>
                             </div>
                             <Button className="w-full" onClick={handleConfirmOrder} disabled={Object.keys(localOrder).length === 0}>Confirm New Items</Button>
-                            <Button className="w-full" variant="secondary" onClick={handleMarkAsPaid} disabled={!openOrder || totalBill === 0}>
-                               <CheckCircle className="mr-2"/> Confirm
-                            </Button>
                         </CardFooter>
                     </Card>
                 </div>
@@ -387,3 +367,5 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
         </Dialog>
     );
 }
+
+    

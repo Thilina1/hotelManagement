@@ -1,3 +1,4 @@
+
 export type UserRole = 'admin' | 'waiter' | 'payment';
 
 export type User = {
@@ -88,3 +89,20 @@ export type OrderItem = {
     price: number;
     quantity: number;
 };
+
+export type BillStatus = 'unpaid' | 'paid';
+
+export type Bill = {
+  id: string;
+  orderId: string;
+  tableId: string;
+  tableNumber: string;
+  status: BillStatus;
+  subtotal: number;
+  discount: number; // Percentage
+  total: number;
+  createdAt?: string | { seconds: number; nanoseconds: number };
+  paidAt?: string | { seconds: number; nanoseconds: number };
+};
+
+    

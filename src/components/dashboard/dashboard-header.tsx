@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -36,6 +37,8 @@ const getPageTitle = (pathname: string) => {
             return 'Table Management';
         case '/dashboard/inventory-management':
             return 'Inventory Management';
+        case '/dashboard/billing':
+            return 'Billing';
         default:
              if (pathname.startsWith('/dashboard/tables/')) {
                 return 'Table Order';
@@ -58,7 +61,9 @@ export default function DashboardHeader() {
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
-      <SidebarTrigger className="sm:hidden" />
+      <div className="flex items-center gap-4">
+        <SidebarTrigger className="sm:hidden" />
+      </div>
       <div className="flex-1">
         <h1 className="font-semibold text-lg">{getPageTitle(pathname)}</h1>
       </div>
@@ -94,3 +99,5 @@ export default function DashboardHeader() {
     </header>
   );
 }
+
+    

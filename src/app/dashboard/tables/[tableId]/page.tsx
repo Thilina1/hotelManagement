@@ -148,7 +148,7 @@ export default function TableOrderPage() {
             const batch = writeBatch(firestore);
 
             const orderRef = doc(firestore, 'orders', openOrder.id);
-            batch.update(orderRef, { status: 'paid', updatedAt: serverTimestamp() });
+            batch.update(orderRef, { status: 'billed', updatedAt: serverTimestamp() });
             
             const tableRef = doc(firestore, 'tables', tableId);
             batch.update(tableRef, { status: 'available' });
@@ -295,9 +295,9 @@ export default function TableOrderPage() {
                             <span>Total Bill:</span>
                             <span>${totalBill.toFixed(2)}</span>
                         </div>
-                        <Button className="w-full" onClick={handleConfirmOrder} disabled={Object.keys(localOrder).length === 0}>Confirm New Items</Button>
+                        <Button className="w-full" onClick={handleConfirmOrder} disabled={Object.keys(localOrder).length === 0}>Add Items to Bill</Button>
                         <Button className="w-full" variant="secondary" onClick={handleMarkAsPaid} disabled={!openOrder || totalBill === 0}>
-                           <CheckCircle className="mr-2"/> Confirm
+                           <CheckCircle className="mr-2"/> Process Payment & Close Bill
                         </Button>
                     </CardFooter>
                 </Card>

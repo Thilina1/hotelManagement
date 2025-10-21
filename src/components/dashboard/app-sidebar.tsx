@@ -22,6 +22,20 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useUserContext } from '@/context/user-context';
 import { SidebarRail } from '../ui/sidebar';
+import type { UserRole } from '@/lib/types';
+
+const allMenuItems = [
+  { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', roles: ['admin', 'waiter', 'payment'] as UserRole[] },
+  { href: '/dashboard/reports', icon: BarChart, label: 'Reports', roles: ['admin', 'payment'] as UserRole[] },
+  { href: '/dashboard/billing', icon: CreditCard, label: 'Billing', roles: ['admin', 'payment'] as UserRole[] },
+  { href: '/dashboard/user-management', icon: Users, label: 'User Management', roles: ['admin'] as UserRole[] },
+  { href: '/dashboard/room-management', icon: BedDouble, label: 'Room Management', roles: ['admin'] as UserRole[] },
+  { href: '/dashboard/menu-management', icon: UtensilsCrossed, label: 'Menu Management', roles: ['admin'] as UserRole[] },
+  { href: '/dashboard/table-management', icon: TableIcon, label: 'Table Management', roles: ['admin'] as UserRole[] },
+  { href: '/dashboard/inventory-management', icon: Boxes, label: 'Inventory', roles: ['admin'] as UserRole[] },
+  { href: '/dashboard/profile', icon: UserCog, label: 'Profile', roles: ['admin', 'waiter', 'payment'] as UserRole[] },
+];
+
 
 export default function AppSidebar() {
     const auth = useAuth();
@@ -34,18 +48,9 @@ export default function AppSidebar() {
         await signOut(auth);
         router.push('/');
     };
+    
+    const accessibleMenuItems = allMenuItems.filter(item => user?.role && item.roles.includes(user.role));
 
-    const menuItems = [
-      { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-      { href: '/dashboard/reports', icon: BarChart, label: 'Reports' },
-      { href: '/dashboard/billing', icon: CreditCard, label: 'Billing' },
-      { href: '/dashboard/user-management', icon: Users, label: 'User Management' },
-      { href: '/dashboard/room-management', icon: BedDouble, label: 'Room Management' },
-      { href: '/dashboard/menu-management', icon: UtensilsCrossed, label: 'Menu Management' },
-      { href: '/dashboard/table-management', icon: TableIcon, label: 'Table Management' },
-      { href: '/dashboard/inventory-management', icon: Boxes, label: 'Inventory' },
-      { href: '/dashboard/profile', icon: UserCog, label: 'Profile' },
-    ];
 
     return (
         <Sidebar collapsible="icon">
@@ -58,7 +63,7 @@ export default function AppSidebar() {
             </SidebarHeader>
             <SidebarContent>
                 <SidebarMenu>
-                  {menuItems.map(item => (
+                  {accessibleMenuItems.map(item => (
                      <SidebarMenuItem key={item.href}>
                         <SidebarMenuButton asChild tooltip={item.label} isActive={pathname === item.href}>
                           <Link href={item.href}>

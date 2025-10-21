@@ -22,14 +22,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         const fetchUser = async () => {
-            if (firebaseUser) {
+            if (firebaseUser && firestore) {
                 try {
                     const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
                     if (userDoc.exists()) {
                         setUser({ id: firebaseUser.uid, ...userDoc.data() } as User);
                     } else {
-                        // If no user doc, maybe they are just an auth user without a firestore entry
-                        // For this app, we'll treat them as a base user.
                          setUser({
                             id: firebaseUser.uid,
                             name: firebaseUser.email || 'User',
@@ -40,16 +38,16 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 } catch (e) {
                      console.error("Error fetching user data:", e);
                      setUser(null);
+                } finally {
+                    setIsLoading(false);
                 }
-            } else {
-                setUser(null);
+            } else if (!isAuthLoading) {
+                 setUser(null);
+                 setIsLoading(false);
             }
-            setIsLoading(false);
         };
 
-        if (!isAuthLoading && firestore) {
-            fetchUser();
-        }
+        fetchUser();
     }, [firebaseUser, isAuthLoading, firestore]);
 
     useEffect(() => {

@@ -48,16 +48,6 @@ export default function WaiterDashboard() {
   const handleCloseModal = () => {
     setSelectedTable(null);
   };
-  
-  if (selectedTable) {
-    return (
-        <OrderModal 
-          table={selectedTable}
-          isOpen={!!selectedTable}
-          onClose={handleCloseModal}
-        />
-    )
-  }
 
   return (
     <>
@@ -110,6 +100,13 @@ export default function WaiterDashboard() {
             ))}
           </div>
       </div>
+      {selectedTable && (
+        <OrderModal 
+          table={selectedTable}
+          isOpen={!!selectedTable}
+          onClose={handleCloseModal}
+        />
+      )}
     </>
   );
 }

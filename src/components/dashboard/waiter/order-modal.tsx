@@ -388,4 +388,3 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
     );
 }
 
-    

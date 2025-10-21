@@ -21,10 +21,9 @@ interface PaymentModalProps {
   bill: Bill;
   isOpen: boolean;
   onClose: () => void;
-  onPaymentSuccess: (bill: Bill, items: OrderItem[]) => void;
 }
 
-export function PaymentModal({ bill, isOpen, onClose, onPaymentSuccess }: PaymentModalProps) {
+export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [discount, setDiscount] = useState(bill.discount || 0);
@@ -77,9 +76,6 @@ export function PaymentModal({ bill, isOpen, onClose, onPaymentSuccess }: Paymen
         description: `Bill for Table ${bill.tableNumber} has been paid.`,
       });
       onClose();
-      // Pass final bill data back for receipt printing
-      const completedBill = { ...bill, ...finalBillData, paidAt: new Date().toISOString() };
-      onPaymentSuccess(completedBill as Bill, bill.items);
     } catch (error) {
       console.error("Error processing payment:", error);
       toast({
@@ -183,8 +179,8 @@ export function PaymentModal({ bill, isOpen, onClose, onPaymentSuccess }: Paymen
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={isProcessing}>Cancel</Button>
           <Button onClick={handleProcessPayment} disabled={!canProcessPayment}>
-            <Printer className="mr-2 h-4 w-4"/>
-            {isProcessing ? 'Processing...' : 'Pay & Print Receipt'}
+            <CheckCircle className="mr-2 h-4 w-4"/>
+            {isProcessing ? 'Processing...' : 'Pay Bill'}
           </Button>
         </DialogFooter>
       </DialogContent>

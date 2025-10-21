@@ -42,7 +42,10 @@ export default function BillingPage() {
 
   const paidBillsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    return query(collection(firestore, 'bills'), where('status', '==', 'paid'));
+    return query(
+        collection(firestore, 'bills'),
+        where('status', '==', 'paid')
+    );
   }, [firestore]);
 
   const { data: unpaidBills, isLoading: isLoadingUnpaid } = useCollection<Bill>(unpaidBillsQuery);
@@ -67,23 +70,24 @@ export default function BillingPage() {
   const handleCloseModal = () => {
     setSelectedBill(null);
   };
-
-  const handlePaymentSuccess = (bill: Bill, items: OrderItem[]) => {
-    setReceiptData({ bill, items });
-    setTimeout(() => {
-        handlePrint();
-    }, 100);
-  };
   
   const getFormattedDate = (dateValue: any) => {
     if (!dateValue) return 'N/A';
+    
+    let date;
     if (typeof dateValue === 'string') {
-        return format(new Date(dateValue), 'Pp');
+        date = new Date(dateValue);
+    } else if (dateValue.seconds) { // Firestore Timestamp
+        date = new Date(dateValue.seconds * 1000);
+    } else {
+        return 'Invalid Date';
     }
-    if (dateValue.seconds) {
-        return format(new Date(dateValue.seconds * 1000), 'Pp');
+
+    if (isNaN(date.getTime())) {
+        return 'Invalid Date';
     }
-    return 'Invalid Date';
+
+    return format(date, 'Pp');
   };
 
   return (
@@ -234,7 +238,6 @@ export default function BillingPage() {
             bill={selectedBill}
             isOpen={!!selectedBill}
             onClose={handleCloseModal}
-            onPaymentSuccess={handlePaymentSuccess}
         />
       )}
        <div className="hidden">

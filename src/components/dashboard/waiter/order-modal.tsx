@@ -1,17 +1,18 @@
+
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, query, where, writeBatch, serverTimestamp, increment, addDoc, getDocs } from 'firebase/firestore';
-import type { Table as TableType, MenuItem, Order, OrderItem, MenuCategory } from '@/lib/types';
+import type { Table as TableType, MenuItem, Order, OrderItem, MenuCategory, Bill } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, MinusCircle, ShoppingCart, Search, Utensils } from 'lucide-react';
+import { PlusCircle, MinusCircle, ShoppingCart, Search, Utensils, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -129,18 +130,16 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
         });
     };
 
-    const handleConfirmOrder = async () => {
-        if (!firestore || Object.keys(localOrder).length === 0) return;
+    const handleAddItemsToBill = async () => {
+        if (!firestore || !table || Object.keys(localOrder).length === 0) return;
+
+        const batch = writeBatch(firestore);
+        let currentOrder = openOrder;
+        let currentOrderId;
 
         try {
-            const batch = writeBatch(firestore);
-            
-            // Step 1: Create a new order if one doesn't exist, or get the existing one.
-            let currentOrderId = openOrder?.id;
-            let subtotalForBill = openOrder?.totalPrice || 0;
-            const orderExisted = !!currentOrderId;
-
-            if (!currentOrderId) {
+            // If no open order exists, create one
+            if (!currentOrder) {
                 const newOrderRef = doc(collection(firestore, 'orders'));
                 batch.set(newOrderRef, {
                     tableId: table.id,
@@ -150,9 +149,14 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                     updatedAt: serverTimestamp(),
                 });
                 currentOrderId = newOrderRef.id;
+            } else {
+                currentOrderId = currentOrder.id;
             }
 
-            // Step 2: Add new items to the order and update stock.
+            if (!currentOrderId) throw new Error("Failed to create or find order.");
+            
+            let orderTotalPrice = openOrder?.totalPrice || 0;
+
             for (const menuItemId in localOrder) {
                 const quantity = localOrder[menuItemId];
                 const menuItem = menuItems?.find(m => m.id === menuItemId);
@@ -166,8 +170,8 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                         price: menuItem.price,
                         quantity,
                     });
-                    
-                    subtotalForBill += menuItem.price * quantity;
+
+                    orderTotalPrice += menuItem.price * quantity;
 
                     if (menuItem.stockType === 'Inventoried') {
                         const menuItemRef = doc(firestore, 'menuItems', menuItem.id);
@@ -176,62 +180,69 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                 }
             }
 
-            // Step 3: Update the order's total price and status.
             const orderRef = doc(firestore, 'orders', currentOrderId);
-            batch.update(orderRef, { totalPrice: subtotalForBill, status: 'billed', updatedAt: serverTimestamp() });
+            batch.update(orderRef, { totalPrice: orderTotalPrice, updatedAt: serverTimestamp() });
             
-            // Step 4: Update table status if it was available.
             if (table.status === 'available') {
                 const tableDocRef = doc(firestore, 'tables', table.id);
                 batch.update(tableDocRef, { status: 'occupied' });
             }
 
-            // Step 5: Fetch all items for the bill.
-            const allItemsSnapshot = await getDocs(collection(firestore, 'orders', currentOrderId, 'items'));
-            const allOrderItems: OrderItem[] = allItemsSnapshot.docs.map(doc => doc.data() as OrderItem);
+            await batch.commit();
 
-            // Add the newly added local items to this list for the bill
-            for (const menuItemId in localOrder) {
-                const menuItem = menuItems?.find(m => m.id === menuItemId);
-                if(menuItem) {
-                    allOrderItems.push({
-                        id: doc(collection(firestore, 'dummy')).id, // temporary client-side id
-                        orderId: currentOrderId,
-                        menuItemId: menuItem.id,
-                        name: menuItem.name,
-                        price: menuItem.price,
-                        quantity: localOrder[menuItemId]
-                    })
-                }
-            }
+            setLocalOrder({});
+            toast({ title: 'Items Added', description: 'New items have been added to the bill.' });
             
-            // Step 6: Create the bill document with all items.
+            if (!openOrder) {
+                refetchOrderData();
+            }
+
+        } catch (error) {
+            console.error('Error adding items to order:', error);
+            toast({ variant: 'destructive', title: 'Order Failed', description: 'Could not add items to the order.' });
+        }
+    };
+    
+    const handleProcessPayment = async () => {
+        if (!firestore || !openOrder || !table) {
+            toast({ variant: 'destructive', title: 'Cannot Process Payment', description: 'There is no open order for this table.' });
+            return;
+        }
+        
+        try {
+            const batch = writeBatch(firestore);
+
+            // Fetch all items for the bill.
+            const allItemsSnapshot = await getDocs(collection(firestore, 'orders', openOrder.id, 'items'));
+            const allOrderItems: OrderItem[] = allItemsSnapshot.docs.map(doc => ({id: doc.id, ...doc.data()} as OrderItem));
+
+            // Create the bill document with all items.
             const billRef = doc(collection(firestore, 'bills'));
             batch.set(billRef, {
-                orderId: currentOrderId,
+                orderId: openOrder.id,
                 tableId: table.id,
                 tableNumber: table.tableNumber,
                 items: allOrderItems,
                 status: 'unpaid',
-                subtotal: subtotalForBill,
+                subtotal: openOrder.totalPrice,
                 discount: 0,
-                total: subtotalForBill,
+                total: openOrder.totalPrice,
                 createdAt: serverTimestamp(),
             });
-        
-            await batch.commit();
-        
-            setLocalOrder({});
-            toast({ title: 'Order Confirmed', description: 'Items have been added and bill is ready for payment.' });
-            
-            if (!orderExisted) {
-                refetchOrderData();
-            }
-            onClose();
 
-        } catch (error: any) {
-            console.error("Error confirming order:", error);
-            toast({ variant: 'destructive', title: 'Order Failed', description: 'Could not confirm the order.' });
+            // Update order status to 'billed'
+            const orderRef = doc(firestore, 'orders', openOrder.id);
+            batch.update(orderRef, { status: 'billed', updatedAt: serverTimestamp() });
+            
+            // Table status remains 'occupied' until payment is made
+            
+            await batch.commit();
+            
+            toast({ title: 'Bill Sent for Payment', description: `The bill for Table ${table.tableNumber} is now pending payment.`});
+            onClose();
+        } catch (error) {
+            console.error('Error processing payment:', error);
+            toast({ variant: 'destructive', title: 'Process Failed', description: 'Could not send the bill for payment.' });
         }
     };
 
@@ -365,7 +376,10 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                                 <span>Total Bill:</span>
                                 <span>${totalBill.toFixed(2)}</span>
                             </div>
-                            <Button className="w-full" onClick={handleConfirmOrder} disabled={Object.keys(localOrder).length === 0}>Confirm New Items</Button>
+                            <Button className="w-full" onClick={handleAddItemsToBill} disabled={Object.keys(localOrder).length === 0}>Add Items to Bill</Button>
+                             <Button className="w-full" variant="secondary" onClick={handleProcessPayment} disabled={!openOrder}>
+                               <CheckCircle className="mr-2"/> Process Payment & Close Bill
+                            </Button>
                         </CardFooter>
                     </Card>
                 </div>

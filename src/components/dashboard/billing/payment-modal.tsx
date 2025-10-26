@@ -104,8 +104,8 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
             Bill for Table {bill.tableNumber}
           </DialogTitle>
            <DialogDescription>
-            <p>Bill No: <span className="font-mono">{bill.billNumber}</span></p>
-            <p>Waiter: {bill.waiterName || 'N/A'}</p>
+            <div>Bill No: <span className="font-mono">{bill.billNumber}</span></div>
+            <div>Waiter: {bill.waiterName || 'N/A'}</div>
           </DialogDescription>
         </DialogHeader>
         <div className="py-4 space-y-4">

@@ -135,8 +135,10 @@ export default function BookingsPage() {
     }
   };
 
-  const handleFormSubmit = async (values: Omit<Booking, 'id'>, originalBooking?: Booking | null) => {
+  const handleFormSubmit = async (values: Omit<Booking, 'id'>) => {
     if (!firestore || !currentUser) return;
+    
+    const originalBooking = editingBooking;
 
     try {
         const batch = writeBatch(firestore);

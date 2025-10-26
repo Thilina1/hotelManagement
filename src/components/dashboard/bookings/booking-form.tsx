@@ -52,7 +52,7 @@ type BookingFormValues = z.infer<typeof formSchema>;
 
 interface BookingFormProps {
   booking?: Booking | null;
-  onSubmit: (values: Omit<Booking, 'id' | 'roomNumber'>, originalBooking?: Booking | null) => void;
+  onSubmit: (values: Omit<Booking, 'id' | 'roomNumber'>) => void;
 }
 
 const toDate = (dateValue: any): Date | undefined => {
@@ -115,6 +115,22 @@ export function BookingForm({ booking, onSubmit }: BookingFormProps) {
       advancePayment: booking?.advancePayment || 0,
     }), [booking]),
   });
+  
+  useEffect(() => {
+    form.reset({
+      guestName: booking?.guestName || '',
+      guestEmail: booking?.guestEmail || '',
+      guestNic: booking?.guestNic || '',
+      guestPhone: booking?.guestPhone || '',
+      roomId: booking?.roomId || '',
+      adults: booking?.adults || 1,
+      children: booking?.children || 0,
+      checkInDate: toDate(booking?.checkInDate) || new Date(),
+      checkOutDate: toDate(booking?.checkOutDate) || addDays(new Date(), 1),
+      status: booking?.status || 'confirmed',
+      advancePayment: booking?.advancePayment || 0,
+    })
+  }, [booking, form]);
 
   const watchCheckInDate = form.watch('checkInDate');
   const watchCheckOutDate = form.watch('checkOutDate');
@@ -142,7 +158,7 @@ export function BookingForm({ booking, onSubmit }: BookingFormProps) {
         ...values,
         totalPrice: totalPrice,
     };
-    onSubmit(submissionData, booking);
+    onSubmit(submissionData);
   };
 
 
@@ -230,23 +246,25 @@ export function BookingForm({ booking, onSubmit }: BookingFormProps) {
                         <FormLabel>Check-in Date</FormLabel>
                         <Popover>
                             <PopoverTrigger asChild>
-                            <Button
-                                variant={"outline"}
-                                className={cn(
-                                "w-full justify-start text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                                )}
-                            >
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                            </Button>
+                              <FormControl>
+                                <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                    "w-full justify-start text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                    )}
+                                >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                                </Button>
+                              </FormControl>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0" align="start">
                             <Calendar
                                 mode="single"
                                 selected={field.value}
                                 onSelect={field.onChange}
-                                disabled={{ before: new Date() }}
+                                disabled={(date) => date < addDays(new Date(), -1)}
                                 initialFocus
                             />
                             </PopoverContent>
@@ -263,23 +281,25 @@ export function BookingForm({ booking, onSubmit }: BookingFormProps) {
                         <FormLabel>Check-out Date</FormLabel>
                         <Popover>
                             <PopoverTrigger asChild>
-                            <Button
-                                variant={"outline"}
-                                className={cn(
-                                "w-full justify-start text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                                )}
-                            >
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                            </Button>
+                              <FormControl>
+                                <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                    "w-full justify-start text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                    )}
+                                >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                                </Button>
+                              </FormControl>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0" align="start">
                             <Calendar
                                 mode="single"
                                 selected={field.value}
                                 onSelect={field.onChange}
-                                disabled={{ before: watchCheckInDate ? addDays(watchCheckInDate, 1) : new Date() }}
+                                disabled={(date) => date <= (watchCheckInDate || new Date())}
                                 initialFocus
                             />
                             </PopoverContent>
@@ -342,7 +362,7 @@ export function BookingForm({ booking, onSubmit }: BookingFormProps) {
             render={({ field }) => (
                 <FormItem>
                 <FormLabel>Advance Payment (LKR)</FormLabel>
-                <FormControl><Input type="number" min="0" placeholder="0.00" {...field} /></FormControl>
+                <FormControl><Input type="number" min="0" placeholder="0.00" {...field} value={field.value || ''} /></FormControl>
                 <FormMessage />
                 </FormItem>
             )}

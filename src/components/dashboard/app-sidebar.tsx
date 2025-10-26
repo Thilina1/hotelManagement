@@ -12,7 +12,7 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, LayoutDashboard, Users, UserCog, UtensilsCrossed, Boxes, CreditCard, BarChart } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, UserCog, UtensilsCrossed, Boxes, CreditCard, BarChart, BedDouble } from 'lucide-react';
 import { useAuth } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
@@ -26,6 +26,8 @@ import type { UserRole } from '@/lib/types';
 
 const allMenuItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', roles: ['admin', 'waiter', 'payment'] as UserRole[] },
+  { href: '/dashboard/bookings', icon: BedDouble, label: 'Booking Management', roles: ['admin'] as UserRole[] },
+  { href: '/dashboard/room-management', icon: BedDouble, label: 'Room Management', roles: ['admin'] as UserRole[] },
   { href: '/dashboard/reports', icon: BarChart, label: 'Reports', roles: ['admin', 'payment'] as UserRole[] },
   { href: '/dashboard/billing', icon: CreditCard, label: 'Restaurant Billing', roles: ['admin', 'payment'] as UserRole[] },
   { href: '/dashboard/user-management', icon: Users, label: 'User Management', roles: ['admin'] as UserRole[] },
@@ -66,7 +68,7 @@ export default function AppSidebar() {
                 <SidebarMenu>
                   {accessibleMenuItems.map(item => (
                      <SidebarMenuItem key={item.href}>
-                        <SidebarMenuButton asChild tooltip={item.label} isActive={pathname === item.href}>
+                        <SidebarMenuButton asChild tooltip={item.label} isActive={pathname.startsWith(item.href) && (item.href !== '/dashboard' || pathname === '/dashboard')}>
                           <Link href={item.href}>
                               <item.icon />
                               {item.label}
@@ -98,3 +100,5 @@ export default function AppSidebar() {
         </Sidebar>
     );
 }
+
+    

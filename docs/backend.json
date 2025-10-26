@@ -146,6 +146,53 @@
             "paidAt": { "type": "string", "format": "date-time", "description": "Timestamp when the bill was paid." }
         },
         "required": ["orderId", "tableId", "tableNumber", "items", "status", "subtotal", "discount", "total", "createdAt"]
+    },
+    "Room": {
+      "title": "Room",
+      "description": "Represents a hotel room.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "roomNumber": { "type": "string" },
+        "type": { "type": "string", "enum": ["Single", "Double", "Suite", "Deluxe"] },
+        "pricePerNight": { "type": "number" },
+        "status": { "type": "string", "enum": ["available", "occupied", "maintenance"] }
+      },
+      "required": ["roomNumber", "type", "pricePerNight", "status"]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "Represents a room booking.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "bookingNumber": { "type": "string" },
+        "roomId": { "type": "string" },
+        "roomNumber": { "type": "string" },
+        "guestName": { "type": "string" },
+        "guestEmail": { "type": "string", "format": "email" },
+        "guestContact": { "type": "string" },
+        "guestNIC": { "type": "string" },
+        "checkInDate": { "type": "string", "format": "date-time" },
+        "checkOutDate": { "type": "string", "format": "date-time" },
+        "adults": { "type": "number" },
+        "children": { "type": "number" },
+        "status": { "type": "string", "enum": ["confirmed", "checked-in", "checked-out", "cancelled"] }
+      },
+      "required": [
+        "bookingNumber",
+        "roomId",
+        "roomNumber",
+        "guestName",
+        "guestEmail",
+        "guestContact",
+        "guestNIC",
+        "checkInDate",
+        "checkOutDate",
+        "adults",
+        "children",
+        "status"
+      ]
     }
   },
   "auth": {
@@ -205,6 +252,20 @@
         "definition": {
             "schema": { "$ref": "#/backend/entities/Bill" },
             "description": "Stores records of finalized bills for payment processing."
+        }
+      },
+      {
+        "path": "/rooms/{roomId}",
+        "definition": {
+            "schema": { "$ref": "#/backend/entities/Room" },
+            "description": "Stores hotel room information."
+        }
+      },
+      {
+        "path": "/bookings/{bookingId}",
+        "definition": {
+            "schema": { "$ref": "#/backend/entities/Booking" },
+            "description": "Stores room booking information."
         }
       }
     ],

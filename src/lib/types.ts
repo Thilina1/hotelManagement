@@ -84,4 +84,33 @@ export type Bill = {
   paidAt?: string | { seconds: number; nanoseconds: number };
 };
 
+export type RoomType = 'Single' | 'Double' | 'Suite' | 'Deluxe';
+export type RoomStatus = 'available' | 'occupied' | 'maintenance';
+
+export type Room = {
+    id: string;
+    roomNumber: string;
+    type: RoomType;
+    pricePerNight: number;
+    status: RoomStatus;
+}
+
+export type BookingStatus = 'confirmed' | 'checked-in' | 'checked-out' | 'cancelled';
+
+export type Booking = {
+    id: string;
+    bookingNumber: string;
+    roomId: string;
+    roomNumber: string;
+    guestName: string;
+    guestEmail: string;
+    guestContact: string;
+    guestNIC: string;
+    checkInDate: string; // ISO String
+    checkOutDate: string; // ISO String
+    adults: number;
+    children: number;
+    status: BookingStatus;
+}
+
     

@@ -39,6 +39,10 @@ const getPageTitle = (pathname: string) => {
             return 'Restaurant Billing';
         case '/dashboard/reports':
             return 'Reports';
+        case '/dashboard/bookings':
+            return 'Booking Management';
+        case '/dashboard/room-management':
+            return 'Room Management';
         default:
              if (pathname.startsWith('/dashboard/tables/')) {
                 return 'Table Order';

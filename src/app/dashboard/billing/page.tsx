@@ -37,7 +37,7 @@ export default function BillingPage() {
 
   const unpaidBillsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    return query(collection(firestore, 'bills'), where('status', '==', 'unpaid'), orderBy('createdAt', 'desc'));
+    return query(collection(firestore, 'bills'), where('status', '==', 'unpaid'));
   }, [firestore]);
 
   const paidBillsQuery = useMemoFirebase(() => {
@@ -53,7 +53,6 @@ export default function BillingPage() {
   
   const handlePrint = useReactToPrint({
     content: () => receiptRef.current,
-    onAfterPrint: () => setReceiptData(null),
   });
 
   const handleProcessPaymentClick = (bill: Bill) => {
@@ -63,7 +62,9 @@ export default function BillingPage() {
   const handleViewReceiptClick = async (bill: Bill) => {
     if (!firestore) return;
     setReceiptData({ bill, items: bill.items });
-    setTimeout(() => handlePrint(), 100);
+    setTimeout(() => {
+        handlePrint();
+    }, 100);
   };
 
 
@@ -241,7 +242,7 @@ export default function BillingPage() {
         />
       )}
        <div className="hidden">
-        {receiptData && <Receipt ref={receiptRef} bill={receiptData.bill} items={receiptData.items} />}
+        {receiptData && <div ref={receiptRef}><Receipt bill={receiptData.bill} items={receiptData.items} /></div>}
       </div>
     </>
   );

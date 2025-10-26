@@ -2,18 +2,18 @@
 'use client';
 
 import { useState, useRef, useMemo } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { CreditCard, Eye, CircleSlash, History, Printer, Wallet, User as UserIcon } from "lucide-react";
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, query, where, Timestamp } from 'firebase/firestore';
 import type { Bill, OrderItem, PaymentMethod } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { PaymentModal } from '@/components/dashboard/billing/payment-modal';
 import { Receipt } from '@/components/dashboard/billing/receipt';
-import { useReactToPrint } from 'react-to-print';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from 'date-fns';
 
@@ -31,10 +31,7 @@ const paymentMethodIcons: Record<PaymentMethod, React.FC<any>> = {
 export default function BillingPage() {
   const firestore = useFirestore();
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
-  const [receiptData, setReceiptData] = useState<{ bill: Bill, items: OrderItem[] } | null>(null);
-
-  const receiptRef = useRef(null);
-
+  
   const unpaidBillsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     return query(collection(firestore, 'bills'), where('status', '==', 'unpaid'));
@@ -60,22 +57,62 @@ export default function BillingPage() {
     });
   }, [unpaidBills]);
 
-  const handlePrint = useReactToPrint({
-    content: () => receiptRef.current,
-  });
+  const handlePrint = (bill: Bill) => {
+    const receiptElement = <Receipt bill={bill} items={bill.items} />;
+    const staticMarkup = renderToStaticMarkup(receiptElement);
+    const printWindow = window.open('', '_blank');
+
+    if (printWindow) {
+        printWindow.document.write(`
+            <html>
+                <head>
+                    <title>Receipt</title>
+                    <style>
+                        body { font-family: monospace; font-size: 12px; margin: 20px; }
+                        table { width: 100%; border-collapse: collapse; }
+                        th, td { padding: 4px; }
+                        .text-center { text-align: center; }
+                        .text-right { text-align: right; }
+                        .font-bold { font-weight: bold; }
+                        .text-lg { font-size: 1.125rem; }
+                        .text-2xl { font-size: 1.5rem; }
+                        .mb-8 { margin-bottom: 2rem; }
+                        .mb-6 { margin-bottom: 1.5rem; }
+                        .mt-8 { margin-top: 2rem; }
+                        .mt-4 { margin-top: 1rem; }
+                        .space-y-2 > * + * { margin-top: 0.5rem; }
+                        .border-dashed { border-style: dashed; }
+                        .border-b-2 { border-bottom-width: 2px; }
+                        .border-t-2 { border-top-width: 2px; }
+                        .border-black { border-color: #000; }
+                        .pt-2 { padding-top: 0.5rem; }
+                        .capitalize { text-transform: capitalize; }
+                        .flex { display: flex; }
+                        .justify-center { justify-content: center; }
+                        .justify-between { justify-content: space-between; }
+                        .items-center { align-items: center; }
+                        .gap-2 { gap: 0.5rem; }
+                    </style>
+                </head>
+                <body>
+                    ${staticMarkup}
+                </body>
+            </html>
+        `);
+        printWindow.document.close();
+        printWindow.focus();
+        printWindow.print();
+        printWindow.close();
+    }
+  };
 
   const handleProcessPaymentClick = (bill: Bill) => {
     setSelectedBill(bill);
   };
   
-  const handleViewReceiptClick = async (bill: Bill) => {
-    if (!firestore) return;
-    setReceiptData({ bill, items: bill.items });
-    setTimeout(() => {
-        handlePrint();
-    }, 100);
+  const handleViewReceiptClick = (bill: Bill) => {
+    handlePrint(bill);
   };
-
 
   const handleCloseModal = () => {
     setSelectedBill(null);
@@ -156,7 +193,7 @@ export default function BillingPage() {
                                         </Badge>
                                     </TableCell>
                                     <TableCell>
-                                        {bill.createdAt ? new Date((bill.createdAt as any).seconds * 1000).toLocaleString() : 'N/A'}
+                                        {getFormattedDate(bill.createdAt)}
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <Button variant="outline" size="sm" onClick={() => handleProcessPaymentClick(bill)}>
@@ -258,9 +295,6 @@ export default function BillingPage() {
             onClose={handleCloseModal}
         />
       )}
-       <div className="hidden">
-        {receiptData && <div ref={receiptRef}><Receipt bill={receiptData.bill} items={receiptData.items} /></div>}
-      </div>
     </>
   );
 }

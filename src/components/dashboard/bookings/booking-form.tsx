@@ -55,6 +55,17 @@ interface BookingFormProps {
   onSubmit: (values: Omit<Booking, 'id' | 'roomNumber'>, originalBooking?: Booking | null) => void;
 }
 
+const toDate = (dateValue: any): Date | undefined => {
+    if (!dateValue) return undefined;
+    if (dateValue instanceof Date) return dateValue;
+    if (dateValue.seconds) return new Date(dateValue.seconds * 1000);
+    if (typeof dateValue === 'string') {
+        const d = new Date(dateValue);
+        return isNaN(d.getTime()) ? undefined : d;
+    }
+    return undefined;
+};
+
 export function BookingForm({ booking, onSubmit }: BookingFormProps) {
   const firestore = useFirestore();
   const [availableRooms, setAvailableRooms] = useState<Room[]>([]);
@@ -98,8 +109,8 @@ export function BookingForm({ booking, onSubmit }: BookingFormProps) {
       roomId: booking?.roomId || '',
       adults: booking?.adults || 1,
       children: booking?.children || 0,
-      checkInDate: booking?.checkInDate ? (booking.checkInDate as any).seconds ? new Date((booking.checkInDate as any).seconds * 1000) : new Date(booking.checkInDate as string) : new Date(),
-      checkOutDate: booking?.checkOutDate ? (booking.checkOutDate as any).seconds ? new Date((booking.checkOutDate as any).seconds * 1000) : new Date(booking.checkOutDate as string) : addDays(new Date(), 1),
+      checkInDate: toDate(booking?.checkInDate) || new Date(),
+      checkOutDate: toDate(booking?.checkOutDate) || addDays(new Date(), 1),
       status: booking?.status || 'confirmed',
       advancePayment: booking?.advancePayment || 0,
     }), [booking]),
@@ -131,7 +142,7 @@ export function BookingForm({ booking, onSubmit }: BookingFormProps) {
         ...values,
         totalPrice: totalPrice,
     };
-    onSubmit(submissionData as any, booking);
+    onSubmit(submissionData, booking);
   };
 
 
@@ -348,5 +359,3 @@ export function BookingForm({ booking, onSubmit }: BookingFormProps) {
     </Form>
   );
 }
-
-    

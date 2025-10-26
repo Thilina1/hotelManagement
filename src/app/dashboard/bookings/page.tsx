@@ -135,7 +135,7 @@ export default function BookingsPage() {
     }
   };
 
-  const handleFormSubmit = async (values: Omit<Booking, 'id' | 'roomNumber'>, originalBooking?: Booking | null) => {
+  const handleFormSubmit = async (values: Omit<Booking, 'id'>, originalBooking?: Booking | null) => {
     if (!firestore || !currentUser) return;
 
     try {
@@ -217,7 +217,7 @@ export default function BookingsPage() {
 
   const formatDate = (date: any) => {
     if (!date) return 'N/A';
-    // Handle both Firestore Timestamps and date strings
+    // Handle both Firestore Timestamps and date strings/objects
     const dateObj = date.seconds ? new Date(date.seconds * 1000) : new Date(date);
     if (isNaN(dateObj.getTime())) return 'Invalid Date';
     return format(dateObj, 'PPP');
@@ -373,5 +373,3 @@ export default function BookingsPage() {
     </div>
   );
 }
-
-    

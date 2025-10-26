@@ -205,7 +205,11 @@ export default function RoomManagementPage() {
                         <TableRow key={room.id}>
                         <TableCell className="font-medium">{room.roomNumber}</TableCell>
                         <TableCell>{room.type}</TableCell>
-                        <TableCell>{room.pricePerNight.toFixed(2)}</TableCell>
+                        <TableCell>
+                          {typeof room.pricePerNight === 'number'
+                            ? room.pricePerNight.toFixed(2)
+                            : 'N/A'}
+                        </TableCell>
                         <TableCell>
                             <Badge variant="secondary" className={`capitalize ${statusColors[room.status]}`}>
                                 {room.status}
@@ -247,5 +251,3 @@ export default function RoomManagementPage() {
     </div>
   );
 }
-
-    

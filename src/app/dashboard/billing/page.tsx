@@ -36,8 +36,7 @@ export default function BillingPage() {
     if (!firestore) return null;
     return query(
         collection(firestore, 'bills'), 
-        where('status', '==', 'unpaid'),
-        orderBy('createdAt', 'desc')
+        where('status', '==', 'unpaid')
     );
   }, [firestore]);
 
@@ -45,14 +44,25 @@ export default function BillingPage() {
     if (!firestore) return null;
     return query(
         collection(firestore, 'bills'),
-        where('status', '==', 'paid'),
-        orderBy('createdAt', 'desc')
+        where('status', '==', 'paid')
     );
   }, [firestore]);
 
-  const { data: unpaidBills, isLoading: isLoadingUnpaid } = useCollection<Bill>(unpaidBillsQuery);
-  const { data: paidBills, isLoading: isLoadingPaid } = useCollection<Bill>(paidBillsQuery);
+  const { data: unpaidBillsData, isLoading: isLoadingUnpaid } = useCollection<Bill>(unpaidBillsQuery);
+  const { data: paidBillsData, isLoading: isLoadingPaid } = useCollection<Bill>(paidBillsQuery);
   
+  const sortBills = (bills: Bill[] | null) => {
+    if (!bills) return [];
+    return [...bills].sort((a, b) => {
+      const dateA = a.createdAt ? (a.createdAt as Timestamp).toMillis() : 0;
+      const dateB = b.createdAt ? (b.createdAt as Timestamp).toMillis() : 0;
+      return dateB - dateA;
+    });
+  };
+
+  const unpaidBills = useMemo(() => sortBills(unpaidBillsData), [unpaidBillsData]);
+  const paidBills = useMemo(() => sortBills(paidBillsData), [paidBillsData]);
+
   const handlePrint = (bill: Bill) => {
     const receiptElement = <Receipt bill={bill} items={bill.items} />;
     const staticMarkup = renderToStaticMarkup(receiptElement);
@@ -294,5 +304,3 @@ export default function BillingPage() {
     </>
   );
 }
-
-    

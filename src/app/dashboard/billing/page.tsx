@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { CreditCard, Eye, CircleSlash, History, Printer, Wallet } from "lucide-react";
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where, Timestamp } from 'firebase/firestore';
+import { collection, query, where, Timestamp, orderBy } from 'firebase/firestore';
 import type { Bill, PaymentMethod } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -34,7 +34,12 @@ export default function BillingPage() {
   
   const unpaidBillsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    return query(collection(firestore, 'bills'), where('status', '==', 'unpaid'), where('bookingId', '==', null));
+    return query(
+        collection(firestore, 'bills'), 
+        where('status', '==', 'unpaid'), 
+        where('bookingId', '==', null),
+        orderBy('createdAt', 'desc')
+    );
   }, [firestore]);
 
   const paidBillsQuery = useMemoFirebase(() => {
@@ -42,22 +47,14 @@ export default function BillingPage() {
     return query(
         collection(firestore, 'bills'),
         where('status', '==', 'paid'),
-        where('bookingId', '==', null)
+        where('bookingId', '==', null),
+        orderBy('createdAt', 'desc')
     );
   }, [firestore]);
 
   const { data: unpaidBills, isLoading: isLoadingUnpaid } = useCollection<Bill>(unpaidBillsQuery);
   const { data: paidBills, isLoading: isLoadingPaid } = useCollection<Bill>(paidBillsQuery);
   
-  const sortedUnpaidBills = useMemo(() => {
-    if (!unpaidBills) return [];
-    return [...unpaidBills].sort((a, b) => {
-        const aTime = (a.createdAt as Timestamp)?.seconds || 0;
-        const bTime = (b.createdAt as Timestamp)?.seconds || 0;
-        return bTime - aTime;
-    });
-  }, [unpaidBills]);
-
   const handlePrint = (bill: Bill) => {
     const receiptElement = <Receipt bill={bill} items={bill.items} />;
     const staticMarkup = renderToStaticMarkup(receiptElement);
@@ -182,7 +179,7 @@ export default function BillingPage() {
                                     <TableCell colSpan={7}><Skeleton className="h-8 w-full" /></TableCell>
                                 </TableRow>
                             ))}
-                            {!isLoadingUnpaid && sortedUnpaidBills && sortedUnpaidBills.map(bill => (
+                            {!isLoadingUnpaid && unpaidBills && unpaidBills.map(bill => (
                                 <TableRow key={bill.id}>
                                     <TableCell className="font-mono text-xs">{bill.billNumber}</TableCell>
                                     <TableCell className="font-medium">{bill.tableNumber}</TableCell>
@@ -204,7 +201,7 @@ export default function BillingPage() {
                                     </TableCell>
                                 </TableRow>
                             ))}
-                            {!isLoadingUnpaid && (!sortedUnpaidBills || sortedUnpaidBills.length === 0) && (
+                            {!isLoadingUnpaid && (!unpaidBills || unpaidBills.length === 0) && (
                                 <TableRow>
                                     <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
                                         <div className="flex flex-col items-center gap-2">

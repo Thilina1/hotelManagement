@@ -83,7 +83,7 @@ export default function DashboardHeader() {
             className="overflow-hidden rounded-full"
           >
             <Avatar>
-              {avatar && <AvatarImage src={user?.name} />}
+              {avatar && <AvatarImage src={avatar.imageUrl} alt={user?.name || 'User'} />}
               <AvatarFallback>{user?.name ? user.name.charAt(0).toUpperCase() : 'U'}</AvatarFallback>
             </Avatar>
           </Button>

@@ -59,20 +59,35 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
       paymentMethod: paymentMethod,
     };
     batch.update(billRef, finalBillData);
+    
+    // If it's a booking bill, update the booking status.
+    if(bill.bookingId) {
+        const bookingRef = doc(firestore, 'bookings', bill.bookingId);
+        batch.update(bookingRef, { status: 'checked-out', updatedAt: paidAtTimestamp });
 
-    // Update order
-    const orderRef = doc(firestore, 'orders', bill.orderId);
-    batch.update(orderRef, { status: 'paid', updatedAt: paidAtTimestamp });
+        // Fetch booking to get roomId
+        const bookingSnap = await firestore.collection('bookings').doc(bill.bookingId).get();
+        if (bookingSnap.exists()) {
+            const bookingData = bookingSnap.data();
+            const roomRef = doc(firestore, 'rooms', bookingData.roomId);
+            batch.update(roomRef, { status: 'available' });
+        }
+    } else if (bill.orderId) { // This is a table order
+        const orderRef = doc(firestore, 'orders', bill.orderId);
+        batch.update(orderRef, { status: 'paid', updatedAt: paidAtTimestamp });
+        
+        if (bill.tableId) {
+            const tableRef = doc(firestore, 'tables', bill.tableId);
+            batch.update(tableRef, { status: 'available' });
+        }
+    }
 
-    // Update table
-    const tableRef = doc(firestore, 'tables', bill.tableId);
-    batch.update(tableRef, { status: 'available' });
 
     try {
       await batch.commit();
       toast({
         title: 'Payment Successful',
-        description: `Bill for Table ${bill.tableNumber} has been paid.`,
+        description: `Bill for ${bill.tableNumber} has been paid.`,
       });
       onClose();
     } catch (error) {
@@ -100,7 +115,7 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Receipt />
-            Bill for Table {bill.tableNumber}
+            Bill for {bill.tableNumber}
           </DialogTitle>
           <div className="text-sm text-muted-foreground">
             <div>Bill No: <span className="font-mono">{bill.billNumber}</span></div>
@@ -109,12 +124,15 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
         </DialogHeader>
         <div className="py-4 space-y-4">
             <div className="max-h-40 overflow-y-auto space-y-2 pr-2">
-                {bill.items && bill.items.map(item => (
-                    <div key={item.id} className="flex justify-between items-center text-sm">
+                {bill.items && bill.items.map((item, index) => (
+                    <div key={item.id || index} className="flex justify-between items-center text-sm">
                         <span>{item.name} x{item.quantity}</span>
                         <span>LKR {(item.price * item.quantity).toFixed(2)}</span>
                     </div>
                 ))}
+                {(!bill.items || bill.items.length === 0) && (
+                   <p className="text-sm text-muted-foreground">No items in this bill. This might be a room charge.</p>
+                )}
             </div>
             <Separator />
             <div className="space-y-3">
@@ -187,3 +205,5 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
     </Dialog>
   );
 }
+
+    

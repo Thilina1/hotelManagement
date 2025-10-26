@@ -167,8 +167,8 @@ export default function BillingPage() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Bill No.</TableHead>
-                                <TableHead>Table</TableHead>
-                                <TableHead>Waiter</TableHead>
+                                <TableHead>Reference</TableHead>
+                                <TableHead>Waiter/Staff</TableHead>
                                 <TableHead>Total</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead>Created At</TableHead>
@@ -230,8 +230,8 @@ export default function BillingPage() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Bill No.</TableHead>
-                                <TableHead>Table</TableHead>
-                                <TableHead>Waiter</TableHead>
+                                <TableHead>Reference</TableHead>
+                                <TableHead>Waiter/Staff</TableHead>
                                 <TableHead>Total</TableHead>
                                 <TableHead>Payment Method</TableHead>
                                 <TableHead>Paid At</TableHead>
@@ -298,3 +298,5 @@ export default function BillingPage() {
     </>
   );
 }
+
+    

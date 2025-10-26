@@ -15,10 +15,11 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { MoreHorizontal, PlusCircle, Trash2, Edit } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Trash2, Edit, LogIn, LogOut, Ban } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { Booking, BookingStatus } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
@@ -68,6 +69,41 @@ export default function BookingsPage() {
     setIsDialogOpen(true);
   };
   
+  const handleUpdateStatus = async (booking: Booking, newStatus: BookingStatus) => {
+    if(!firestore) return;
+    
+    const batch = writeBatch(firestore);
+    const bookingDocRef = doc(firestore, 'bookings', booking.id);
+    batch.update(bookingDocRef, { status: newStatus, updatedAt: serverTimestamp() });
+    
+    // Update room status based on new booking status
+    const roomDocRef = doc(firestore, 'rooms', booking.roomId);
+    if (newStatus === 'checked-in') {
+      batch.update(roomDocRef, { status: 'occupied' });
+    } else if (newStatus === 'checked-out' || newStatus === 'cancelled') {
+      // Check if another booking has this room before making it available
+      const roomSnap = await getDoc(roomDocRef);
+      if (roomSnap.exists() && roomSnap.data().status === 'occupied') {
+         batch.update(roomDocRef, { status: 'available' });
+      }
+    }
+    
+    try {
+      await batch.commit();
+      toast({
+        title: 'Status Updated',
+        description: `Booking status changed to ${newStatus}.`,
+      });
+    } catch (error) {
+      console.error("Error updating status: ", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update booking status.",
+      });
+    }
+  };
+
   const handleDeleteBooking = async (booking: Booking) => {
     if(!firestore) return;
     if(confirm('Are you sure you want to delete this booking? This cannot be undone.')) {
@@ -149,6 +185,7 @@ export default function BookingsPage() {
             const newBookingRef = doc(collection(firestore, 'bookings'));
             batch.set(newBookingRef, {
                 ...dataToSave,
+                id: newBookingRef.id,
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp(),
             });
@@ -284,10 +321,30 @@ export default function BookingsPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        {booking.status === 'confirmed' && (
+                          <DropdownMenuItem onClick={() => handleUpdateStatus(booking, 'checked-in')}>
+                            <LogIn className="mr-2 h-4 w-4" />
+                            Check-in
+                          </DropdownMenuItem>
+                        )}
+                        {booking.status === 'checked-in' && (
+                           <DropdownMenuItem onClick={() => handleUpdateStatus(booking, 'checked-out')}>
+                            <LogOut className="mr-2 h-4 w-4" />
+                            Check-out
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem onClick={() => handleEditBookingClick(booking)}>
                             <Edit className="mr-2 h-4 w-4"/>
-                            Edit
+                            Edit Details
                         </DropdownMenuItem>
+                         {(booking.status === 'confirmed') && <DropdownMenuSeparator />}
+                         {booking.status === 'confirmed' && (
+                           <DropdownMenuItem className="text-amber-600 hover:!text-amber-600" onClick={() => handleUpdateStatus(booking, 'cancelled')}>
+                              <Ban className="mr-2 h-4 w-4"/>
+                              Cancel Booking
+                           </DropdownMenuItem>
+                         )}
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem className="text-red-500 hover:!text-red-500" onClick={() => handleDeleteBooking(booking)}>
                             <Trash2 className="mr-2 h-4 w-4"/>
                             Delete
@@ -311,5 +368,3 @@ export default function BookingsPage() {
     </div>
   );
 }
-
-    

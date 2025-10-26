@@ -1,6 +1,5 @@
 
 
-
 export type UserRole = 'admin' | 'waiter' | 'payment';
 
 export type User = {
@@ -38,7 +37,8 @@ export type Booking = {
     guestPhone: string;
     checkInDate: string | { seconds: number; nanoseconds: number };
     checkOutDate: string | { seconds: number; nanoseconds: number };
-    numberOfGuests: number;
+    adults: number;
+    children: number;
     totalPrice: number;
     status: BookingStatus;
     createdAt?: string | { seconds: number; nanoseconds: number };
@@ -115,5 +115,3 @@ export type Bill = {
   createdAt?: string | { seconds: number; nanoseconds: number };
   paidAt?: string | { seconds: number; nanoseconds: number };
 };
-
-    

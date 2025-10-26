@@ -37,7 +37,8 @@ const formSchema = z.object({
   guestEmail: z.string().email('Invalid email address'),
   guestPhone: z.string().min(1, 'Guest phone is required'),
   roomId: z.string().min(1, 'Please select a room'),
-  numberOfGuests: z.coerce.number().min(1, 'At least one guest is required'),
+  adults: z.coerce.number().min(1, 'At least one adult is required'),
+  children: z.coerce.number().min(0),
   dates: z.object({
     from: z.date({ required_error: "Check-in date is required."}),
     to: z.date({ required_error: "Check-out date is required."}),
@@ -92,7 +93,8 @@ export function BookingForm({ booking, onSubmit }: BookingFormProps) {
       guestEmail: booking?.guestEmail || '',
       guestPhone: booking?.guestPhone || '',
       roomId: booking?.roomId || '',
-      numberOfGuests: booking?.numberOfGuests || 1,
+      adults: booking?.adults || 1,
+      children: booking?.children || 0,
       dates: {
         from: booking?.checkInDate ? (booking.checkInDate as any).seconds ? new Date((booking.checkInDate as any).seconds * 1000) : new Date(booking.checkInDate as string) : new Date(),
         to: booking?.checkOutDate ? (booking.checkOutDate as any).seconds ? new Date((booking.checkOutDate as any).seconds * 1000) : new Date(booking.checkOutDate as string) : addDays(new Date(), 1),
@@ -129,7 +131,8 @@ export function BookingForm({ booking, onSubmit }: BookingFormProps) {
         roomId: values.roomId,
         checkInDate: format(values.dates.from, 'yyyy-MM-dd'),
         checkOutDate: format(values.dates.to, 'yyyy-MM-dd'),
-        numberOfGuests: values.numberOfGuests,
+        adults: values.adults,
+        children: values.children,
         status: values.status,
         totalPrice: totalPrice
     };
@@ -152,17 +155,30 @@ export function BookingForm({ booking, onSubmit }: BookingFormProps) {
                 </FormItem>
             )}
             />
-            <FormField
-            control={form.control}
-            name="numberOfGuests"
-            render={({ field }) => (
-                <FormItem>
-                <FormLabel>Number of Guests</FormLabel>
-                <FormControl><Input type="number" min="1" {...field} /></FormControl>
-                <FormMessage />
-                </FormItem>
-            )}
-            />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+              control={form.control}
+              name="adults"
+              render={({ field }) => (
+                  <FormItem>
+                  <FormLabel>Adults</FormLabel>
+                  <FormControl><Input type="number" min="1" {...field} /></FormControl>
+                  <FormMessage />
+                  </FormItem>
+              )}
+              />
+              <FormField
+              control={form.control}
+              name="children"
+              render={({ field }) => (
+                  <FormItem>
+                  <FormLabel>Children</FormLabel>
+                  <FormControl><Input type="number" min="0" {...field} /></FormControl>
+                  <FormMessage />
+                  </FormItem>
+              )}
+              />
+            </div>
             <FormField
             control={form.control}
             name="guestEmail"
@@ -291,5 +307,3 @@ export function BookingForm({ booking, onSubmit }: BookingFormProps) {
     </Form>
   );
 }
-
-    

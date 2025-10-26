@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { MoreHorizontal, PlusCircle, Trash2, Edit, CheckCircle, BedDouble } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Trash2, Edit, CheckCircle, BedDouble, XCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { Booking, BookingStatus, Room } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
@@ -103,6 +103,30 @@ export default function BookingManagementPage() {
      await updateDoc(roomRef, { status: 'occupied' });
      toast({ title: 'Checked In', description: `${booking.guestName} has been checked in.` });
   }
+
+  const handleCancelBooking = async (booking: Booking) => {
+    if (!firestore) return;
+    if (confirm(`Are you sure you want to cancel the booking for ${booking.guestName}?`)) {
+      const bookingRef = doc(firestore, 'bookings', booking.id);
+      const roomRef = doc(firestore, 'rooms', booking.roomId);
+
+      try {
+        await updateDoc(bookingRef, { status: 'cancelled' });
+        // Only make the room available if it was occupied by this booking
+        if (booking.status === 'checked-in' || booking.status === 'confirmed') {
+             await updateDoc(roomRef, { status: 'available' });
+        }
+        toast({ title: 'Booking Cancelled', description: `The booking for ${booking.guestName} has been cancelled.` });
+      } catch (error) {
+         console.error("Error cancelling booking: ", error);
+         toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to cancel booking.",
+         });
+      }
+    }
+  };
 
   
   const sortedBookings = useMemo(() => {
@@ -229,6 +253,12 @@ export default function BookingManagementPage() {
                             <Edit className="mr-2 h-4 w-4"/>
                             View/Edit
                         </DropdownMenuItem>
+                        {(booking.status === 'confirmed' || booking.status === 'checked-in') && (
+                            <DropdownMenuItem onClick={() => handleCancelBooking(booking)}>
+                                <XCircle className="mr-2 h-4 w-4 text-destructive"/>
+                                Cancel Booking
+                            </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem className="text-red-500 hover:!text-red-500" onClick={() => handleDeleteBooking(booking.id)}>
                             <Trash2 className="mr-2 h-4 w-4"/>
                             Delete

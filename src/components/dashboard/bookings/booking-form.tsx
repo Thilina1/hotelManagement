@@ -39,15 +39,13 @@ const formSchema = z.object({
   roomId: z.string().min(1, 'Please select a room'),
   adults: z.coerce.number().min(1, 'At least one adult is required'),
   children: z.coerce.number().min(0),
-  dates: z.object({
-    from: z.date({ required_error: "Check-in date is required."}),
-    to: z.date({ required_error: "Check-out date is required."}),
-  }).refine(data => data.from && data.to && differenceInCalendarDays(data.to, data.from) >= 1, {
-      message: "Check-out date must be at least one day after check-in date.",
-      path: ["to"],
-  }),
+  checkInDate: z.date({ required_error: "Check-in date is required."}),
+  checkOutDate: z.date({ required_error: "Check-out date is required."}),
   status: z.enum(['confirmed', 'checked-in', 'checked-out', 'cancelled']),
   advancePayment: z.coerce.number().min(0).optional(),
+}).refine(data => data.checkInDate && data.checkOutDate && differenceInCalendarDays(data.checkOutDate, data.checkInDate) >= 1, {
+    message: "Check-out date must be at least one day after check-in date.",
+    path: ["checkOutDate"],
 });
 
 type BookingFormValues = z.infer<typeof formSchema>;
@@ -100,16 +98,15 @@ export function BookingForm({ booking, onSubmit }: BookingFormProps) {
       roomId: booking?.roomId || '',
       adults: booking?.adults || 1,
       children: booking?.children || 0,
-      dates: {
-        from: booking?.checkInDate ? (booking.checkInDate as any).seconds ? new Date((booking.checkInDate as any).seconds * 1000) : new Date(booking.checkInDate as string) : new Date(),
-        to: booking?.checkOutDate ? (booking.checkOutDate as any).seconds ? new Date((booking.checkOutDate as any).seconds * 1000) : new Date(booking.checkOutDate as string) : addDays(new Date(), 1),
-      },
+      checkInDate: booking?.checkInDate ? (booking.checkInDate as any).seconds ? new Date((booking.checkInDate as any).seconds * 1000) : new Date(booking.checkInDate as string) : new Date(),
+      checkOutDate: booking?.checkOutDate ? (booking.checkOutDate as any).seconds ? new Date((booking.checkOutDate as any).seconds * 1000) : new Date(booking.checkOutDate as string) : addDays(new Date(), 1),
       status: booking?.status || 'confirmed',
       advancePayment: booking?.advancePayment || 0,
     }), [booking]),
   });
 
-  const watchDates = form.watch('dates');
+  const watchCheckInDate = form.watch('checkInDate');
+  const watchCheckOutDate = form.watch('checkOutDate');
   const watchRoomId = form.watch('roomId');
 
   useEffect(() => {
@@ -122,27 +119,17 @@ export function BookingForm({ booking, onSubmit }: BookingFormProps) {
   }, [watchRoomId, rooms]);
 
   const totalPrice = useMemo(() => {
-    if (watchDates?.from && watchDates?.to && selectedRoomPrice > 0) {
-      const nights = differenceInCalendarDays(watchDates.to, watchDates.from);
+    if (watchCheckInDate && watchCheckOutDate && selectedRoomPrice > 0) {
+      const nights = differenceInCalendarDays(watchCheckOutDate, watchCheckInDate);
       return nights > 0 ? nights * selectedRoomPrice : 0;
     }
     return 0;
-  }, [watchDates, selectedRoomPrice]);
+  }, [watchCheckInDate, watchCheckOutDate, selectedRoomPrice]);
   
   const handleFormSubmit = (values: BookingFormValues) => {
     const submissionData = {
-        guestName: values.guestName,
-        guestEmail: values.guestEmail,
-        guestNic: values.guestNic,
-        guestPhone: values.guestPhone,
-        roomId: values.roomId,
-        checkInDate: values.dates.from,
-        checkOutDate: values.dates.to,
-        adults: values.adults,
-        children: values.children,
-        status: values.status,
+        ...values,
         totalPrice: totalPrice,
-        advancePayment: values.advancePayment,
     };
     onSubmit(submissionData as any, booking);
   };
@@ -223,53 +210,75 @@ export function BookingForm({ booking, onSubmit }: BookingFormProps) {
           />
         </div>
 
-        <FormField
-            control={form.control}
-            name="dates"
-            render={({ field }) => (
-                <FormItem className="flex flex-col">
-                    <FormLabel>Check-in / Check-out Dates</FormLabel>
-                    <Popover>
-                        <PopoverTrigger asChild>
-                        <Button
-                            id="date"
-                            variant={"outline"}
-                            className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !field.value.from && "text-muted-foreground"
-                            )}
-                        >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {field.value.from ? (
-                            field.value.to ? (
-                                <>
-                                {format(field.value.from, "LLL dd, yyyy")} -{" "}
-                                {format(field.value.to, "LLL dd, yyyy")}
-                                </>
-                            ) : (
-                                format(field.value.from, "LLL dd, yyyy")
-                            )
-                            ) : (
-                            <span>Pick a date range</span>
-                            )}
-                        </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                            initialFocus
-                            mode="range"
-                            defaultMonth={field.value.from}
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            numberOfMonths={2}
-                            disabled={{ before: new Date() }}
-                        />
-                        </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                </FormItem>
-            )}
-        />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+                control={form.control}
+                name="checkInDate"
+                render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                        <FormLabel>Check-in Date</FormLabel>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                            <Button
+                                variant={"outline"}
+                                className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                                )}
+                            >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                            </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                                mode="single"
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                disabled={{ before: new Date() }}
+                                initialFocus
+                            />
+                            </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
+             <FormField
+                control={form.control}
+                name="checkOutDate"
+                render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                        <FormLabel>Check-out Date</FormLabel>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                            <Button
+                                variant={"outline"}
+                                className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                                )}
+                            >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                            </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                                mode="single"
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                disabled={{ before: watchCheckInDate ? addDays(watchCheckInDate, 1) : new Date() }}
+                                initialFocus
+                            />
+                            </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
+        </div>
+        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
             control={form.control}
@@ -339,3 +348,5 @@ export function BookingForm({ booking, onSubmit }: BookingFormProps) {
     </Form>
   );
 }
+
+    

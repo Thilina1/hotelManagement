@@ -9,6 +9,7 @@ import { AtSign, Lock } from "lucide-react";
 import { useState, useEffect } from "react";
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useAuth, useUser } from '@/firebase';
+import { useTranslations } from 'next-intl';
 
 import { Button } from "@/components/ui/button";
 import {
@@ -43,6 +44,7 @@ export default function LoginPage() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const loginImage = PlaceHolderImages.find(p => p.id === 'login-background');
+  const t = useTranslations('LoginPage');
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -61,6 +63,7 @@ export default function LoginPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
+      if (!auth) throw new Error("Auth service not available");
       await signInWithEmailAndPassword(auth, values.email, values.password);
       toast({
         title: "Login Successful",
@@ -99,9 +102,9 @@ export default function LoginPage() {
                 Hotel
               </h1>
             </div>
-            <CardTitle className="text-2xl font-headline">Welcome Back</CardTitle>
+            <CardTitle className="text-2xl font-headline">{t('title')}</CardTitle>
             <CardDescription>
-              Enter your credentials to access your dashboard
+              {t('description')}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -112,11 +115,11 @@ export default function LoginPage() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
+                      <FormLabel>{t('email_label')}</FormLabel>
                       <FormControl>
                         <div className="relative">
                            <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                           <Input placeholder="e.g. admin@example.com" {...field} className="pl-10 bg-input border-white/30" />
+                           <Input placeholder={t('email_placeholder')} {...field} className="pl-10 bg-input border-white/30" />
                         </div>
                       </FormControl>
                       <FormMessage />
@@ -128,11 +131,11 @@ export default function LoginPage() {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Password</FormLabel>
+                      <FormLabel>{t('password_label')}</FormLabel>
                       <FormControl>
                         <div className="relative">
                             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input type="password" placeholder="••••••••" {...field} className="pl-10 bg-input border-white/30"/>
+                            <Input type="password" placeholder={t('password_placeholder')} {...field} className="pl-10 bg-input border-white/30"/>
                         </div>
                       </FormControl>
                       <FormMessage />
@@ -140,7 +143,7 @@ export default function LoginPage() {
                   )}
                 />
                 <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" disabled={isLoading}>
-                  {isLoading ? "Signing In..." : "Sign In"}
+                  {isLoading ? t('submit_button_loading') : t('submit_button')}
                 </Button>
               </form>
             </Form>

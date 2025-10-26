@@ -1,9 +1,9 @@
 {
     "LoginPage": {
         "title": "නැවත සාදරයෙන් පිළිගනිමු",
-        "description": "ඔබගේ උපකරණ පුවරුවට පිවිසීමට ඔබගේ ఆధార διαතුළත් කරන්න",
+        "description": "ඔබගේ උපකරණ පුවරුවට පිවිසීමට ඔබගේ ఆధార ඇතුළත් කරන්න",
         "email_label": "විද්‍යුත් තැපෑල",
-        "email_placeholder": "උദാ. admin@example.com",
+        "email_placeholder": "උදා. admin@example.com",
         "password_label": "මුරපදය",
         "password_placeholder": "••••••••",
         "submit_button": "පුරනය වන්න",

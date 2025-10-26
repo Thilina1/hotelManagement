@@ -177,7 +177,6 @@ export default function TableOrderPage() {
                 subtotal: openOrder.totalPrice,
                 discount: 0,
                 total: openOrder.totalPrice,
-                billType: 'restaurant',
                 createdAt: serverTimestamp(),
             });
 

@@ -29,8 +29,6 @@ const getPageTitle = (pathname: string) => {
             return 'Profile';
         case '/dashboard/user-management':
             return 'User Management';
-        case '/dashboard/room-management':
-            return 'Room Management';
         case '/dashboard/menu-management':
             return 'Menu Management';
         case '/dashboard/table-management':
@@ -39,12 +37,8 @@ const getPageTitle = (pathname: string) => {
             return 'Inventory Management';
         case '/dashboard/billing':
             return 'Restaurant Billing';
-        case '/dashboard/booking-billing':
-            return 'Booking Billing';
         case '/dashboard/reports':
             return 'Reports';
-        case '/dashboard/bookings':
-            return 'Booking Management';
         default:
              if (pathname.startsWith('/dashboard/tables/')) {
                 return 'Table Order';
@@ -107,3 +101,5 @@ export default function DashboardHeader() {
     </header>
   );
 }
+
+    

@@ -26,12 +26,9 @@ import type { UserRole } from '@/lib/types';
 
 const allMenuItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', roles: ['admin', 'waiter', 'payment'] as UserRole[] },
-  { href: '/dashboard/bookings', icon: CalendarCheck, label: 'Booking Management', roles: ['admin'] as UserRole[] },
-  { href: '/dashboard/booking-billing', icon: WalletCards, label: 'Booking Billing', roles: ['admin', 'payment'] as UserRole[] },
   { href: '/dashboard/reports', icon: BarChart, label: 'Reports', roles: ['admin', 'payment'] as UserRole[] },
   { href: '/dashboard/billing', icon: CreditCard, label: 'Restaurant Billing', roles: ['admin', 'payment'] as UserRole[] },
   { href: '/dashboard/user-management', icon: Users, label: 'User Management', roles: ['admin'] as UserRole[] },
-  { href: '/dashboard/room-management', icon: BedDouble, label: 'Room Management', roles: ['admin'] as UserRole[] },
   { href: '/dashboard/menu-management', icon: UtensilsCrossed, label: 'Menu Management', roles: ['admin'] as UserRole[] },
   { href: '/dashboard/table-management', icon: TableIcon, label: 'Table Management', roles: ['admin'] as UserRole[] },
   { href: '/dashboard/inventory-management', icon: Boxes, label: 'Inventory', roles: ['admin'] as UserRole[] },
@@ -101,3 +98,5 @@ export default function AppSidebar() {
         </Sidebar>
     );
 }
+
+    

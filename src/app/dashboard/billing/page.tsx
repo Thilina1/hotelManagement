@@ -36,7 +36,6 @@ export default function BillingPage() {
     if (!firestore) return null;
     return query(
         collection(firestore, 'bills'), 
-        where('billType', '==', 'restaurant'),
         where('status', '==', 'unpaid'),
         orderBy('createdAt', 'desc')
     );
@@ -46,7 +45,6 @@ export default function BillingPage() {
     if (!firestore) return null;
     return query(
         collection(firestore, 'bills'),
-        where('billType', '==', 'restaurant'),
         where('status', '==', 'paid'),
         orderBy('createdAt', 'desc')
     );
@@ -165,7 +163,7 @@ export default function BillingPage() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Bill No.</TableHead>
-                                <TableHead>Reference</TableHead>
+                                <TableHead>Table No.</TableHead>
                                 <TableHead>Waiter/Staff</TableHead>
                                 <TableHead>Total</TableHead>
                                 <TableHead>Status</TableHead>
@@ -228,7 +226,7 @@ export default function BillingPage() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Bill No.</TableHead>
-                                <TableHead>Reference</TableHead>
+                                <TableHead>Table No.</TableHead>
                                 <TableHead>Waiter/Staff</TableHead>
                                 <TableHead>Total</TableHead>
                                 <TableHead>Payment Method</TableHead>

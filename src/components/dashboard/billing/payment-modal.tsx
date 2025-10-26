@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { doc, writeBatch, serverTimestamp, getDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
-import type { Bill, OrderItem, PaymentMethod, Booking } from '@/lib/types';
+import type { Bill, OrderItem, PaymentMethod } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
@@ -57,17 +57,7 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
     };
     batch.update(billRef, finalBillData);
     
-    if(bill.bookingId) {
-        const bookingRef = doc(firestore, 'bookings', bill.bookingId);
-        const bookingSnap = await getDoc(bookingRef);
-        if (bookingSnap.exists()) {
-            const bookingData = bookingSnap.data() as Booking;
-            batch.update(bookingRef, { status: 'checked-out', updatedAt: paidAtTimestamp });
-
-            const roomRef = doc(firestore, 'rooms', bookingData.roomId);
-            batch.update(roomRef, { status: 'available' });
-        }
-    } else if (bill.orderId) { 
+    if (bill.orderId) { 
         const orderRef = doc(firestore, 'orders', bill.orderId);
         batch.update(orderRef, { status: 'paid', updatedAt: paidAtTimestamp });
         
@@ -124,7 +114,7 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
                         <span>LKR {(item.price * item.quantity).toFixed(2)}</span>
                     </div>
                 )) : (
-                   <p className="text-sm text-muted-foreground">This is a room charge or contains only extras billed directly.</p>
+                   <p className="text-sm text-muted-foreground">This bill does not contain item details.</p>
                 )}
             </div>
             <Separator />
@@ -198,3 +188,5 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
     </Dialog>
   );
 }
+
+    

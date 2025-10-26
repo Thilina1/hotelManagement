@@ -1,4 +1,5 @@
 
+
 export type UserRole = 'admin' | 'waiter' | 'payment';
 
 export type User = {
@@ -10,51 +11,6 @@ export type User = {
   updatedAt?: string | { seconds: number; nanoseconds: number };
   createdBy?: string;
   updatedBy?: string;
-};
-
-export type RoomStatus = 'available' | 'occupied' | 'cleaning' | 'maintenance';
-export type RoomType = 'Single' | 'Double' | 'Suite' | 'Family';
-
-export type Room = {
-  id: string;
-  roomNumber: string;
-  type: RoomType;
-  status: RoomStatus;
-  price: number;
-  createdAt?: string | { seconds: number; nanoseconds: number };
-  updatedAt?: string | { seconds: number; nanoseconds: number };
-};
-
-export type BookingStatus = 'confirmed' | 'checked-in' | 'checked-out' | 'cancelled';
-
-export type PackageActivity = {
-    breakfast: boolean;
-    lunch: boolean;
-    dinner: boolean;
-    tea: boolean;
-    activity1: boolean;
-    activity2: boolean;
-};
-
-export type Booking = {
-    id: string;
-    roomId: string;
-    roomNumber?: string; // Denormalized for display
-    guestName: string;
-    guestEmail: string;
-    guestNic: string;
-    guestPhone: string;
-    checkInDate: string | { seconds: number; nanoseconds: number };
-    checkOutDate: string | { seconds: number; nanoseconds: number };
-    adults: number;
-    children: number;
-    totalPrice: number;
-    advancePayment: number;
-    status: BookingStatus;
-    packageActivities: Record<string, PackageActivity>;
-    extraCharges?: number;
-    createdAt?: string | { seconds: number; nanoseconds: number };
-    updatedAt?: string | { seconds: number; nanoseconds: number };
 };
 
 export type MenuCategory = 'Sri Lankan' | 'Western' | 'Bar';
@@ -90,8 +46,7 @@ export type OrderStatus = 'open' | 'billed' | 'paid' | 'cancelled';
 
 export type Order = {
     id: string;
-    tableId?: string; // Optional for booking orders
-    bookingId?: string; // Optional for table orders
+    tableId: string;
     status: OrderStatus;
     totalPrice: number;
     waiterId?: string;
@@ -111,14 +66,12 @@ export type OrderItem = {
 
 export type BillStatus = 'unpaid' | 'paid';
 export type PaymentMethod = 'cash' | 'card';
-export type BillType = 'restaurant' | 'booking';
 
 export type Bill = {
   id: string;
   billNumber: string;
-  orderId?: string; // Optional, can be direct from booking
-  bookingId?: string;
-  tableId?: string;
+  orderId: string;
+  tableId: string;
   tableNumber: string;
   waiterName?: string;
   items: OrderItem[];
@@ -127,7 +80,6 @@ export type Bill = {
   subtotal: number;
   discount: number; // Percentage
   total: number;
-  billType: BillType;
   createdAt?: string | { seconds: number; nanoseconds: number };
   paidAt?: string | { seconds: number; nanoseconds: number };
 };

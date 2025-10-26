@@ -215,10 +215,10 @@ export default function BookingsPage() {
 
   const formatDate = (date: any) => {
     if (!date) return 'N/A';
-    if (date.seconds) { // Firestore Timestamp
-        return format(new Date(date.seconds * 1000), 'PPP');
-    }
-    return format(new Date(date), 'PPP');
+    // Handle both Firestore Timestamps and date strings
+    const dateObj = date.seconds ? new Date(date.seconds * 1000) : new Date(date);
+    if (isNaN(dateObj.getTime())) return 'Invalid Date';
+    return format(dateObj, 'PPP');
   }
 
   if (!currentUser || areBookingsLoading) {
@@ -371,3 +371,5 @@ export default function BookingsPage() {
     </div>
   );
 }
+
+    

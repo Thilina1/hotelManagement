@@ -27,8 +27,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { addDays, differenceInCalendarDays, format } from 'date-fns';
-import { DateRange } from 'react-day-picker';
-import type { Booking, Room, BookingStatus } from '@/lib/types';
+import type { Booking, Room } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 
@@ -43,6 +42,9 @@ const formSchema = z.object({
   dates: z.object({
     from: z.date({ required_error: "Check-in date is required."}),
     to: z.date({ required_error: "Check-out date is required."}),
+  }).refine(data => data.from && data.to && differenceInCalendarDays(data.to, data.from) >= 0, {
+      message: "Check-out date must be after check-in date.",
+      path: ["to"],
   }),
   status: z.enum(['confirmed', 'checked-in', 'checked-out', 'cancelled']),
   advancePayment: z.coerce.number().min(0).optional(),
@@ -112,17 +114,17 @@ export function BookingForm({ booking, onSubmit }: BookingFormProps) {
 
   useEffect(() => {
     if(watchRoomId) {
-        const room = availableRooms.find(r => r.id === watchRoomId);
+        const room = rooms?.find(r => r.id === watchRoomId); // Use `rooms` directly to get price
         setSelectedRoomPrice(room?.price || 0);
     } else {
         setSelectedRoomPrice(0);
     }
-  }, [watchRoomId, availableRooms]);
+  }, [watchRoomId, rooms]);
 
   const totalPrice = useMemo(() => {
     if (watchDates?.from && watchDates?.to && selectedRoomPrice > 0) {
       const nights = differenceInCalendarDays(watchDates.to, watchDates.from);
-      return nights > 0 ? nights * selectedRoomPrice : selectedRoomPrice;
+      return nights > 0 ? nights * selectedRoomPrice : selectedRoomPrice; // Charge for at least one night
     }
     return 0;
   }, [watchDates, selectedRoomPrice]);
@@ -134,15 +136,15 @@ export function BookingForm({ booking, onSubmit }: BookingFormProps) {
         guestNic: values.guestNic,
         guestPhone: values.guestPhone,
         roomId: values.roomId,
-        checkInDate: format(values.dates.from, 'yyyy-MM-dd'),
-        checkOutDate: format(values.dates.to, 'yyyy-MM-dd'),
+        checkInDate: values.dates.from,
+        checkOutDate: values.dates.to,
         adults: values.adults,
         children: values.children,
         status: values.status,
         totalPrice: totalPrice,
         advancePayment: values.advancePayment,
     };
-    onSubmit(submissionData, booking);
+    onSubmit(submissionData as any, booking);
   };
 
 

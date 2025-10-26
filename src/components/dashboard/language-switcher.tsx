@@ -1,7 +1,7 @@
 
 'use client';
 
-import { usePathname, useRouter } from 'next-intl/client';
+import { usePathname, useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 import {
   DropdownMenu,
@@ -19,7 +19,12 @@ export default function LanguageSwitcher() {
 
   const changeLanguage = (locale: string) => {
     startTransition(() => {
-      router.replace(pathname, { locale });
+      // The pathname includes the current locale, so we need to remove it
+      // before prepending the new one.
+      const newPath = pathname.startsWith('/si') || pathname.startsWith('/en')
+        ? pathname.substring(3)
+        : pathname;
+      router.replace(`/${locale}${newPath}`);
     });
   };
 

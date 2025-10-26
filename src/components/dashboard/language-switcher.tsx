@@ -24,7 +24,7 @@ export default function LanguageSwitcher() {
       const newPath = pathname.startsWith('/si') || pathname.startsWith('/en')
         ? pathname.substring(3)
         : pathname;
-      router.replace(`/${locale}${newPath}`);
+      router.replace(`/${locale}${newPath || '/'}`);
     });
   };
 

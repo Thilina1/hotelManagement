@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { User } from '@/lib/types';
@@ -29,6 +30,9 @@ export default function DashboardPage() {
             case 'payment':
                 return <PaymentDashboard />;
             default:
+                // For payment role, we can show the payment dashboard as a default
+                // if we want to combine roles or show a specific view.
+                // For now, let's assume 'payment' has its own dashboard.
                 return (
                     <div className="text-center">
                         <h2 className="text-2xl font-bold">Invalid Role</h2>

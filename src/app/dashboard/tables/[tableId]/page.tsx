@@ -234,7 +234,7 @@ export default function TableOrderPage() {
     return (
         <div className="container mx-auto p-4 space-y-6">
             <header>
-                <h1 className="text-3xl font-headline font-bold">Table {table?.tableNumber} - Order</h1>
+                <h1 className="text-3xl font-headline font-bold">Table ${table?.tableNumber} - Order</h1>
                 <p className="text-muted-foreground">Add items to the order and manage the bill.</p>
             </header>
 
@@ -250,9 +250,9 @@ export default function TableOrderPage() {
                                 {menuItems?.filter(item => item.availability).map(item => (
                                     <div key={item.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted">
                                         <div>
-                                            <p className="font-semibold">{item.name}</p>
-                                            <p className="text-sm text-muted-foreground">${item.price.toFixed(2)}</p>
-                                            {item.stockType === 'Inventoried' && <p className="text-xs text-primary">Stock: {item.stock}</p>}
+                                            <p className="font-semibold">${item.name}</p>
+                                            <p className="text-sm text-muted-foreground">$${item.price.toFixed(2)}</p>
+                                            {item.stockType === 'Inventoried' && <p className="text-xs text-primary">Stock: ${item.stock}</p>}
                                         </div>
                                         <Button size="sm" onClick={() => handleAddItem(item)}>
                                             <PlusCircle className="mr-2 h-4 w-4" /> Add
@@ -267,7 +267,7 @@ export default function TableOrderPage() {
                 <Card className="sticky top-24">
                     <CardHeader>
                         <CardTitle className="flex items-center"><ShoppingCart className="mr-2"/> Current Bill</CardTitle>
-                         {table && <Badge className="capitalize w-fit">{table.status}</Badge>}
+                         {table && <Badge className="capitalize w-fit">${table.status}</Badge>}
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <Separator />
@@ -275,8 +275,8 @@ export default function TableOrderPage() {
                          <ScrollArea className="h-40">
                              {orderItems && orderItems.map(item => (
                                 <div key={item.id} className="flex justify-between items-center text-sm">
-                                    <p>{item.name} x {item.quantity}</p>
-                                    <p>${(item.price * item.quantity).toFixed(2)}</p>
+                                    <p>${item.name} x ${item.quantity}</p>
+                                    <p>$${(item.price * item.quantity).toFixed(2)}</p>
                                 </div>
                             ))}
                             {!areOrderItemsLoading && (!orderItems || orderItems.length === 0) && <p className="text-sm text-muted-foreground">No items in the current order.</p>}
@@ -292,10 +292,10 @@ export default function TableOrderPage() {
                                 return (
                                     <div key={id} className="flex justify-between items-center text-sm">
                                         <div>
-                                          <p>{item.name} x {quantity}</p>
+                                          <p>${item.name} x ${quantity}</p>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <p>${(item.price * quantity).toFixed(2)}</p>
+                                            <p>$${(item.price * quantity).toFixed(2)}</p>
                                             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleAddItem(item)}><PlusCircle className="h-4 w-4" /></Button>
                                             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRemoveItem(id)}><MinusCircle className="h-4 w-4" /></Button>
                                         </div>
@@ -311,7 +311,7 @@ export default function TableOrderPage() {
                         <Separator/>
                         <div className="w-full flex justify-between items-center text-xl font-bold">
                             <span>Total Bill:</span>
-                            <span>${totalBill.toFixed(2)}</span>
+                            <span>$${totalBill.toFixed(2)}</span>
                         </div>
                         <Button className="w-full" onClick={handleAddItemsToBill} disabled={Object.keys(localOrder).length === 0}>Add Items to Bill</Button>
                         <Button className="w-full" variant="secondary" onClick={handleProcessPayment} disabled={!openOrder}>
@@ -323,6 +323,3 @@ export default function TableOrderPage() {
         </div>
     );
 }
-    
-
-    

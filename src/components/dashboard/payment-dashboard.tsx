@@ -11,7 +11,7 @@ import { collection, query, where } from 'firebase/firestore';
 import type { Bill } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { PaymentModal } from './billing/payment-modal';
+import { PaymentModal } from '@/components/dashboard/billing/payment-modal';
 
 const statusColors: Record<string, string> = {
     'unpaid': 'bg-red-500 text-white',
@@ -71,15 +71,15 @@ export default function PaymentDashboard() {
                         ))}
                         {!isLoading && bills && bills.map(bill => (
                             <TableRow key={bill.id}>
-                                <TableCell className="font-medium">{bill.tableNumber}</TableCell>
-                                <TableCell>${bill.total.toFixed(2)}</TableCell>
+                                <TableCell className="font-medium">${bill.tableNumber}</TableCell>
+                                <TableCell>$${bill.total.toFixed(2)}</TableCell>
                                 <TableCell>
                                     <Badge className={`capitalize ${statusColors[bill.status]}`}>
-                                        {bill.status}
+                                        ${bill.status}
                                     </Badge>
                                 </TableCell>
                                 <TableCell>
-                                    {bill.createdAt ? new Date((bill.createdAt as any).seconds * 1000).toLocaleString() : 'N/A'}
+                                    ${bill.createdAt ? new Date((bill.createdAt as any).seconds * 1000).toLocaleString() : 'N/A'}
                                 </TableCell>
                                 <TableCell className="text-right">
                                     <Button variant="outline" size="sm" onClick={() => handleViewBill(bill)}>

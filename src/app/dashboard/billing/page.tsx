@@ -36,8 +36,8 @@ export default function BillingPage() {
     if (!firestore) return null;
     return query(
         collection(firestore, 'bills'), 
+        where('billType', '==', 'restaurant'),
         where('status', '==', 'unpaid'),
-        where('bookingId', '==', null),
         orderBy('createdAt', 'desc')
     );
   }, [firestore]);
@@ -46,8 +46,8 @@ export default function BillingPage() {
     if (!firestore) return null;
     return query(
         collection(firestore, 'bills'),
+        where('billType', '==', 'restaurant'),
         where('status', '==', 'paid'),
-        where('bookingId', '==', null),
         orderBy('createdAt', 'desc')
     );
   }, [firestore]);

@@ -111,6 +111,7 @@ export type OrderItem = {
 
 export type BillStatus = 'unpaid' | 'paid';
 export type PaymentMethod = 'cash' | 'card';
+export type BillType = 'restaurant' | 'booking';
 
 export type Bill = {
   id: string;
@@ -126,6 +127,9 @@ export type Bill = {
   subtotal: number;
   discount: number; // Percentage
   total: number;
+  billType: BillType;
   createdAt?: string | { seconds: number; nanoseconds: number };
   paidAt?: string | { seconds: number; nanoseconds: number };
 };
+
+    

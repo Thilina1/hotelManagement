@@ -235,6 +235,7 @@ export default function BookingsPage() {
           subtotal: finalTotal,
           discount: 0,
           total: finalTotal,
+          billType: 'booking',
           createdAt: serverTimestamp(),
       });
       
@@ -429,3 +430,5 @@ export default function BookingsPage() {
     </div>
   );
 }
+
+    

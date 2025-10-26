@@ -1,5 +1,6 @@
 
 
+
 export type UserRole = 'admin' | 'waiter' | 'payment';
 
 export type User = {
@@ -31,10 +32,12 @@ export type BookingStatus = 'confirmed' | 'checked-in' | 'checked-out' | 'cancel
 export type Booking = {
     id: string;
     roomId: string;
+    roomNumber?: string; // Denormalized for display
     guestName: string;
     guestEmail: string;
-    checkInDate: string;
-    checkOutDate: string;
+    guestPhone: string;
+    checkInDate: string | { seconds: number; nanoseconds: number };
+    checkOutDate: string | { seconds: number; nanoseconds: number };
     numberOfGuests: number;
     totalPrice: number;
     status: BookingStatus;
@@ -112,3 +115,5 @@ export type Bill = {
   createdAt?: string | { seconds: number; nanoseconds: number };
   paidAt?: string | { seconds: number; nanoseconds: number };
 };
+
+    

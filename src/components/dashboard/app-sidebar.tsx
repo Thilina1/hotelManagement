@@ -12,7 +12,7 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, LayoutDashboard, Users, UserCog, BedDouble, UtensilsCrossed, Boxes, CreditCard, BarChart } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, UserCog, BedDouble, UtensilsCrossed, Boxes, CreditCard, BarChart, CalendarCheck } from 'lucide-react';
 import { useAuth } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
@@ -26,6 +26,7 @@ import type { UserRole } from '@/lib/types';
 
 const allMenuItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', roles: ['admin', 'waiter', 'payment'] as UserRole[] },
+  { href: '/dashboard/bookings', icon: CalendarCheck, label: 'Bookings', roles: ['admin'] as UserRole[] },
   { href: '/dashboard/reports', icon: BarChart, label: 'Reports', roles: ['admin', 'payment'] as UserRole[] },
   { href: '/dashboard/billing', icon: CreditCard, label: 'Billing', roles: ['admin', 'payment'] as UserRole[] },
   { href: '/dashboard/user-management', icon: Users, label: 'User Management', roles: ['admin'] as UserRole[] },
@@ -45,7 +46,9 @@ export default function AppSidebar() {
     const avatar = PlaceHolderImages.find(p => p.id === 'avatar-1');
 
     const logout = async () => {
-        await signOut(auth);
+        if (auth) {
+          await signOut(auth);
+        }
         router.push('/');
     };
     
@@ -97,5 +100,7 @@ export default function AppSidebar() {
         </Sidebar>
     );
 }
+
+    
 
     

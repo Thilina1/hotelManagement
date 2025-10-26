@@ -41,6 +41,8 @@ const getPageTitle = (pathname: string) => {
             return 'Billing';
         case '/dashboard/reports':
             return 'Reports';
+        case '/dashboard/bookings':
+            return 'Bookings';
         default:
              if (pathname.startsWith('/dashboard/tables/')) {
                 return 'Table Order';
@@ -57,7 +59,9 @@ export default function DashboardHeader() {
   const avatar = PlaceHolderImages.find(p => p.id === 'avatar-1');
 
   const handleLogout = async () => {
-    await signOut(auth);
+    if (auth) {
+      await signOut(auth);
+    }
     router.push('/');
   };
 
@@ -101,3 +105,5 @@ export default function DashboardHeader() {
     </header>
   );
 }
+
+    

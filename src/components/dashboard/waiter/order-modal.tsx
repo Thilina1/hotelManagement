@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { useUserContext } from '@/context/user-context';
 
 interface OrderModalProps {
     table: TableType;
@@ -34,6 +35,7 @@ const menuCategories: MenuCategory[] = ['Sri Lankan', 'Western', 'Bar'];
 export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
     const firestore = useFirestore();
     const { toast } = useToast();
+    const { user: currentUser } = useUserContext();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<MenuCategory | null>(null);
     const fallbackImage = PlaceHolderImages.find(p => p.id === 'login-background');
@@ -131,7 +133,7 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
     };
 
     const handleAddItemsToBill = async () => {
-        if (!firestore || !table || Object.keys(localOrder).length === 0) return;
+        if (!firestore || !table || !currentUser || Object.keys(localOrder).length === 0) return;
 
         const batch = writeBatch(firestore);
         let currentOrderId = openOrder?.id;
@@ -143,6 +145,8 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                     tableId: table.id,
                     status: 'open',
                     totalPrice: 0,
+                    waiterId: currentUser.id,
+                    waiterName: currentUser.name,
                     createdAt: serverTimestamp(),
                     updatedAt: serverTimestamp(),
                 });
@@ -190,7 +194,9 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
             const orderRef = doc(firestore, 'orders', currentOrderId);
             batch.update(orderRef, { 
                 totalPrice: increment(orderTotalPriceUpdate), 
-                updatedAt: serverTimestamp() 
+                updatedAt: serverTimestamp(),
+                waiterId: currentUser.id, // Update waiter info on each add
+                waiterName: currentUser.name,
             });
             
             if (table.status === 'available') {
@@ -225,11 +231,15 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
             const allItemsSnapshot = await getDocs(collection(firestore, 'orders', openOrder.id, 'items'));
             const allOrderItems: OrderItem[] = allItemsSnapshot.docs.map(doc => ({id: doc.id, ...doc.data()} as OrderItem));
 
+            const billNumber = `BILL-${Date.now()}`;
+
             const billRef = doc(collection(firestore, 'bills'));
             batch.set(billRef, {
+                billNumber,
                 orderId: openOrder.id,
                 tableId: table.id,
                 tableNumber: table.tableNumber,
+                waiterName: openOrder.waiterName || 'N/A',
                 items: allOrderItems,
                 status: 'unpaid',
                 subtotal: openOrder.totalPrice,
@@ -333,6 +343,7 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                         <CardHeader>
                             <CardTitle className="flex items-center"><ShoppingCart className="mr-2"/> Current Bill</CardTitle>
                             {table && <Badge className="capitalize w-fit">{table.status}</Badge>}
+                            {openOrder?.waiterName && <p className="text-sm text-muted-foreground pt-1">Waiter: {openOrder.waiterName}</p>}
                         </CardHeader>
                         <CardContent className="space-y-4 flex-1 overflow-auto">
                            
@@ -383,7 +394,7 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                             </div>
                             <Button className="w-full" onClick={handleAddItemsToBill} disabled={Object.keys(localOrder).length === 0}>Add Items to Bill</Button>
                              <Button className="w-full" variant="secondary" onClick={handleProcessPayment} disabled={!openOrder}>
-                               <CheckCircle className="mr-2"/> Process Payment & Close Bill
+                               <CheckCircle className="mr-2"/> Send to Payment
                             </Button>
                         </CardFooter>
                     </Card>
@@ -392,4 +403,3 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
         </Dialog>
     );
 }
-

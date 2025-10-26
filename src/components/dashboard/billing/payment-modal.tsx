@@ -104,7 +104,8 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
             Bill for Table {bill.tableNumber}
           </DialogTitle>
            <DialogDescription>
-            Process the payment for this bill. Created at: {bill.createdAt ? new Date((bill.createdAt as any).seconds * 1000).toLocaleTimeString() : 'N/A'}
+            <p>Bill No: <span className="font-mono">{bill.billNumber}</span></p>
+            <p>Waiter: {bill.waiterName || 'N/A'}</p>
           </DialogDescription>
         </DialogHeader>
         <div className="py-4 space-y-4">

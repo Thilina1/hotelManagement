@@ -5,7 +5,7 @@ import { useState, useRef, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { CreditCard, Eye, CircleSlash, History, Printer, Wallet } from "lucide-react";
+import { CreditCard, Eye, CircleSlash, History, Printer, Wallet, User as UserIcon } from "lucide-react";
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy, Timestamp } from 'firebase/firestore';
 import type { Bill, OrderItem, PaymentMethod } from '@/lib/types';
@@ -129,7 +129,9 @@ export default function BillingPage() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Table No.</TableHead>
+                                <TableHead>Bill No.</TableHead>
+                                <TableHead>Table</TableHead>
+                                <TableHead>Waiter</TableHead>
                                 <TableHead>Total</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead>Created At</TableHead>
@@ -139,12 +141,14 @@ export default function BillingPage() {
                         <TableBody>
                             {isLoadingUnpaid && [...Array(5)].map((_, i) => (
                                 <TableRow key={i}>
-                                    <TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell>
+                                    <TableCell colSpan={7}><Skeleton className="h-8 w-full" /></TableCell>
                                 </TableRow>
                             ))}
                             {!isLoadingUnpaid && sortedUnpaidBills && sortedUnpaidBills.map(bill => (
                                 <TableRow key={bill.id}>
+                                    <TableCell className="font-mono text-xs">{bill.billNumber}</TableCell>
                                     <TableCell className="font-medium">{bill.tableNumber}</TableCell>
+                                    <TableCell>{bill.waiterName || 'N/A'}</TableCell>
                                     <TableCell>${bill.total.toFixed(2)}</TableCell>
                                     <TableCell>
                                         <Badge className={`capitalize ${statusColors[bill.status]}`}>
@@ -164,7 +168,7 @@ export default function BillingPage() {
                             ))}
                             {!isLoadingUnpaid && (!sortedUnpaidBills || sortedUnpaidBills.length === 0) && (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
+                                    <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
                                         <div className="flex flex-col items-center gap-2">
                                             <CircleSlash className="h-10 w-10" />
                                             <p>No pending bills found.</p>
@@ -188,7 +192,9 @@ export default function BillingPage() {
                      <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Table No.</TableHead>
+                                <TableHead>Bill No.</TableHead>
+                                <TableHead>Table</TableHead>
+                                <TableHead>Waiter</TableHead>
                                 <TableHead>Total</TableHead>
                                 <TableHead>Payment Method</TableHead>
                                 <TableHead>Paid At</TableHead>
@@ -198,14 +204,16 @@ export default function BillingPage() {
                         <TableBody>
                             {isLoadingPaid && [...Array(5)].map((_, i) => (
                                 <TableRow key={i}>
-                                    <TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell>
+                                    <TableCell colSpan={7}><Skeleton className="h-8 w-full" /></TableCell>
                                 </TableRow>
                             ))}
                             {!isLoadingPaid && paidBills && paidBills.map(bill => {
                                  const PaymentIcon = bill.paymentMethod ? paymentMethodIcons[bill.paymentMethod] : null;
                                  return (
                                     <TableRow key={bill.id}>
+                                        <TableCell className="font-mono text-xs">{bill.billNumber}</TableCell>
                                         <TableCell className="font-medium">{bill.tableNumber}</TableCell>
+                                        <TableCell>{bill.waiterName || 'N/A'}</TableCell>
                                         <TableCell>${bill.total.toFixed(2)}</TableCell>
                                         <TableCell>
                                             <Badge variant="outline" className="capitalize flex gap-1 items-center w-fit">
@@ -227,7 +235,7 @@ export default function BillingPage() {
                             })}
                             {!isLoadingPaid && (!paidBills || paidBills.length === 0) && (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
+                                    <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
                                         <div className="flex flex-col items-center gap-2">
                                             <CircleSlash className="h-10 w-10" />
                                             <p>No paid bills found.</p>

@@ -43,8 +43,9 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ bill, i
       </div>
       
       <div className="mb-6">
-          <p><strong>Receipt ID:</strong> {bill.id}</p>
+          <p><strong>Bill No:</strong> {bill.billNumber}</p>
           <p><strong>Table No:</strong> {bill.tableNumber}</p>
+          <p><strong>Waiter:</strong> {bill.waiterName || 'N/A'}</p>
           <p><strong>Date:</strong> {getPaidAtDate()}</p>
       </div>
 

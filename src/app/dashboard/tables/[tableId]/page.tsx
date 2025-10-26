@@ -14,11 +14,13 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { PlusCircle, MinusCircle, ShoppingCart, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useUserContext } from '@/context/user-context';
 
 export default function TableOrderPage() {
     const { tableId } = useParams() as { tableId: string };
     const firestore = useFirestore();
     const { toast } = useToast();
+    const { user: currentUser } = useUserContext();
 
     // Fetch table details
     const tableRef = useMemoFirebase(() => firestore && tableId ? doc(firestore, 'tables', tableId) : null, [firestore, tableId]);
@@ -70,7 +72,7 @@ export default function TableOrderPage() {
     };
 
     const handleAddItemsToBill = async () => {
-        if (!firestore || !table || Object.keys(localOrder).length === 0) return;
+        if (!firestore || !table || !currentUser || Object.keys(localOrder).length === 0) return;
 
         const batch = writeBatch(firestore);
         let currentOrder = openOrder;
@@ -84,6 +86,8 @@ export default function TableOrderPage() {
                     tableId,
                     status: 'open',
                     totalPrice: 0,
+                    waiterId: currentUser.id,
+                    waiterName: currentUser.name,
                     createdAt: serverTimestamp(),
                     updatedAt: serverTimestamp(),
                 });
@@ -120,7 +124,13 @@ export default function TableOrderPage() {
             }
 
             const orderRef = doc(firestore, 'orders', currentOrderId);
-            batch.update(orderRef, { totalPrice: orderTotalPrice, updatedAt: serverTimestamp() });
+            batch.update(orderRef, { 
+                totalPrice: orderTotalPrice, 
+                updatedAt: serverTimestamp(),
+                // Also update waiter info in case a different user adds items
+                waiterId: currentUser.id,
+                waiterName: currentUser.name,
+             });
             
             if (table.status === 'available') {
                 const tableDocRef = doc(firestore, 'tables', tableId);
@@ -150,13 +160,18 @@ export default function TableOrderPage() {
             // Fetch all items for the bill.
             const allItemsSnapshot = await getDocs(collection(firestore, 'orders', openOrder.id, 'items'));
             const allOrderItems: OrderItem[] = allItemsSnapshot.docs.map(doc => ({id: doc.id, ...doc.data()} as OrderItem));
+            
+            // Generate a unique, readable bill number
+            const billNumber = `BILL-${Date.now()}`;
 
             // Create the bill document with all items.
             const billRef = doc(collection(firestore, 'bills'));
             batch.set(billRef, {
+                billNumber,
                 orderId: openOrder.id,
                 tableId: table.id,
                 tableNumber: table.tableNumber,
+                waiterName: openOrder.waiterName || 'N/A',
                 items: allOrderItems,
                 status: 'unpaid',
                 subtotal: openOrder.totalPrice,
@@ -268,6 +283,7 @@ export default function TableOrderPage() {
                     <CardHeader>
                         <CardTitle className="flex items-center"><ShoppingCart className="mr-2"/> Current Bill</CardTitle>
                          {table && <Badge className="capitalize w-fit">${table.status}</Badge>}
+                         {openOrder?.waiterName && <p className="text-sm text-muted-foreground pt-1">Waiter: {openOrder.waiterName}</p>}
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <Separator />

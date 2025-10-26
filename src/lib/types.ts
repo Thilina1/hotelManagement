@@ -78,6 +78,8 @@ export type Order = {
     tableId: string;
     status: OrderStatus;
     totalPrice: number;
+    waiterId?: string;
+    waiterName?: string;
     createdAt?: string | { seconds: number; nanoseconds: number };
     updatedAt?: string | { seconds: number; nanoseconds: number };
 };
@@ -96,9 +98,11 @@ export type PaymentMethod = 'cash' | 'card';
 
 export type Bill = {
   id: string;
+  billNumber: string;
   orderId: string;
   tableId: string;
   tableNumber: string;
+  waiterName?: string;
   items: OrderItem[];
   status: BillStatus;
   paymentMethod?: PaymentMethod;
@@ -108,5 +112,3 @@ export type Bill = {
   createdAt?: string | { seconds: number; nanoseconds: number };
   paidAt?: string | { seconds: number; nanoseconds: number };
 };
-
-    

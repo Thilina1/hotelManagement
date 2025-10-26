@@ -217,8 +217,9 @@ export default function ReportsPage() {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Bill ID</TableHead>
+                            <TableHead>Bill No.</TableHead>
                             <TableHead>Table</TableHead>
+                            <TableHead>Waiter</TableHead>
                             <TableHead>Total</TableHead>
                             <TableHead>Discount</TableHead>
                             <TableHead>Method</TableHead>
@@ -228,15 +229,16 @@ export default function ReportsPage() {
                     <TableBody>
                         {isLoading && [...Array(5)].map((_, i) => (
                             <TableRow key={i}>
-                                <TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell>
+                                <TableCell colSpan={7}><Skeleton className="h-8 w-full" /></TableCell>
                             </TableRow>
                         ))}
                         {!isLoading && bills && bills.map(bill => {
                             const PaymentIcon = bill.paymentMethod ? paymentMethodIcons[bill.paymentMethod] : null;
                             return (
                                 <TableRow key={bill.id}>
-                                    <TableCell className="font-mono text-xs">{bill.id}</TableCell>
+                                    <TableCell className="font-mono text-xs">{bill.billNumber}</TableCell>
                                     <TableCell className="font-medium">{bill.tableNumber}</TableCell>
+                                    <TableCell>{bill.waiterName || 'N/A'}</TableCell>
                                     <TableCell>${bill.total.toFixed(2)}</TableCell>
                                     <TableCell>{bill.discount}%</TableCell>
                                     <TableCell>
@@ -253,7 +255,7 @@ export default function ReportsPage() {
                         })}
                         {!isLoading && (!bills || bills.length === 0) && (
                             <TableRow>
-                                <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
+                                <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
                                     No paid bills found for this period.
                                 </TableCell>
                             </TableRow>
@@ -268,5 +270,3 @@ export default function ReportsPage() {
 
     
 }
-
-    

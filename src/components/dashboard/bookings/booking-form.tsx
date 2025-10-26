@@ -158,14 +158,14 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
                         !field.value && "text-muted-foreground"
                       )}
                     >
-                      {field.value?.from ? (
-                        field.value.to ? (
+                      {field.value?.from && !isNaN(new Date(field.value.from).getTime()) ? (
+                        field.value.to && !isNaN(new Date(field.value.to).getTime()) ? (
                           <>
-                            {format(field.value.from, "LLL dd, y")} -{" "}
-                            {format(field.value.to, "LLL dd, y")}
+                            {format(new Date(field.value.from), "LLL dd, y")} -{" "}
+                            {format(new Date(field.value.to), "LLL dd, y")}
                           </>
                         ) : (
-                          format(field.value.from, "LLL dd, y")
+                          format(new Date(field.value.from), "LLL dd, y")
                         )
                       ) : (
                         <span>Pick a date range</span>
@@ -296,5 +296,3 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
     </Form>
   );
 }
-
-    

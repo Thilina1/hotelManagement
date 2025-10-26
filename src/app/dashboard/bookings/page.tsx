@@ -141,14 +141,16 @@ export default function BookingsPage() {
     try {
         const batch = writeBatch(firestore);
         
-        // Fetch room details to denormalize roomNumber and update status
         const roomDocRef = doc(firestore, 'rooms', values.roomId);
         const roomSnap = await getDoc(roomDocRef);
         if (!roomSnap.exists()) {
             throw new Error("Selected room does not exist.");
         }
         const roomData = roomSnap.data();
-        const dataToSave = { ...values, roomNumber: roomData.roomNumber };
+        const dataToSave = { 
+          ...values, 
+          roomNumber: roomData.roomNumber
+        };
 
         if (editingBooking) {
             // Update existing booking
@@ -371,5 +373,3 @@ export default function BookingsPage() {
     </div>
   );
 }
-
-    

@@ -42,8 +42,8 @@ const formSchema = z.object({
   dates: z.object({
     from: z.date({ required_error: "Check-in date is required."}),
     to: z.date({ required_error: "Check-out date is required."}),
-  }).refine(data => data.from && data.to && differenceInCalendarDays(data.to, data.from) >= 0, {
-      message: "Check-out date must be after check-in date.",
+  }).refine(data => data.from && data.to && differenceInCalendarDays(data.to, data.from) >= 1, {
+      message: "Check-out date must be at least one day after check-in date.",
       path: ["to"],
   }),
   status: z.enum(['confirmed', 'checked-in', 'checked-out', 'cancelled']),
@@ -54,7 +54,7 @@ type BookingFormValues = z.infer<typeof formSchema>;
 
 interface BookingFormProps {
   booking?: Booking | null;
-  onSubmit: (values: Omit<Booking, 'id' | 'roomNumber' | 'totalPrice'> & { totalPrice: number }, originalBooking?: Booking | null) => void;
+  onSubmit: (values: Omit<Booking, 'id' | 'roomNumber'>, originalBooking?: Booking | null) => void;
 }
 
 export function BookingForm({ booking, onSubmit }: BookingFormProps) {
@@ -124,7 +124,7 @@ export function BookingForm({ booking, onSubmit }: BookingFormProps) {
   const totalPrice = useMemo(() => {
     if (watchDates?.from && watchDates?.to && selectedRoomPrice > 0) {
       const nights = differenceInCalendarDays(watchDates.to, watchDates.from);
-      return nights > 0 ? nights * selectedRoomPrice : selectedRoomPrice; // Charge for at least one night
+      return nights > 0 ? nights * selectedRoomPrice : 0;
     }
     return 0;
   }, [watchDates, selectedRoomPrice]);
@@ -339,5 +339,3 @@ export function BookingForm({ booking, onSubmit }: BookingFormProps) {
     </Form>
   );
 }
-
-    

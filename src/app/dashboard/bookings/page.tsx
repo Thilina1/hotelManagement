@@ -19,11 +19,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { MoreHorizontal, PlusCircle, Trash2, Edit, LogIn, LogOut, Ban } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Trash2, Edit, LogIn, LogOut, Ban, FileCheck2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { Booking, BookingStatus } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, deleteDoc, addDoc, updateDoc, serverTimestamp, writeBatch, getDoc, query, where, getDocs } from 'firebase/firestore';
+import { collection, doc, deleteDoc, addDoc, updateDoc, serverTimestamp, writeBatch, getDoc, query, where, getDocs, collectionGroup } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog,
@@ -36,6 +36,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useUserContext } from '@/context/user-context';
 import { BookingForm } from '@/components/dashboard/bookings/booking-form';
 import { format, eachDayOfInterval } from 'date-fns';
+import { AddToBillModal } from '@/components/dashboard/activities/add-to-bill-modal';
 
 const statusColors: Record<BookingStatus, string> = {
     confirmed: 'bg-blue-500 text-white',
@@ -56,17 +57,18 @@ export default function BookingsPage() {
   
   const { data: bookings, isLoading: areBookingsLoading } = useCollection<Booking>(bookingsCollection);
 
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
+  const [inStayBooking, setInStayBooking] = useState<Booking | null>(null);
 
   const handleAddBookingClick = () => {
     setEditingBooking(null);
-    setIsDialogOpen(true);
+    setIsFormDialogOpen(true);
   };
 
   const handleEditBookingClick = (booking: Booking) => {
     setEditingBooking(booking);
-    setIsDialogOpen(true);
+    setIsFormDialogOpen(true);
   };
   
   const handleUpdateStatus = async (booking: Booking, newStatus: BookingStatus) => {
@@ -81,11 +83,7 @@ export default function BookingsPage() {
     if (newStatus === 'checked-in') {
       batch.update(roomDocRef, { status: 'occupied' });
     } else if (newStatus === 'checked-out' || newStatus === 'cancelled') {
-      // Check if another booking has this room before making it available
-      const roomSnap = await getDoc(roomDocRef);
-      if (roomSnap.exists() && roomSnap.data().status === 'occupied') {
-         batch.update(roomDocRef, { status: 'cleaning' });
-      }
+       batch.update(roomDocRef, { status: 'cleaning' });
     }
     
     try {
@@ -111,7 +109,6 @@ export default function BookingsPage() {
       const bookingDocRef = doc(firestore, 'bookings', booking.id);
       batch.delete(bookingDocRef);
 
-      // If room was occupied by this booking, make it available
       if (booking.status === 'confirmed' || booking.status === 'checked-in') {
         const roomDocRef = doc(firestore, 'rooms', booking.roomId);
         batch.update(roomDocRef, { status: 'available' });
@@ -148,7 +145,6 @@ export default function BookingsPage() {
         }
         const roomData = roomSnap.data();
 
-        // Initialize package activities
         const checkIn = new Date(values.checkInDate as any);
         const checkOut = new Date(values.checkOutDate as any);
         const stayDays = eachDayOfInterval({ start: checkIn, end: checkOut }).slice(0, -1);
@@ -162,18 +158,16 @@ export default function BookingsPage() {
           ...values, 
           roomNumber: roomData.roomNumber,
           packageActivities,
-          extraCharges: 0,
+          extraCharges: values.extraCharges || 0,
         };
         
         if (editingBooking) {
-            // Update existing booking
             const bookingDocRef = doc(firestore, 'bookings', editingBooking.id);
             batch.update(bookingDocRef, {
                 ...dataToSave,
                 updatedAt: serverTimestamp(),
             });
 
-            // Handle room status change if booking status changes
             if (originalBooking && originalBooking.status !== values.status) {
                  if (values.status === 'checked-out' || values.status === 'cancelled') {
                     batch.update(doc(firestore, 'rooms', values.roomId), { status: 'available' });
@@ -181,11 +175,8 @@ export default function BookingsPage() {
                     batch.update(doc(firestore, 'rooms', values.roomId), { status: 'occupied' });
                  }
             }
-             // Handle room change
             if (originalBooking && originalBooking.roomId !== values.roomId) {
-                // Make old room available
                 batch.update(doc(firestore, 'rooms', originalBooking.roomId), { status: 'available' });
-                // Make new room occupied
                 if (values.status === 'confirmed' || values.status === 'checked-in') {
                    batch.update(doc(firestore, 'rooms', values.roomId), { status: 'occupied' });
                 }
@@ -196,7 +187,6 @@ export default function BookingsPage() {
               description: "The booking details have been updated.",
             });
         } else {
-            // Create new booking
             const newBookingRef = doc(collection(firestore, 'bookings'));
             batch.set(newBookingRef, {
                 ...dataToSave,
@@ -204,7 +194,6 @@ export default function BookingsPage() {
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp(),
             });
-            // Set room to occupied
             if (values.status === 'confirmed' || values.status === 'checked-in') {
                batch.update(roomDocRef, { status: 'occupied' });
             }
@@ -216,7 +205,7 @@ export default function BookingsPage() {
 
         await batch.commit();
 
-        setIsDialogOpen(false);
+        setIsFormDialogOpen(false);
         setEditingBooking(null);
     } catch (error: any) {
         console.error("Error saving booking:", error);
@@ -228,9 +217,46 @@ export default function BookingsPage() {
     }
   };
 
+  const handleCheckoutAndBill = async (booking: Booking) => {
+      if (!firestore) return;
+
+      const batch = writeBatch(firestore);
+      
+      const finalTotal = (booking.totalPrice || 0) + (booking.extraCharges || 0) - (booking.advancePayment || 0);
+
+      // Create the final bill document
+      const billRef = doc(collection(firestore, 'bills'));
+      batch.set(billRef, {
+          billNumber: `BILL-ROOM-${booking.roomNumber}-${Date.now()}`,
+          bookingId: booking.id,
+          tableNumber: `Room ${booking.roomNumber}`, // For consistency
+          items: [], // Extra items are already part of booking.extraCharges
+          status: 'unpaid',
+          subtotal: finalTotal,
+          discount: 0,
+          total: finalTotal,
+          createdAt: serverTimestamp(),
+      });
+      
+      try {
+          await batch.commit();
+          toast({
+              title: 'Sent to Billing',
+              description: `Final bill for ${booking.guestName} is ready for payment.`,
+          });
+      } catch(error) {
+          console.error('Checkout billing failed:', error);
+          toast({
+              variant: 'destructive',
+              title: 'Checkout Failed',
+              description: 'Could not send the final bill for payment.',
+          });
+      }
+  };
+
+
   const formatDate = (date: any) => {
     if (!date) return 'N/A';
-    // Handle both Firestore Timestamps and date strings/objects
     const dateObj = date.seconds ? new Date(date.seconds * 1000) : new Date(date);
     if (isNaN(dateObj.getTime())) return 'Invalid Date';
     return format(dateObj, 'PPP');
@@ -260,12 +286,12 @@ export default function BookingsPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-start">
         <div>
-            <h1 className="text-3xl font-headline font-bold">Bookings</h1>
+            <h1 className="text-3xl font-headline font-bold">Booking Management</h1>
             <p className="text-muted-foreground">Manage all hotel room bookings.</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+        <Dialog open={isFormDialogOpen} onOpenChange={(open) => {
           if (!open) setEditingBooking(null);
-          setIsDialogOpen(open);
+          setIsFormDialogOpen(open);
         }}>
             <DialogTrigger asChild>
                 <Button onClick={handleAddBookingClick}>
@@ -298,7 +324,6 @@ export default function BookingsPage() {
                 <TableHead>Check-in</TableHead>
                 <TableHead>Check-out</TableHead>
                 <TableHead>Total</TableHead>
-                <TableHead>Advance</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -308,7 +333,7 @@ export default function BookingsPage() {
                 <>
                   {[...Array(5)].map((_, i) => (
                     <TableRow key={i}>
-                      <TableCell colSpan={8}><Skeleton className="h-8 w-full" /></TableCell>
+                      <TableCell colSpan={7}><Skeleton className="h-8 w-full" /></TableCell>
                     </TableRow>
                   ))}
                 </>
@@ -318,13 +343,11 @@ export default function BookingsPage() {
                   <TableCell className="font-medium">
                     <div>{booking.guestName}</div>
                     <div className="text-sm text-muted-foreground">{booking.guestNic}</div>
-                    <div className="text-sm text-muted-foreground">{booking.guestEmail}</div>
                   </TableCell>
                   <TableCell>{booking.roomNumber || 'N/A'}</TableCell>
                   <TableCell>{formatDate(booking.checkInDate)}</TableCell>
                   <TableCell>{formatDate(booking.checkOutDate)}</TableCell>
                   <TableCell>LKR {booking.totalPrice.toFixed(2)}</TableCell>
-                  <TableCell>LKR {booking.advancePayment?.toFixed(2) || '0.00'}</TableCell>
                   <TableCell>
                     <Badge variant="secondary" className={`capitalize ${statusColors[booking.status]}`}>
                         {booking.status}
@@ -345,10 +368,22 @@ export default function BookingsPage() {
                             Check-in
                           </DropdownMenuItem>
                         )}
+                         {booking.status === 'checked-in' && (
+                            <>
+                               <DropdownMenuItem onClick={() => setInStayBooking(booking)}>
+                                    <Edit className="mr-2 h-4 w-4"/>
+                                    Manage In-Stay
+                                </DropdownMenuItem>
+                               <DropdownMenuItem onClick={() => handleCheckoutAndBill(booking)}>
+                                    <FileCheck2 className="mr-2 h-4 w-4"/>
+                                    Checkout & Bill
+                                </DropdownMenuItem>
+                            </>
+                        )}
                         {booking.status === 'checked-in' && (
                            <DropdownMenuItem onClick={() => handleUpdateStatus(booking, 'checked-out')}>
                             <LogOut className="mr-2 h-4 w-4" />
-                            Check-out
+                            Mark as Checked-out
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuItem onClick={() => handleEditBookingClick(booking)}>
@@ -374,7 +409,7 @@ export default function BookingsPage() {
               ))}
                {!areBookingsLoading && (!bookings || bookings.length === 0) && (
                 <TableRow>
-                    <TableCell colSpan={8} className="text-center text-muted-foreground py-10">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-10">
                         No bookings found. Add one to get started.
                     </TableCell>
                 </TableRow>
@@ -383,6 +418,14 @@ export default function BookingsPage() {
           </Table>
         </CardContent>
       </Card>
+      
+      {inStayBooking && (
+        <AddToBillModal
+            booking={inStayBooking}
+            isOpen={!!inStayBooking}
+            onClose={() => setInStayBooking(null)}
+        />
+      )}
     </div>
   );
 }

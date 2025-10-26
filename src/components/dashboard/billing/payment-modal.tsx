@@ -2,18 +2,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { doc, collection, writeBatch, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { doc, writeBatch, serverTimestamp, getDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
-import type { Bill, OrderItem, PaymentMethod } from '@/lib/types';
+import type { Bill, OrderItem, PaymentMethod, Booking } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
-import { CheckCircle, Receipt, CreditCard, Wallet, Printer } from 'lucide-react';
+import { CheckCircle, Receipt, CreditCard, Wallet } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 interface PaymentModalProps {
@@ -38,7 +36,7 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
   const balance = cashReceivedNumber > 0 ? cashReceivedNumber - total : 0;
   
   const canProcessCashPayment = cashReceivedNumber >= total && !isProcessing;
-  const canProcessCardPayment = total > 0 && !isProcessing;
+  const canProcessCardPayment = total >= 0 && !isProcessing;
   const canProcessPayment = paymentMethod === 'cash' ? canProcessCashPayment : canProcessCardPayment;
 
 
@@ -49,7 +47,6 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
     const batch = writeBatch(firestore);
     const paidAtTimestamp = serverTimestamp();
 
-    // Update bill
     const billRef = doc(firestore, 'bills', bill.id);
     const finalBillData: Partial<Bill> = {
       discount: discount,
@@ -60,19 +57,17 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
     };
     batch.update(billRef, finalBillData);
     
-    // If it's a booking bill, update the booking status.
     if(bill.bookingId) {
         const bookingRef = doc(firestore, 'bookings', bill.bookingId);
-        batch.update(bookingRef, { status: 'checked-out', updatedAt: paidAtTimestamp });
-
-        // Fetch booking to get roomId
-        const bookingSnap = await firestore.collection('bookings').doc(bill.bookingId).get();
+        const bookingSnap = await getDoc(bookingRef);
         if (bookingSnap.exists()) {
-            const bookingData = bookingSnap.data();
+            const bookingData = bookingSnap.data() as Booking;
+            batch.update(bookingRef, { status: 'checked-out', updatedAt: paidAtTimestamp });
+
             const roomRef = doc(firestore, 'rooms', bookingData.roomId);
             batch.update(roomRef, { status: 'available' });
         }
-    } else if (bill.orderId) { // This is a table order
+    } else if (bill.orderId) { 
         const orderRef = doc(firestore, 'orders', bill.orderId);
         batch.update(orderRef, { status: 'paid', updatedAt: paidAtTimestamp });
         
@@ -81,7 +76,6 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
             batch.update(tableRef, { status: 'available' });
         }
     }
-
 
     try {
       await batch.commit();
@@ -119,19 +113,18 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
           </DialogTitle>
           <div className="text-sm text-muted-foreground">
             <div>Bill No: <span className="font-mono">{bill.billNumber}</span></div>
-            <div>Waiter: {bill.waiterName || 'N/A'}</div>
+            {bill.waiterName && <div>Waiter: {bill.waiterName}</div>}
           </div>
         </DialogHeader>
         <div className="py-4 space-y-4">
             <div className="max-h-40 overflow-y-auto space-y-2 pr-2">
-                {bill.items && bill.items.map((item, index) => (
+                {bill.items && bill.items.length > 0 ? bill.items.map((item, index) => (
                     <div key={item.id || index} className="flex justify-between items-center text-sm">
                         <span>{item.name} x{item.quantity}</span>
                         <span>LKR {(item.price * item.quantity).toFixed(2)}</span>
                     </div>
-                ))}
-                {(!bill.items || bill.items.length === 0) && (
-                   <p className="text-sm text-muted-foreground">No items in this bill. This might be a room charge.</p>
+                )) : (
+                   <p className="text-sm text-muted-foreground">This is a room charge or contains only extras billed directly.</p>
                 )}
             </div>
             <Separator />
@@ -205,5 +198,3 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
     </Dialog>
   );
 }
-
-    

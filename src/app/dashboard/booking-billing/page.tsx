@@ -28,13 +28,13 @@ const paymentMethodIcons: Record<PaymentMethod, React.FC<any>> = {
     card: CreditCard,
 };
 
-export default function BillingPage() {
+export default function BookingBillingPage() {
   const firestore = useFirestore();
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
   
   const unpaidBillsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    return query(collection(firestore, 'bills'), where('status', '==', 'unpaid'), where('bookingId', '==', null));
+    return query(collection(firestore, 'bills'), where('status', '==', 'unpaid'), where('bookingId', '!=', null));
   }, [firestore]);
 
   const paidBillsQuery = useMemoFirebase(() => {
@@ -42,7 +42,7 @@ export default function BillingPage() {
     return query(
         collection(firestore, 'bills'),
         where('status', '==', 'paid'),
-        where('bookingId', '==', null)
+        where('bookingId', '!=', null)
     );
   }, [firestore]);
 
@@ -142,8 +142,8 @@ export default function BillingPage() {
     <>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-headline font-bold">Restaurant Billing</h1>
-          <p className="text-muted-foreground">Process payments for restaurant tables and view transaction history.</p>
+          <h1 className="text-3xl font-headline font-bold">Booking Billing</h1>
+          <p className="text-muted-foreground">Process final payments for room bookings and view transaction history.</p>
         </div>
         <Tabs defaultValue="pending">
           <TabsList className="grid w-full grid-cols-2">
@@ -161,7 +161,7 @@ export default function BillingPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>Pending Bills</CardTitle>
-                    <CardDescription>A list of all bills that are waiting for payment.</CardDescription>
+                    <CardDescription>A list of all booking bills that are waiting for payment.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Table>
@@ -169,7 +169,6 @@ export default function BillingPage() {
                             <TableRow>
                                 <TableHead>Bill No.</TableHead>
                                 <TableHead>Reference</TableHead>
-                                <TableHead>Waiter/Staff</TableHead>
                                 <TableHead>Total</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead>Created At</TableHead>
@@ -179,14 +178,13 @@ export default function BillingPage() {
                         <TableBody>
                             {isLoadingUnpaid && [...Array(5)].map((_, i) => (
                                 <TableRow key={i}>
-                                    <TableCell colSpan={7}><Skeleton className="h-8 w-full" /></TableCell>
+                                    <TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell>
                                 </TableRow>
                             ))}
                             {!isLoadingUnpaid && sortedUnpaidBills && sortedUnpaidBills.map(bill => (
                                 <TableRow key={bill.id}>
                                     <TableCell className="font-mono text-xs">{bill.billNumber}</TableCell>
                                     <TableCell className="font-medium">{bill.tableNumber}</TableCell>
-                                    <TableCell>{bill.waiterName || 'N/A'}</TableCell>
                                     <TableCell>LKR {bill.total.toFixed(2)}</TableCell>
                                     <TableCell>
                                         <Badge className={`capitalize ${statusColors[bill.status]}`}>
@@ -206,10 +204,10 @@ export default function BillingPage() {
                             ))}
                             {!isLoadingUnpaid && (!sortedUnpaidBills || sortedUnpaidBills.length === 0) && (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
+                                    <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
                                         <div className="flex flex-col items-center gap-2">
                                             <CircleSlash className="h-10 w-10" />
-                                            <p>No pending bills found.</p>
+                                            <p>No pending booking bills found.</p>
                                         </div>
                                     </TableCell>
                                 </TableRow>
@@ -224,7 +222,7 @@ export default function BillingPage() {
              <Card>
                 <CardHeader>
                     <CardTitle>Paid Bills History</CardTitle>
-                    <CardDescription>A record of all completed transactions.</CardDescription>
+                    <CardDescription>A record of all completed booking transactions.</CardDescription>
                 </CardHeader>
                 <CardContent>
                      <Table>
@@ -232,7 +230,6 @@ export default function BillingPage() {
                             <TableRow>
                                 <TableHead>Bill No.</TableHead>
                                 <TableHead>Reference</TableHead>
-                                <TableHead>Waiter/Staff</TableHead>
                                 <TableHead>Total</TableHead>
                                 <TableHead>Payment Method</TableHead>
                                 <TableHead>Paid At</TableHead>
@@ -242,7 +239,7 @@ export default function BillingPage() {
                         <TableBody>
                             {isLoadingPaid && [...Array(5)].map((_, i) => (
                                 <TableRow key={i}>
-                                    <TableCell colSpan={7}><Skeleton className="h-8 w-full" /></TableCell>
+                                    <TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell>
                                 </TableRow>
                             ))}
                             {!isLoadingPaid && paidBills && paidBills.map(bill => {
@@ -251,7 +248,6 @@ export default function BillingPage() {
                                     <TableRow key={bill.id}>
                                         <TableCell className="font-mono text-xs">{bill.billNumber}</TableCell>
                                         <TableCell className="font-medium">{bill.tableNumber}</TableCell>
-                                        <TableCell>{bill.waiterName || 'N/A'}</TableCell>
                                         <TableCell>LKR {bill.total.toFixed(2)}</TableCell>
                                         <TableCell>
                                             <Badge variant="outline" className="capitalize flex gap-1 items-center w-fit">
@@ -273,7 +269,7 @@ export default function BillingPage() {
                             })}
                             {!isLoadingPaid && (!paidBills || paidBills.length === 0) && (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
+                                    <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
                                         <div className="flex flex-col items-center gap-2">
                                             <CircleSlash className="h-10 w-10" />
                                             <p>No paid bills found.</p>

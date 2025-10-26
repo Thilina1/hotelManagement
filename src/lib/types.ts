@@ -1,5 +1,4 @@
 
-
 export type UserRole = 'admin' | 'waiter' | 'payment';
 
 export type User = {
@@ -91,7 +90,8 @@ export type OrderStatus = 'open' | 'billed' | 'paid' | 'cancelled';
 
 export type Order = {
     id: string;
-    tableId: string;
+    tableId?: string; // Optional for booking orders
+    bookingId?: string; // Optional for table orders
     status: OrderStatus;
     totalPrice: number;
     waiterId?: string;
@@ -115,8 +115,9 @@ export type PaymentMethod = 'cash' | 'card';
 export type Bill = {
   id: string;
   billNumber: string;
-  orderId: string;
-  tableId: string;
+  orderId?: string; // Optional, can be direct from booking
+  bookingId?: string;
+  tableId?: string;
   tableNumber: string;
   waiterName?: string;
   items: OrderItem[];

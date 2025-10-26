@@ -52,7 +52,7 @@ type BookingFormValues = z.infer<typeof formSchema>;
 
 interface BookingFormProps {
   booking?: Booking | null;
-  onSubmit: (values: Omit<Booking, 'id' | 'roomNumber'>) => void;
+  onSubmit: (values: Omit<Booking, 'id' | 'roomNumber'>, originalBooking?: Booking | null) => void;
 }
 
 const toDate = (dateValue: any): Date | undefined => {
@@ -99,9 +99,7 @@ export function BookingForm({ booking, onSubmit }: BookingFormProps) {
     }
   }, [rooms, booking]);
   
-  const form = useForm<BookingFormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: useMemo(() => ({
+  const defaultFormValues = useMemo(() => ({
       guestName: booking?.guestName || '',
       guestEmail: booking?.guestEmail || '',
       guestNic: booking?.guestNic || '',
@@ -113,24 +111,16 @@ export function BookingForm({ booking, onSubmit }: BookingFormProps) {
       checkOutDate: toDate(booking?.checkOutDate) || addDays(new Date(), 1),
       status: booking?.status || 'confirmed',
       advancePayment: booking?.advancePayment || 0,
-    }), [booking]),
+  }), [booking]);
+
+  const form = useForm<BookingFormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: defaultFormValues,
   });
   
   useEffect(() => {
-    form.reset({
-      guestName: booking?.guestName || '',
-      guestEmail: booking?.guestEmail || '',
-      guestNic: booking?.guestNic || '',
-      guestPhone: booking?.guestPhone || '',
-      roomId: booking?.roomId || '',
-      adults: booking?.adults || 1,
-      children: booking?.children || 0,
-      checkInDate: toDate(booking?.checkInDate) || new Date(),
-      checkOutDate: toDate(booking?.checkOutDate) || addDays(new Date(), 1),
-      status: booking?.status || 'confirmed',
-      advancePayment: booking?.advancePayment || 0,
-    })
-  }, [booking, form]);
+    form.reset(defaultFormValues)
+  }, [booking, defaultFormValues, form]);
 
   const watchCheckInDate = form.watch('checkInDate');
   const watchCheckOutDate = form.watch('checkOutDate');
@@ -158,7 +148,7 @@ export function BookingForm({ booking, onSubmit }: BookingFormProps) {
         ...values,
         totalPrice: totalPrice,
     };
-    onSubmit(submissionData);
+    onSubmit(submissionData, booking);
   };
 
 
@@ -264,7 +254,6 @@ export function BookingForm({ booking, onSubmit }: BookingFormProps) {
                                 mode="single"
                                 selected={field.value}
                                 onSelect={field.onChange}
-                                disabled={(date) => date < addDays(new Date(), -1)}
                                 initialFocus
                             />
                             </PopoverContent>
@@ -379,3 +368,5 @@ export function BookingForm({ booking, onSubmit }: BookingFormProps) {
     </Form>
   );
 }
+
+    

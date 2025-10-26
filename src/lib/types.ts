@@ -28,21 +28,32 @@ export type Room = {
 
 export type BookingStatus = 'confirmed' | 'checked-in' | 'checked-out' | 'cancelled';
 
+export type PackageActivity = {
+    breakfast: boolean;
+    lunch: boolean;
+    dinner: boolean;
+    tea: boolean;
+    activity1: boolean;
+    activity2: boolean;
+};
+
 export type Booking = {
     id: string;
     roomId: string;
     roomNumber?: string; // Denormalized for display
     guestName: string;
     guestEmail: string;
-    guestNic?: string;
+    guestNic: string;
     guestPhone: string;
     checkInDate: string | { seconds: number; nanoseconds: number };
     checkOutDate: string | { seconds: number; nanoseconds: number };
     adults: number;
     children: number;
     totalPrice: number;
-    advancePayment?: number;
+    advancePayment: number;
     status: BookingStatus;
+    packageActivities: Record<string, PackageActivity>;
+    extraCharges?: number;
     createdAt?: string | { seconds: number; nanoseconds: number };
     updatedAt?: string | { seconds: number; nanoseconds: number };
 };

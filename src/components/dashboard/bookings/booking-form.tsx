@@ -42,7 +42,7 @@ const formSchema = z.object({
   checkInDate: z.date({ required_error: "Check-in date is required."}),
   checkOutDate: z.date({ required_error: "Check-out date is required."}),
   status: z.enum(['confirmed', 'checked-in', 'checked-out', 'cancelled']),
-  advancePayment: z.coerce.number().min(0).optional(),
+  advancePayment: z.coerce.number().min(0, "Advance payment can't be negative"),
 }).refine(data => data.checkInDate && data.checkOutDate && differenceInCalendarDays(data.checkOutDate, data.checkInDate) >= 1, {
     message: "Check-out date must be at least one day after check-in date.",
     path: ["checkOutDate"],
@@ -52,7 +52,7 @@ type BookingFormValues = z.infer<typeof formSchema>;
 
 interface BookingFormProps {
   booking?: Booking | null;
-  onSubmit: (values: Omit<Booking, 'id' | 'roomNumber'>, originalBooking?: Booking | null) => void;
+  onSubmit: (values: Omit<Booking, 'id' | 'roomNumber' | 'packageActivities'>, originalBooking?: Booking | null) => void;
 }
 
 const toDate = (dateValue: any): Date | undefined => {
@@ -351,7 +351,7 @@ export function BookingForm({ booking, onSubmit }: BookingFormProps) {
             render={({ field }) => (
                 <FormItem>
                 <FormLabel>Advance Payment (LKR)</FormLabel>
-                <FormControl><Input type="number" min="0" placeholder="0.00" {...field} value={field.value || ''} /></FormControl>
+                <FormControl><Input type="number" min="0" placeholder="0.00" {...field} /></FormControl>
                 <FormMessage />
                 </FormItem>
             )}

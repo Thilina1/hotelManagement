@@ -88,10 +88,26 @@
             "totalPrice": { "type": "number" },
             "advancePayment": { "type": "number", "description": "The advance payment made for the booking." },
             "status": { "type": "string", "enum": ["confirmed", "checked-in", "checked-out", "cancelled"] },
+            "packageActivities": {
+                "type": "object",
+                "description": "Tracks usage of package activities for each day of the stay.",
+                "additionalProperties": {
+                    "type": "object",
+                    "properties": {
+                        "breakfast": { "type": "boolean", "default": false },
+                        "lunch": { "type": "boolean", "default": false },
+                        "dinner": { "type": "boolean", "default": false },
+                        "tea": { "type": "boolean", "default": false },
+                        "activity1": { "type": "boolean", "default": false },
+                        "activity2": { "type": "boolean", "default": false }
+                    }
+                }
+            },
+            "extraCharges": { "type": "number", "description": "Total charges for extra items or services.", "default": 0 },
             "createdAt": { "type": "string", "format": "date-time" },
             "updatedAt": { "type": "string", "format": "date-time" }
         },
-        "required": ["roomId", "guestName", "checkInDate", "checkOutDate", "adults", "children", "totalPrice", "status", "guestPhone", "guestNic"]
+        "required": ["roomId", "guestName", "checkInDate", "checkOutDate", "adults", "children", "totalPrice", "status", "guestPhone", "guestNic", "advancePayment", "packageActivities"]
     },
     "MenuItem": {
         "title": "Menu Item",
@@ -140,12 +156,13 @@
       "properties": {
         "id": { "type": "string", "description": "Document ID." },
         "tableId": { "type": "string", "description": "ID of the table this order belongs to." },
+        "bookingId": { "type": "string", "description": "ID of the booking this order belongs to (for room service)." },
         "status": { "type": "string", "enum": ["open", "billed", "paid", "cancelled"] },
         "totalPrice": { "type": "number", "description": "The total price of the order." },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["tableId", "status", "totalPrice"]
+      "required": ["status", "totalPrice"]
     },
     "OrderItem": {
         "title": "Order Item",
@@ -168,6 +185,7 @@
         "properties": {
             "id": { "type": "string", "description": "Document ID." },
             "orderId": { "type": "string", "description": "The ID of the corresponding order." },
+            "bookingId": { "type": "string", "description": "The ID of the corresponding booking." },
             "tableId": { "type": "string", "description": "The ID of the table." },
             "tableNumber": { "type": "string", "description": "The number of the table." },
             "items": {
@@ -183,7 +201,7 @@
             "createdAt": { "type": "string", "format": "date-time" },
             "paidAt": { "type": "string", "format": "date-time", "description": "Timestamp when the bill was paid." }
         },
-        "required": ["orderId", "tableId", "tableNumber", "items", "status", "subtotal", "discount", "total", "createdAt"]
+        "required": ["status", "subtotal", "discount", "total", "createdAt"]
     }
   },
   "auth": {
@@ -224,6 +242,13 @@
             "description": "Stores booking information."
         }
       },
+       {
+        "path": "/bookings/{bookingId}/orders/{orderId}",
+        "definition": {
+            "schema": { "$ref": "#/backend/entities/Order" },
+            "description": "Stores extra orders placed during a booking."
+        }
+      },
       {
         "path": "/menuItems/{menuItemId}",
         "definition": {
@@ -242,14 +267,14 @@
         "path": "/orders/{orderId}",
         "definition": {
             "schema": { "$ref": "#/backend/entities/Order" },
-            "description": "Stores customer orders."
+            "description": "Stores customer orders for tables."
         }
       },
       {
         "path": "/orders/{orderId}/items/{orderItemId}",
         "definition": {
             "schema": { "$ref": "#/backend/entities/OrderItem" },
-            "description": "Stores items within a specific order."
+            "description": "Stores items within a specific table order."
         }
       },
       {

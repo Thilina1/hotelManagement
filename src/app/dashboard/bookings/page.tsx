@@ -23,7 +23,7 @@ import { MoreHorizontal, PlusCircle, Trash2, Edit, LogIn, LogOut, Ban } from 'lu
 import { Badge } from '@/components/ui/badge';
 import type { Booking, BookingStatus } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, deleteDoc, addDoc, updateDoc, serverTimestamp, writeBatch, getDoc } from 'firebase/firestore';
+import { collection, doc, deleteDoc, addDoc, updateDoc, serverTimestamp, writeBatch, getDoc, query, where, getDocs } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog,
@@ -35,7 +35,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useUserContext } from '@/context/user-context';
 import { BookingForm } from '@/components/dashboard/bookings/booking-form';
-import { format } from 'date-fns';
+import { format, eachDayOfInterval } from 'date-fns';
 
 const statusColors: Record<BookingStatus, string> = {
     confirmed: 'bg-blue-500 text-white',
@@ -84,7 +84,7 @@ export default function BookingsPage() {
       // Check if another booking has this room before making it available
       const roomSnap = await getDoc(roomDocRef);
       if (roomSnap.exists() && roomSnap.data().status === 'occupied') {
-         batch.update(roomDocRef, { status: 'available' });
+         batch.update(roomDocRef, { status: 'cleaning' });
       }
     }
     
@@ -135,11 +135,9 @@ export default function BookingsPage() {
     }
   };
 
-  const handleFormSubmit = async (values: Omit<Booking, 'id'>) => {
+  const handleFormSubmit = async (values: Omit<Booking, 'id' | 'roomNumber'>, originalBooking?: Booking | null) => {
     if (!firestore || !currentUser) return;
     
-    const originalBooking = editingBooking;
-
     try {
         const batch = writeBatch(firestore);
         
@@ -149,11 +147,24 @@ export default function BookingsPage() {
             throw new Error("Selected room does not exist.");
         }
         const roomData = roomSnap.data();
-        const dataToSave = { 
-          ...values, 
-          roomNumber: roomData.roomNumber
-        };
 
+        // Initialize package activities
+        const checkIn = new Date(values.checkInDate as any);
+        const checkOut = new Date(values.checkOutDate as any);
+        const stayDays = eachDayOfInterval({ start: checkIn, end: checkOut }).slice(0, -1);
+        const packageActivities = stayDays.reduce((acc, day) => {
+            const dateString = format(day, 'yyyy-MM-dd');
+            acc[dateString] = { breakfast: false, lunch: false, dinner: false, tea: false, activity1: false, activity2: false };
+            return acc;
+        }, {} as Record<string, any>);
+
+        const dataToSave: Partial<Booking> = { 
+          ...values, 
+          roomNumber: roomData.roomNumber,
+          packageActivities,
+          extraCharges: 0,
+        };
+        
         if (editingBooking) {
             // Update existing booking
             const bookingDocRef = doc(firestore, 'bookings', editingBooking.id);

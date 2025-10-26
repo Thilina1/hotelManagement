@@ -43,6 +43,8 @@ const getPageTitle = (pathname: string) => {
             return 'Reports';
         case '/dashboard/bookings':
             return 'Bookings';
+        case '/dashboard/activities':
+            return 'Activities';
         default:
              if (pathname.startsWith('/dashboard/tables/')) {
                 return 'Table Order';

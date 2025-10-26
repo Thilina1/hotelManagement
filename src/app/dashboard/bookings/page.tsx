@@ -122,6 +122,15 @@ export default function BookingManagementPage() {
     });
   }, [bookings]);
 
+  const getFormattedDate = (dateString: string | undefined) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      return "Invalid Date";
+    }
+    return format(date, 'PPP');
+  };
+
   if (!currentUser || areBookingsLoading || areRoomsLoading) {
      return (
        <div className="space-y-6">
@@ -202,8 +211,8 @@ export default function BookingManagementPage() {
                 <TableRow key={booking.id}>
                   <TableCell className="font-medium">{booking.guestName}</TableCell>
                   <TableCell>{booking.roomNumber}</TableCell>
-                  <TableCell>{format(new Date(booking.checkInDate), 'PPP')}</TableCell>
-                  <TableCell>{format(new Date(booking.checkOutDate), 'PPP')}</TableCell>
+                  <TableCell>{getFormattedDate(booking.checkInDate)}</TableCell>
+                  <TableCell>{getFormattedDate(booking.checkOutDate)}</TableCell>
                   <TableCell>
                     <Badge variant="secondary" className={`capitalize ${statusColors[booking.status]}`}>
                         {booking.status}

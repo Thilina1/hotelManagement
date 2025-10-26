@@ -43,6 +43,8 @@ const getPageTitle = (pathname: string) => {
             return 'Booking Management';
         case '/dashboard/room-management':
             return 'Room Management';
+        case '/dashboard/activities':
+            return 'Activity Management';
         default:
              if (pathname.startsWith('/dashboard/tables/')) {
                 return 'Table Order';
@@ -105,5 +107,7 @@ export default function DashboardHeader() {
     </header>
   );
 }
+
+    
 
     

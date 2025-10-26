@@ -1,5 +1,6 @@
 
 
+
 export type UserRole = 'admin' | 'waiter' | 'payment';
 
 export type User = {
@@ -113,5 +114,19 @@ export type Booking = {
     advancePayment?: number;
     status: BookingStatus;
 }
+
+export type ActivityType = 'priceable' | 'non-priceable';
+
+export type Activity = {
+    id: string;
+    name: string;
+    description: string;
+    type: ActivityType;
+    pricePerPerson?: number;
+    createdAt?: string | { seconds: number; nanoseconds: number };
+    updatedAt?: string | { seconds: number; nanoseconds: number };
+}
+
+    
 
     

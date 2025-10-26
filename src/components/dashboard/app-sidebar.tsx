@@ -12,7 +12,7 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, LayoutDashboard, Users, UserCog, UtensilsCrossed, Boxes, CreditCard, BarChart, BedDouble } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, UserCog, UtensilsCrossed, Boxes, CreditCard, BarChart, BedDouble, Star } from 'lucide-react';
 import { useAuth } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
@@ -26,6 +26,7 @@ import type { UserRole } from '@/lib/types';
 
 const allMenuItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', roles: ['admin', 'waiter', 'payment'] as UserRole[] },
+  { href: '/dashboard/activities', icon: Star, label: 'Activities', roles: ['admin'] as UserRole[] },
   { href: '/dashboard/bookings', icon: BedDouble, label: 'Booking Management', roles: ['admin'] as UserRole[] },
   { href: '/dashboard/room-management', icon: BedDouble, label: 'Room Management', roles: ['admin'] as UserRole[] },
   { href: '/dashboard/reports', icon: BarChart, label: 'Reports', roles: ['admin', 'payment'] as UserRole[] },
@@ -100,5 +101,7 @@ export default function AppSidebar() {
         </Sidebar>
     );
 }
+
+    
 
     

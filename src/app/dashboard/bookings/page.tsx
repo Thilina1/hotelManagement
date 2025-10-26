@@ -104,14 +104,6 @@ export default function BookingManagementPage() {
      toast({ title: 'Checked In', description: `${booking.guestName} has been checked in.` });
   }
 
-  const handleCheckOut = async (booking: Booking) => {
-     if(!firestore) return;
-     const bookingRef = doc(firestore, 'bookings', booking.id);
-     const roomRef = doc(firestore, 'rooms', booking.roomId);
-     await updateDoc(bookingRef, { status: 'checked-out' });
-     await updateDoc(roomRef, { status: 'available' });
-     toast({ title: 'Checked Out', description: `${booking.guestName} has been checked out.` });
-  }
   
   const sortedBookings = useMemo(() => {
     if (!bookings) return [];
@@ -231,12 +223,6 @@ export default function BookingManagementPage() {
                             <DropdownMenuItem onClick={() => handleCheckIn(booking)}>
                                 <CheckCircle className="mr-2 h-4 w-4"/>
                                 Check-In
-                            </DropdownMenuItem>
-                         )}
-                         {booking.status === 'checked-in' && (
-                            <DropdownMenuItem onClick={() => handleCheckOut(booking)}>
-                                <BedDouble className="mr-2 h-4 w-4"/>
-                                Check-Out
                             </DropdownMenuItem>
                          )}
                         <DropdownMenuItem onClick={() => handleEditBookingClick(booking)}>

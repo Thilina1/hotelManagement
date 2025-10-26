@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -103,10 +102,10 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
             <Receipt />
             Bill for Table {bill.tableNumber}
           </DialogTitle>
-           <DialogDescription>
+          <div className="text-sm text-muted-foreground">
             <div>Bill No: <span className="font-mono">{bill.billNumber}</span></div>
             <div>Waiter: {bill.waiterName || 'N/A'}</div>
-          </DialogDescription>
+          </div>
         </DialogHeader>
         <div className="py-4 space-y-4">
             <div className="max-h-40 overflow-y-auto space-y-2 pr-2">
@@ -136,7 +135,7 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
                 </div>
                  <div className="flex justify-between text-sm text-muted-foreground">
                     <span>Discount Amount</span>
-                    <span>- ${discountAmount.toFixed(2)}</span>
+                    <span>-${discountAmount.toFixed(2)}</span>
                 </div>
                 <Separator />
                  <div className="flex justify-between text-xl font-bold">

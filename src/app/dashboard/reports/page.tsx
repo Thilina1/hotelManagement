@@ -150,7 +150,7 @@ export default function ReportsPage() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              {isLoading ? <Skeleton className="h-8 w-3/4" /> : <div className="text-2xl font-bold">${kpiData.totalRevenue.toFixed(2)}</div>}
+              {isLoading ? <Skeleton className="h-8 w-3/4" /> : <div className="text-2xl font-bold">LKR {kpiData.totalRevenue.toFixed(2)}</div>}
             </CardContent>
           </Card>
           <Card>
@@ -168,7 +168,7 @@ export default function ReportsPage() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              {isLoading ? <Skeleton className="h-8 w-3/4" /> : <div className="text-2xl font-bold">${kpiData.avgBillValue.toFixed(2)}</div>}
+              {isLoading ? <Skeleton className="h-8 w-3/4" /> : <div className="text-2xl font-bold">LKR {kpiData.avgBillValue.toFixed(2)}</div>}
             </CardContent>
           </Card>
         </div>
@@ -239,7 +239,7 @@ export default function ReportsPage() {
                                     <TableCell className="font-mono text-xs">{bill.billNumber}</TableCell>
                                     <TableCell className="font-medium">{bill.tableNumber}</TableCell>
                                     <TableCell>{bill.waiterName || 'N/A'}</TableCell>
-                                    <TableCell>${bill.total.toFixed(2)}</TableCell>
+                                    <TableCell>LKR {bill.total.toFixed(2)}</TableCell>
                                     <TableCell>{bill.discount}%</TableCell>
                                     <TableCell>
                                         <Badge variant="outline" className="capitalize flex gap-1 items-center w-fit">

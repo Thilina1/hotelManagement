@@ -20,9 +20,12 @@ import {
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useUserContext } from '@/context/user-context';
 import { SidebarTrigger } from '../ui/sidebar';
+import LanguageSwitcher from './language-switcher';
 
 const getPageTitle = (pathname: string) => {
-    switch (pathname) {
+    // remove locale from pathname
+    const path = pathname.split('/').slice(2).join('/');
+    switch (`/dashboard${path ? `/${path}`: ''}`) {
         case '/dashboard':
             return 'Dashboard';
         case '/dashboard/profile':
@@ -69,6 +72,7 @@ export default function DashboardHeader() {
       <div className="flex-1">
         <h1 className="font-semibold text-lg">{getPageTitle(pathname)}</h1>
       </div>
+      <LanguageSwitcher />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button

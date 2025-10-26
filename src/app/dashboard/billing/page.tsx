@@ -186,7 +186,7 @@ export default function BillingPage() {
                                     <TableCell className="font-mono text-xs">{bill.billNumber}</TableCell>
                                     <TableCell className="font-medium">{bill.tableNumber}</TableCell>
                                     <TableCell>{bill.waiterName || 'N/A'}</TableCell>
-                                    <TableCell>${bill.total.toFixed(2)}</TableCell>
+                                    <TableCell>LKR {bill.total.toFixed(2)}</TableCell>
                                     <TableCell>
                                         <Badge className={`capitalize ${statusColors[bill.status]}`}>
                                             {bill.status}
@@ -251,7 +251,7 @@ export default function BillingPage() {
                                         <TableCell className="font-mono text-xs">{bill.billNumber}</TableCell>
                                         <TableCell className="font-medium">{bill.tableNumber}</TableCell>
                                         <TableCell>{bill.waiterName || 'N/A'}</TableCell>
-                                        <TableCell>${bill.total.toFixed(2)}</TableCell>
+                                        <TableCell>LKR {bill.total.toFixed(2)}</TableCell>
                                         <TableCell>
                                             <Badge variant="outline" className="capitalize flex gap-1 items-center w-fit">
                                                 {PaymentIcon && <PaymentIcon className="w-3 h-3"/>}

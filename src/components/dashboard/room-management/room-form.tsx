@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -112,9 +113,9 @@ export function RoomForm({ room, onSubmit }: RoomFormProps) {
           name="price"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Price per night</FormLabel>
+              <FormLabel>Price per night (LKR)</FormLabel>
               <FormControl>
-                <Input type="number" placeholder="e.g., 150.00" {...field} />
+                <Input type="number" placeholder="e.g., 15000.00" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

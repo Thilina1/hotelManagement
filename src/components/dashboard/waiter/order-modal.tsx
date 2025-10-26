@@ -123,7 +123,7 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
 
     const handleRemoveItem = (menuItemId: string) => {
         setLocalOrder(prev => {
-            const newCount = (prev[menuItem.id] || 0) - 1;
+            const newCount = (prev[menuItemId] || 0) - 1;
             if (newCount <= 0) {
                 const { [menuItemId]: _, ...rest } = prev;
                 return rest;
@@ -319,7 +319,7 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                                                     </div>
                                                     <div>
                                                         <p className="font-semibold">{item.name}</p>
-                                                        <p className="text-sm text-muted-foreground">${item.price.toFixed(2)}</p>
+                                                        <p className="text-sm text-muted-foreground">LKR {item.price.toFixed(2)}</p>
                                                         {item.stockType === 'Inventoried' && <p className={`text-xs ${!isOutOfStock ? 'text-primary' : 'text-destructive'}`}>Stock: {effectiveStock - currentCountInCart}</p>}
                                                     </div>
                                                 </div>
@@ -355,7 +355,7 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                                     orderItems.map(item => (
                                         <div key={item.id} className="flex justify-between items-center text-sm">
                                             <p>{item.name} x {item.quantity}</p>
-                                            <p>${(item.price * item.quantity).toFixed(2)}</p>
+                                            <p>LKR {(item.price * item.quantity).toFixed(2)}</p>
                                         </div>
                                     ))
                                  ) : (
@@ -374,7 +374,7 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                                             <div key={id} className="flex justify-between items-center text-sm mb-1">
                                                 <div><p>{item.name} x {quantity}</p></div>
                                                 <div className="flex items-center gap-2">
-                                                    <p>${(item.price * quantity).toFixed(2)}</p>
+                                                    <p>LKR {(item.price * quantity).toFixed(2)}</p>
                                                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleAddItem(item)}><PlusCircle className="h-4 w-4" /></Button>
                                                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRemoveItem(id)}><MinusCircle className="h-4 w-4" /></Button>
                                                 </div>
@@ -390,7 +390,7 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                         <CardFooter className="flex flex-col gap-4 mt-auto border-t pt-4">
                             <div className="w-full flex justify-between items-center text-xl font-bold">
                                 <span>Total Bill:</span>
-                                <span>${totalBill.toFixed(2)}</span>
+                                <span>LKR {totalBill.toFixed(2)}</span>
                             </div>
                             <Button className="w-full" onClick={handleAddItemsToBill} disabled={Object.keys(localOrder).length === 0}>Add Items to Bill</Button>
                              <Button className="w-full" variant="secondary" onClick={handleProcessPayment} disabled={!openOrder}>

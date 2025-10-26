@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -220,7 +221,7 @@ export default function RoomManagementPage() {
                         {room.status}
                     </Badge>
                   </TableCell>
-                  <TableCell>${room.price.toFixed(2)}</TableCell>
+                  <TableCell>LKR {room.price.toFixed(2)}</TableCell>
                    <TableCell>{room.updatedAt ? new Date((room.updatedAt as any).seconds * 1000).toLocaleString() : 'N/A'}</TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>

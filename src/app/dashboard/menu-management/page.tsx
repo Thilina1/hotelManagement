@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -205,7 +206,7 @@ export default function MenuManagementPage() {
                 {!areMenuItemsLoading && filteredItems && filteredItems.map((item) => (
                     <TableRow key={item.id}>
                     <TableCell className="font-medium">{item.name}</TableCell>
-                    <TableCell>${item.price.toFixed(2)}</TableCell>
+                    <TableCell>LKR {item.price.toFixed(2)}</TableCell>
                     <TableCell>
                       {item.stockType === 'Inventoried' ? item.stock : 'N/A'}
                     </TableCell>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm, useWatch } from 'react-hook-form';
@@ -97,9 +98,9 @@ export function MenuItemForm({ item, onSubmit }: MenuItemFormProps) {
           name="price"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Price</FormLabel>
+              <FormLabel>Price (LKR)</FormLabel>
               <FormControl>
-                <Input type="number" step="0.01" placeholder="e.g., 12.50" {...field} />
+                <Input type="number" step="0.01" placeholder="e.g., 1250.00" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

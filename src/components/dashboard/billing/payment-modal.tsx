@@ -112,7 +112,7 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
                 {bill.items && bill.items.map(item => (
                     <div key={item.id} className="flex justify-between items-center text-sm">
                         <span>{item.name} x{item.quantity}</span>
-                        <span>${(item.price * item.quantity).toFixed(2)}</span>
+                        <span>LKR {(item.price * item.quantity).toFixed(2)}</span>
                     </div>
                 ))}
             </div>
@@ -120,7 +120,7 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
             <div className="space-y-3">
                 <div className="flex justify-between">
                     <span className="font-medium">Subtotal</span>
-                    <span>${subtotal.toFixed(2)}</span>
+                    <span>LKR {subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center">
                     <Label htmlFor="discount">Discount (%)</Label>
@@ -135,12 +135,12 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
                 </div>
                  <div className="flex justify-between text-sm text-muted-foreground">
                     <span>Discount Amount</span>
-                    <span>-${discountAmount.toFixed(2)}</span>
+                    <span>-LKR {discountAmount.toFixed(2)}</span>
                 </div>
                 <Separator />
                  <div className="flex justify-between text-xl font-bold">
                     <span>Total</span>
-                    <span>${total.toFixed(2)}</span>
+                    <span>LKR {total.toFixed(2)}</span>
                 </div>
                 
                 <RadioGroup defaultValue="cash" onValueChange={(value: PaymentMethod) => setPaymentMethod(value)} className="flex gap-4 pt-2">
@@ -170,7 +170,7 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
                         </div>
                         <div className="flex justify-between font-medium text-lg">
                             <span>Balance</span>
-                            <span className={balance > 0 ? 'text-green-600 font-bold' : ''}>${balance > 0 ? balance.toFixed(2) : '0.00'}</span>
+                            <span className={balance > 0 ? 'text-green-600 font-bold' : ''}>LKR {balance > 0 ? balance.toFixed(2) : '0.00'}</span>
                         </div>
                     </div>
                 )}

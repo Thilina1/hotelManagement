@@ -110,6 +110,7 @@ export type Booking = {
     checkOutDate: string; // ISO String
     adults: number;
     children: number;
+    advancePayment?: number;
     status: BookingStatus;
 }
 

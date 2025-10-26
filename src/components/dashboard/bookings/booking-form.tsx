@@ -44,7 +44,8 @@ const formSchema = z.object({
   }),
   adults: z.coerce.number().min(1, { message: 'At least one adult is required.' }),
   children: z.coerce.number().min(0),
-  status: z.enum(['confirmed', 'checked-in', 'checked-out', 'cancelled']),
+  advancePayment: z.coerce.number().min(0).optional(),
+  status: z.enum(['confirmed', 'checked-in']),
 });
 
 interface BookingFormProps {
@@ -71,7 +72,8 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
       },
       adults: booking?.adults || 1,
       children: booking?.children || 0,
-      status: booking?.status || 'confirmed',
+      advancePayment: booking?.advancePayment || 0,
+      status: booking?.status === 'checked-in' ? 'checked-in' : 'confirmed',
     },
   });
 
@@ -267,6 +269,17 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
         </div>
          <FormField
               control={form.control}
+              name="advancePayment"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Advance Payment (LKR)</FormLabel>
+                  <FormControl><Input type="number" placeholder="e.g. 5000" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+         <FormField
+              control={form.control}
               name="status"
               render={({ field }) => (
                 <FormItem>
@@ -280,8 +293,6 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
                     <SelectContent>
                       <SelectItem value="confirmed">Confirmed</SelectItem>
                       <SelectItem value="checked-in">Checked-In</SelectItem>
-                      <SelectItem value="checked-out">Checked-Out</SelectItem>
-                      <SelectItem value="cancelled">Cancelled</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

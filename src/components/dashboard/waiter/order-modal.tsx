@@ -4,7 +4,7 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, query, where, writeBatch, serverTimestamp, increment, addDoc, getDocs } from 'firebase/firestore';
+import { collection, doc, query, where, writeBatch, serverTimestamp, increment, addDoc, getDocs, getDoc } from 'firebase/firestore';
 import type { Table as TableType, MenuItem, Order, OrderItem, MenuCategory, Bill } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -121,7 +121,7 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
 
     const handleRemoveItem = (menuItemId: string) => {
         setLocalOrder(prev => {
-            const newCount = (prev[menuItemId] || 0) - 1;
+            const newCount = (prev[menuItem.id] || 0) - 1;
             if (newCount <= 0) {
                 const { [menuItemId]: _, ...rest } = prev;
                 return rest;
@@ -134,12 +134,10 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
         if (!firestore || !table || Object.keys(localOrder).length === 0) return;
 
         const batch = writeBatch(firestore);
-        let currentOrder = openOrder;
-        let currentOrderId;
+        let currentOrderId = openOrder?.id;
 
         try {
-            // If no open order exists, create one
-            if (!currentOrder) {
+            if (!currentOrderId) {
                 const newOrderRef = doc(collection(firestore, 'orders'));
                 batch.set(newOrderRef, {
                     tableId: table.id,
@@ -149,39 +147,51 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                     updatedAt: serverTimestamp(),
                 });
                 currentOrderId = newOrderRef.id;
-            } else {
-                currentOrderId = currentOrder.id;
             }
 
             if (!currentOrderId) throw new Error("Failed to create or find order.");
             
-            let orderTotalPrice = openOrder?.totalPrice || 0;
+            let orderTotalPriceUpdate = 0;
+            const itemsSubcollectionRef = collection(firestore, 'orders', currentOrderId, 'items');
 
             for (const menuItemId in localOrder) {
-                const quantity = localOrder[menuItemId];
+                const quantityToAdd = localOrder[menuItemId];
                 const menuItem = menuItems?.find(m => m.id === menuItemId);
 
                 if (menuItem) {
-                    const orderItemRef = doc(collection(firestore, 'orders', currentOrderId, 'items'));
-                    batch.set(orderItemRef, {
-                        orderId: currentOrderId,
-                        menuItemId,
-                        name: menuItem.name,
-                        price: menuItem.price,
-                        quantity,
-                    });
+                    orderTotalPriceUpdate += menuItem.price * quantityToAdd;
 
-                    orderTotalPrice += menuItem.price * quantity;
+                    const q = query(itemsSubcollectionRef, where('menuItemId', '==', menuItemId));
+                    const existingItemsSnapshot = await getDocs(q);
 
+                    if (!existingItemsSnapshot.empty) {
+                        const existingItemDoc = existingItemsSnapshot.docs[0];
+                        batch.update(existingItemDoc.ref, {
+                            quantity: increment(quantityToAdd)
+                        });
+                    } else {
+                        const newOrderItemRef = doc(itemsSubcollectionRef);
+                        batch.set(newOrderItemRef, {
+                            orderId: currentOrderId,
+                            menuItemId: menuItemId,
+                            name: menuItem.name,
+                            price: menuItem.price,
+                            quantity: quantityToAdd,
+                        });
+                    }
+                    
                     if (menuItem.stockType === 'Inventoried') {
                         const menuItemRef = doc(firestore, 'menuItems', menuItem.id);
-                        batch.update(menuItemRef, { stock: increment(-quantity) });
+                        batch.update(menuItemRef, { stock: increment(-quantityToAdd) });
                     }
                 }
             }
-
+            
             const orderRef = doc(firestore, 'orders', currentOrderId);
-            batch.update(orderRef, { totalPrice: orderTotalPrice, updatedAt: serverTimestamp() });
+            batch.update(orderRef, { 
+                totalPrice: increment(orderTotalPriceUpdate), 
+                updatedAt: serverTimestamp() 
+            });
             
             if (table.status === 'available') {
                 const tableDocRef = doc(firestore, 'tables', table.id);
@@ -212,11 +222,9 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
         try {
             const batch = writeBatch(firestore);
 
-            // Fetch all items for the bill.
             const allItemsSnapshot = await getDocs(collection(firestore, 'orders', openOrder.id, 'items'));
             const allOrderItems: OrderItem[] = allItemsSnapshot.docs.map(doc => ({id: doc.id, ...doc.data()} as OrderItem));
 
-            // Create the bill document with all items.
             const billRef = doc(collection(firestore, 'bills'));
             batch.set(billRef, {
                 orderId: openOrder.id,
@@ -230,11 +238,8 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                 createdAt: serverTimestamp(),
             });
 
-            // Update order status to 'billed'
             const orderRef = doc(firestore, 'orders', openOrder.id);
             batch.update(orderRef, { status: 'billed', updatedAt: serverTimestamp() });
-            
-            // Table status remains 'occupied' until payment is made
             
             await batch.commit();
             

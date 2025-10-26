@@ -79,17 +79,19 @@
             "roomId": { "type": "string", "description": "Reference to the room." },
             "guestName": { "type": "string" },
             "guestEmail": { "type": "string", "format": "email" },
+            "guestNic": { "type": "string", "description": "The National Identity Card number of the guest." },
             "guestPhone": { "type": "string", "description": "The phone number of the guest." },
             "checkInDate": { "type": "string", "format": "date" },
             "checkOutDate": { "type": "string", "format": "date" },
             "adults": { "type": "number", "description": "Number of adults." },
             "children": { "type": "number", "description": "Number of children." },
             "totalPrice": { "type": "number" },
+            "advancePayment": { "type": "number", "description": "The advance payment made for the booking." },
             "status": { "type": "string", "enum": ["confirmed", "checked-in", "checked-out", "cancelled"] },
             "createdAt": { "type": "string", "format": "date-time" },
             "updatedAt": { "type": "string", "format": "date-time" }
         },
-        "required": ["roomId", "guestName", "checkInDate", "checkOutDate", "adults", "children", "totalPrice", "status", "guestPhone"]
+        "required": ["roomId", "guestName", "checkInDate", "checkOutDate", "adults", "children", "totalPrice", "status", "guestPhone", "guestNic"]
     },
     "MenuItem": {
         "title": "Menu Item",

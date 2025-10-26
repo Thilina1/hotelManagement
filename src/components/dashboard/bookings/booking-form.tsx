@@ -35,6 +35,7 @@ import { collection, query, where } from 'firebase/firestore';
 const formSchema = z.object({
   guestName: z.string().min(1, 'Guest name is required'),
   guestEmail: z.string().email('Invalid email address'),
+  guestNic: z.string().min(1, 'Guest NIC is required'),
   guestPhone: z.string().min(1, 'Guest phone is required'),
   roomId: z.string().min(1, 'Please select a room'),
   adults: z.coerce.number().min(1, 'At least one adult is required'),
@@ -44,6 +45,7 @@ const formSchema = z.object({
     to: z.date({ required_error: "Check-out date is required."}),
   }),
   status: z.enum(['confirmed', 'checked-in', 'checked-out', 'cancelled']),
+  advancePayment: z.coerce.number().min(0).optional(),
 });
 
 type BookingFormValues = z.infer<typeof formSchema>;
@@ -91,6 +93,7 @@ export function BookingForm({ booking, onSubmit }: BookingFormProps) {
     defaultValues: useMemo(() => ({
       guestName: booking?.guestName || '',
       guestEmail: booking?.guestEmail || '',
+      guestNic: booking?.guestNic || '',
       guestPhone: booking?.guestPhone || '',
       roomId: booking?.roomId || '',
       adults: booking?.adults || 1,
@@ -100,6 +103,7 @@ export function BookingForm({ booking, onSubmit }: BookingFormProps) {
         to: booking?.checkOutDate ? (booking.checkOutDate as any).seconds ? new Date((booking.checkOutDate as any).seconds * 1000) : new Date(booking.checkOutDate as string) : addDays(new Date(), 1),
       },
       status: booking?.status || 'confirmed',
+      advancePayment: booking?.advancePayment || 0,
     }), [booking]),
   });
 
@@ -127,6 +131,7 @@ export function BookingForm({ booking, onSubmit }: BookingFormProps) {
     const submissionData = {
         guestName: values.guestName,
         guestEmail: values.guestEmail,
+        guestNic: values.guestNic,
         guestPhone: values.guestPhone,
         roomId: values.roomId,
         checkInDate: format(values.dates.from, 'yyyy-MM-dd'),
@@ -134,7 +139,8 @@ export function BookingForm({ booking, onSubmit }: BookingFormProps) {
         adults: values.adults,
         children: values.children,
         status: values.status,
-        totalPrice: totalPrice
+        totalPrice: totalPrice,
+        advancePayment: values.advancePayment,
     };
     onSubmit(submissionData, booking);
   };
@@ -155,30 +161,17 @@ export function BookingForm({ booking, onSubmit }: BookingFormProps) {
                 </FormItem>
             )}
             />
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-              control={form.control}
-              name="adults"
-              render={({ field }) => (
-                  <FormItem>
-                  <FormLabel>Adults</FormLabel>
-                  <FormControl><Input type="number" min="1" {...field} /></FormControl>
-                  <FormMessage />
-                  </FormItem>
-              )}
-              />
-              <FormField
-              control={form.control}
-              name="children"
-              render={({ field }) => (
-                  <FormItem>
-                  <FormLabel>Children</FormLabel>
-                  <FormControl><Input type="number" min="0" {...field} /></FormControl>
-                  <FormMessage />
-                  </FormItem>
-              )}
-              />
-            </div>
+            <FormField
+            control={form.control}
+            name="guestNic"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Guest NIC</FormLabel>
+                <FormControl><Input placeholder="National Identity Card No." {...field} /></FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
             <FormField
             control={form.control}
             name="guestEmail"
@@ -201,6 +194,31 @@ export function BookingForm({ booking, onSubmit }: BookingFormProps) {
                 </FormItem>
             )}
             />
+        </div>
+        
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+          control={form.control}
+          name="adults"
+          render={({ field }) => (
+              <FormItem>
+              <FormLabel>Adults</FormLabel>
+              <FormControl><Input type="number" min="1" {...field} /></FormControl>
+              <FormMessage />
+              </FormItem>
+          )}
+          />
+          <FormField
+          control={form.control}
+          name="children"
+          render={({ field }) => (
+              <FormItem>
+              <FormLabel>Children</FormLabel>
+              <FormControl><Input type="number" min="0" {...field} /></FormControl>
+              <FormMessage />
+              </FormItem>
+          )}
+          />
         </div>
 
         <FormField
@@ -295,6 +313,18 @@ export function BookingForm({ booking, onSubmit }: BookingFormProps) {
             )}
             />
         </div>
+        
+        <FormField
+            control={form.control}
+            name="advancePayment"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Advance Payment (LKR)</FormLabel>
+                <FormControl><Input type="number" min="0" placeholder="0.00" {...field} /></FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+        />
 
         <div className="p-4 bg-muted rounded-md text-right">
             <span className="text-xl font-bold">Total Price: LKR {totalPrice.toFixed(2)}</span>

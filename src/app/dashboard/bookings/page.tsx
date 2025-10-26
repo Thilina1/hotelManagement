@@ -283,6 +283,7 @@ export default function BookingsPage() {
                 <TableHead>Check-in</TableHead>
                 <TableHead>Check-out</TableHead>
                 <TableHead>Total</TableHead>
+                <TableHead>Advance</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -292,7 +293,7 @@ export default function BookingsPage() {
                 <>
                   {[...Array(5)].map((_, i) => (
                     <TableRow key={i}>
-                      <TableCell colSpan={7}><Skeleton className="h-8 w-full" /></TableCell>
+                      <TableCell colSpan={8}><Skeleton className="h-8 w-full" /></TableCell>
                     </TableRow>
                   ))}
                 </>
@@ -301,12 +302,14 @@ export default function BookingsPage() {
                 <TableRow key={booking.id}>
                   <TableCell className="font-medium">
                     <div>{booking.guestName}</div>
+                    <div className="text-sm text-muted-foreground">{booking.guestNic}</div>
                     <div className="text-sm text-muted-foreground">{booking.guestEmail}</div>
                   </TableCell>
                   <TableCell>{booking.roomNumber || 'N/A'}</TableCell>
                   <TableCell>{formatDate(booking.checkInDate)}</TableCell>
                   <TableCell>{formatDate(booking.checkOutDate)}</TableCell>
                   <TableCell>LKR {booking.totalPrice.toFixed(2)}</TableCell>
+                  <TableCell>LKR {booking.advancePayment?.toFixed(2) || '0.00'}</TableCell>
                   <TableCell>
                     <Badge variant="secondary" className={`capitalize ${statusColors[booking.status]}`}>
                         {booking.status}
@@ -356,7 +359,7 @@ export default function BookingsPage() {
               ))}
                {!areBookingsLoading && (!bookings || bookings.length === 0) && (
                 <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-10">
+                    <TableCell colSpan={8} className="text-center text-muted-foreground py-10">
                         No bookings found. Add one to get started.
                     </TableCell>
                 </TableRow>

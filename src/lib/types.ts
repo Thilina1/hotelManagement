@@ -34,12 +34,14 @@ export type Booking = {
     roomNumber?: string; // Denormalized for display
     guestName: string;
     guestEmail: string;
+    guestNic?: string;
     guestPhone: string;
     checkInDate: string | { seconds: number; nanoseconds: number };
     checkOutDate: string | { seconds: number; nanoseconds: number };
     adults: number;
     children: number;
     totalPrice: number;
+    advancePayment?: number;
     status: BookingStatus;
     createdAt?: string | { seconds: number; nanoseconds: number };
     updatedAt?: string | { seconds: number; nanoseconds: number };

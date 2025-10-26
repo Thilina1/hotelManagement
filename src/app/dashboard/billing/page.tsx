@@ -37,6 +37,7 @@ export default function BillingPage() {
     return query(
         collection(firestore, 'bills'), 
         where('status', '==', 'unpaid'),
+        where('bookingId', '==', null),
         orderBy('createdAt', 'desc')
     );
   }, [firestore]);
@@ -46,6 +47,7 @@ export default function BillingPage() {
     return query(
         collection(firestore, 'bills'),
         where('status', '==', 'paid'),
+        where('bookingId', '==', null),
         orderBy('createdAt', 'desc')
     );
   }, [firestore]);
@@ -294,3 +296,5 @@ export default function BillingPage() {
     </>
   );
 }
+
+    

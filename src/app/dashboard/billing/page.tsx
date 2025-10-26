@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -51,6 +51,15 @@ export default function BillingPage() {
   const { data: unpaidBills, isLoading: isLoadingUnpaid } = useCollection<Bill>(unpaidBillsQuery);
   const { data: paidBills, isLoading: isLoadingPaid } = useCollection<Bill>(paidBillsQuery);
   
+  const sortedUnpaidBills = useMemo(() => {
+    if (!unpaidBills) return [];
+    return [...unpaidBills].sort((a, b) => {
+        const aTime = (a.createdAt as Timestamp)?.seconds || 0;
+        const bTime = (b.createdAt as Timestamp)?.seconds || 0;
+        return bTime - aTime;
+    });
+  }, [unpaidBills]);
+
   const handlePrint = useReactToPrint({
     content: () => receiptRef.current,
   });
@@ -133,7 +142,7 @@ export default function BillingPage() {
                                     <TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell>
                                 </TableRow>
                             ))}
-                            {!isLoadingUnpaid && unpaidBills && unpaidBills.map(bill => (
+                            {!isLoadingUnpaid && sortedUnpaidBills && sortedUnpaidBills.map(bill => (
                                 <TableRow key={bill.id}>
                                     <TableCell className="font-medium">{bill.tableNumber}</TableCell>
                                     <TableCell>${bill.total.toFixed(2)}</TableCell>
@@ -153,7 +162,7 @@ export default function BillingPage() {
                                     </TableCell>
                                 </TableRow>
                             ))}
-                            {!isLoadingUnpaid && (!unpaidBills || unpaidBills.length === 0) && (
+                            {!isLoadingUnpaid && (!sortedUnpaidBills || sortedUnpaidBills.length === 0) && (
                                 <TableRow>
                                     <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
                                         <div className="flex flex-col items-center gap-2">

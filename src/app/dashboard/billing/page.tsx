@@ -1,14 +1,15 @@
+
 'use client';
 
-import { useState, useRef, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { CreditCard, Eye, CircleSlash, History, Printer, Wallet, User as UserIcon } from "lucide-react";
+import { CreditCard, Eye, CircleSlash, History, Printer, Wallet } from "lucide-react";
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where, Timestamp } from 'firebase/firestore';
-import type { Bill, OrderItem, PaymentMethod } from '@/lib/types';
+import type { Bill, PaymentMethod } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { PaymentModal } from '@/components/dashboard/billing/payment-modal';

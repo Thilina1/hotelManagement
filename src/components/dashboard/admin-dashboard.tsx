@@ -54,7 +54,7 @@ export default function AdminDashboard() {
     <>
         <div className="space-y-8">
             <div>
-                <h1 className="text-3xl font-headline font-bold">Admin Dashboard</h1>
+                <h1 className="text-3xl font-headline font-bold">Waiter Dashboard</h1>
                 <p className="text-muted-foreground">Oversee all restaurant operations and manage tables.</p>
             </div>
 

@@ -553,6 +553,7 @@ const SidebarMenuButton = React.forwardRef<
       size = "default",
       tooltip,
       className,
+      children,
       ...props
     },
     ref
@@ -574,7 +575,7 @@ const SidebarMenuButton = React.forwardRef<
         {isActive && (
             <div className="absolute left-0 h-6 w-1 bg-primary-foreground rounded-r-full group-data-[collapsible=icon]:hidden" />
         )}
-        {props.children}
+        {children}
       </Comp>
     )
 
@@ -769,3 +770,5 @@ export {
   SidebarTrigger,
   useSidebar,
 }
+
+    

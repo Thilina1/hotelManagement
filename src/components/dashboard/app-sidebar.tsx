@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -70,7 +69,7 @@ const renderMenuItems = (items: MenuItem[], userRole: UserRole | undefined, path
             <SidebarMenuButton asChild tooltip={item.label} isActive={pathname.startsWith(item.href) && (item.href !== '/dashboard' || pathname === '/dashboard')}>
                 <Link href={item.href}>
                     <item.icon />
-                    {item.label}
+                    <span>{item.label}</span>
                 </Link>
             </SidebarMenuButton>
         </SidebarMenuItem>
@@ -98,10 +97,10 @@ export default function AppSidebar() {
         <Sidebar collapsible="icon">
             <SidebarRail />
             <SidebarHeader>
-                <div className="flex items-center gap-2">
-                    <Logo className="w-8 h-8 text-primary" />
-                    <h2 className="text-xl font-headline font-bold text-sidebar-foreground">Victoria Retreat</h2>
-                </div>
+                <Link href="/dashboard" className="flex items-center gap-2">
+                    <Logo className="w-7 h-7 text-primary" />
+                    <h2 className="text-lg font-headline font-bold text-sidebar-foreground group-data-[collapsible=icon]:hidden">Victoria Retreat</h2>
+                </Link>
             </SidebarHeader>
             <SidebarContent>
                 <SidebarMenu>
@@ -109,9 +108,9 @@ export default function AppSidebar() {
                   
                   {restaurantSection && (
                      <>
-                        <SidebarSeparator />
-                        <SidebarGroup className="p-0">
-                            <SidebarGroupLabel className="flex items-center"><Utensils className="mr-2"/>Restaurant</SidebarGroupLabel>
+                        <SidebarSeparator className="my-2"/>
+                        <SidebarGroup>
+                            <SidebarGroupLabel className="flex items-center gap-2"><Utensils className="size-4"/>Restaurant</SidebarGroupLabel>
                             <SidebarGroupContent>{restaurantSection}</SidebarGroupContent>
                         </SidebarGroup>
                      </>
@@ -119,37 +118,39 @@ export default function AppSidebar() {
                   
                   {roomBookingSection && (
                     <>
-                        <SidebarSeparator />
-                        <SidebarGroup className="p-0">
-                            <SidebarGroupLabel className="flex items-center"><Building className="mr-2"/>Room Booking</SidebarGroupLabel>
+                        <SidebarSeparator className="my-2"/>
+                        <SidebarGroup>
+                            <SidebarGroupLabel className="flex items-center gap-2"><Building className="size-4"/>Room Booking</SidebarGroupLabel>
                             <SidebarGroupContent>{roomBookingSection}</SidebarGroupContent>
                         </SidebarGroup>
                     </>
                   )}
 
-                  <SidebarSeparator />
+                  <SidebarSeparator className="my-2"/>
                   {renderMenuItems(otherMenuItems, user?.role, pathname)}
 
-                  <SidebarMenuItem>
-                      <SidebarMenuButton onClick={logout} tooltip="Logout">
-                          <LogOut />
-                          Logout
-                      </SidebarMenuButton>
-                  </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarContent>
             <SidebarFooter>
+                 <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton onClick={logout} tooltip="Logout">
+                          <LogOut />
+                          <span className="group-data-[collapsible=icon]:hidden">Logout</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                 </SidebarMenu>
+                 <SidebarSeparator className="my-1"/>
                  <Link href="/dashboard/profile" className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-sidebar-accent transition-colors">
-                    <Avatar>
+                    <Avatar className="size-8">
                          {avatar && <AvatarImage src={user?.name} />}
-                        <AvatarFallback>{user?.name ? user.name.charAt(0).toUpperCase() : 'U'}</AvatarFallback>
+                        <AvatarFallback className="text-xs">{user?.name ? user.name.charAt(0).toUpperCase() : 'U'}</AvatarFallback>
                     </Avatar>
-                    <div className="flex flex-col overflow-hidden">
+                    <div className="flex flex-col overflow-hidden group-data-[collapsible=icon]:hidden">
                         <span className="font-semibold text-sm truncate">{user?.name}</span>
                         <span className="text-xs text-muted-foreground capitalize">{user?.role}</span>
                     </div>
                 </Link>
-                 <SidebarTrigger className="w-full" />
             </SidebarFooter>
         </Sidebar>
     );

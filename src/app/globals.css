@@ -38,17 +38,17 @@ body {
     
     --radius: 0.75rem;
 
-    --sidebar-background: 40 20% 20%; /* Dark Earth/Brown */
-    --sidebar-foreground: 40 15% 95%;
+    --sidebar-background: 35 35% 12%; /* Darker, richer earth brown */
+    --sidebar-foreground: 35 25% 95%;
     
-    --sidebar-primary: 140 50% 40%; /* Brighter Forest Green */
-    --sidebar-primary-foreground: 140 20% 98%;
+    --sidebar-primary: 140 50% 60%; /* Brighter Forest Green for active state */
+    --sidebar-primary-foreground: 140 90% 98%;
     
-    --sidebar-accent: 40 20% 30%;
+    --sidebar-accent: 35 25% 22%; /* Slightly lighter brown for hover */
     --sidebar-accent-foreground: 0 0% 100%;
     
-    --sidebar-border: 40 20% 25%;
-    --sidebar-ring: 140 50% 40%;
+    --sidebar-border: 35 25% 18%;
+    --sidebar-ring: 140 50% 50%;
   }
 
   .dark {
@@ -80,17 +80,17 @@ body {
     --input: 40 20% 20% / 0.6;
     --ring: 140 50% 40%;
     
-    --sidebar-background: 40 20% 12%; 
-    --sidebar-foreground: 40 15% 95%;
+    --sidebar-background: 20 15% 5%; /* Very dark brown/almost black */
+    --sidebar-foreground: 20 15% 95%;
     
-    --sidebar-primary: 140 50% 45%;
+    --sidebar-primary: 140 50% 55%;
     --sidebar-primary-foreground: 140 20% 98%;
     
-    --sidebar-accent: 40 20% 25%;
+    --sidebar-accent: 20 15% 15%;
     --sidebar-accent-foreground: 0 0% 100%;
     
-    --sidebar-border: 40 20% 20%;
-    --sidebar-ring: 140 50% 45%;
+    --sidebar-border: 20 15% 12%;
+    --sidebar-ring: 140 50% 50%;
   }
 }
 

@@ -572,9 +572,6 @@ const SidebarMenuButton = React.forwardRef<
         className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
         {...props}
       >
-        {isActive && (
-            <div className="absolute left-0 h-6 w-1 bg-primary-foreground rounded-r-full group-data-[collapsible=icon]:hidden" />
-        )}
         {children}
       </Comp>
     )
@@ -770,5 +767,3 @@ export {
   SidebarTrigger,
   useSidebar,
 }
-
-    

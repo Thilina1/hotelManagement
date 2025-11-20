@@ -10,9 +10,12 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarTrigger,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarSeparator,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, LayoutDashboard, Users, UserCog, UtensilsCrossed, Boxes, CreditCard, BarChart, BedDouble, Star } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, UserCog, UtensilsCrossed, Boxes, CreditCard, BarChart, BedDouble, Star, Building, Utensils } from 'lucide-react';
 import { useAuth } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
@@ -24,20 +27,54 @@ import { useUserContext } from '@/context/user-context';
 import { SidebarRail } from '../ui/sidebar';
 import type { UserRole } from '@/lib/types';
 
-const allMenuItems = [
-  { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', roles: ['admin', 'waiter', 'payment'] as UserRole[] },
-  { href: '/dashboard/activities', icon: Star, label: 'Activities', roles: ['admin'] as UserRole[] },
-  { href: '/dashboard/bookings', icon: BedDouble, label: 'Booking Management', roles: ['admin'] as UserRole[] },
-  { href: '/dashboard/room-management', icon: BedDouble, label: 'Room Management', roles: ['admin'] as UserRole[] },
-  { href: '/dashboard/reports', icon: BarChart, label: 'Reports', roles: ['admin', 'payment'] as UserRole[] },
-  { href: '/dashboard/billing', icon: CreditCard, label: 'Restaurant Billing', roles: ['admin', 'payment'] as UserRole[] },
-  { href: '/dashboard/user-management', icon: Users, label: 'User Management', roles: ['admin'] as UserRole[] },
-  { href: '/dashboard/menu-management', icon: UtensilsCrossed, label: 'Menu Management', roles: ['admin'] as UserRole[] },
-  { href: '/dashboard/table-management', icon: TableIcon, label: 'Table Management', roles: ['admin'] as UserRole[] },
-  { href: '/dashboard/inventory-management', icon: Boxes, label: 'Inventory', roles: ['admin'] as UserRole[] },
-  { href: '/dashboard/profile', icon: UserCog, label: 'Profile', roles: ['admin', 'waiter', 'payment'] as UserRole[] },
+interface MenuItem {
+    href: string;
+    icon: React.ElementType;
+    label: string;
+    roles: UserRole[];
+}
+
+const generalMenuItems: MenuItem[] = [
+  { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', roles: ['admin', 'waiter', 'payment'] },
+  { href: '/dashboard/profile', icon: UserCog, label: 'Profile', roles: ['admin', 'waiter', 'payment'] },
+  { href: '/dashboard/user-management', icon: Users, label: 'User Management', roles: ['admin'] },
 ];
 
+const restaurantMenuItems: MenuItem[] = [
+  { href: '/dashboard/billing', icon: CreditCard, label: 'Restaurant Billing', roles: ['admin', 'payment'] },
+  { href: '/dashboard/menu-management', icon: UtensilsCrossed, label: 'Menu Management', roles: ['admin'] },
+  { href: '/dashboard/table-management', icon: TableIcon, label: 'Table Management', roles: ['admin'] },
+  { href: '/dashboard/inventory-management', icon: Boxes, label: 'Inventory', roles: ['admin'] },
+];
+
+const roomBookingMenuItems: MenuItem[] = [
+  { href: '/dashboard/room-management', icon: BedDouble, label: 'Room Management', roles: ['admin'] },
+  { href: '/dashboard/bookings', icon: BedDouble, label: 'Booking Management', roles: ['admin'] },
+];
+
+const otherMenuItems: MenuItem[] = [
+    { href: '/dashboard/activities', icon: Star, label: 'Activities', roles: ['admin'] },
+    { href: '/dashboard/reports', icon: BarChart, label: 'Reports', roles: ['admin', 'payment'] },
+];
+
+
+const renderMenuItems = (items: MenuItem[], userRole: UserRole | undefined, pathname: string) => {
+    if (!userRole) return null;
+    
+    const accessibleItems = items.filter(item => item.roles.includes(userRole));
+    if (accessibleItems.length === 0) return null;
+    
+    return accessibleItems.map(item => (
+        <SidebarMenuItem key={item.href}>
+            <SidebarMenuButton asChild tooltip={item.label} isActive={pathname.startsWith(item.href) && (item.href !== '/dashboard' || pathname === '/dashboard')}>
+                <Link href={item.href}>
+                    <item.icon />
+                    {item.label}
+                </Link>
+            </SidebarMenuButton>
+        </SidebarMenuItem>
+    ));
+}
 
 export default function AppSidebar() {
     const auth = useAuth();
@@ -53,8 +90,8 @@ export default function AppSidebar() {
         router.push('/');
     };
     
-    const accessibleMenuItems = allMenuItems.filter(item => user?.role && item.roles.includes(user.role));
-
+    const restaurantSection = renderMenuItems(restaurantMenuItems, user?.role, pathname);
+    const roomBookingSection = renderMenuItems(roomBookingMenuItems, user?.role, pathname);
 
     return (
         <Sidebar collapsible="icon">
@@ -67,22 +104,31 @@ export default function AppSidebar() {
             </SidebarHeader>
             <SidebarContent>
                 <SidebarMenu>
-                  {accessibleMenuItems.map(item => (
-                     <SidebarMenuItem key={item.href}>
-                        <SidebarMenuButton asChild tooltip={item.label} isActive={pathname.startsWith(item.href) && (item.href !== '/dashboard' || pathname === '/dashboard')}>
-                          <Link href={item.href}>
-                              <item.icon />
-                              {item.label}
-                          </Link>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                    <SidebarMenuItem>
-                        <SidebarMenuButton onClick={logout} tooltip="Logout">
-                            <LogOut />
-                            Logout
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
+                  {renderMenuItems(generalMenuItems, user?.role, pathname)}
+                  
+                  {restaurantSection && (
+                     <SidebarGroup className="p-0">
+                        <SidebarGroupLabel className="flex items-center"><Utensils className="mr-2"/>Restaurant</SidebarGroupLabel>
+                        <SidebarGroupContent>{restaurantSection}</SidebarGroupContent>
+                    </SidebarGroup>
+                  )}
+                  
+                  {roomBookingSection && (
+                    <SidebarGroup className="p-0">
+                        <SidebarGroupLabel className="flex items-center"><Building className="mr-2"/>Room Booking</SidebarGroupLabel>
+                        <SidebarGroupContent>{roomBookingSection}</SidebarGroupContent>
+                    </SidebarGroup>
+                  )}
+
+                  <SidebarSeparator />
+                  {renderMenuItems(otherMenuItems, user?.role, pathname)}
+
+                  <SidebarMenuItem>
+                      <SidebarMenuButton onClick={logout} tooltip="Logout">
+                          <LogOut />
+                          Logout
+                      </SidebarMenuButton>
+                  </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarContent>
             <SidebarFooter>
@@ -101,7 +147,3 @@ export default function AppSidebar() {
         </Sidebar>
     );
 }
-
-    
-
-    

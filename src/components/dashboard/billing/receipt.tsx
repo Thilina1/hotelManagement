@@ -35,7 +35,7 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ bill, i
          <div className="flex justify-center items-center gap-2">
             <Logo className="h-8 w-8 text-black" />
             <h1 className="text-2xl font-bold">
-                Hotel
+                Victoria Retreat
             </h1>
          </div>
         <p>123 Ocean View Drive, Paradise City</p>

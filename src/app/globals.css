@@ -8,66 +8,89 @@ body {
 
 @layer base {
   :root {
-    --background: 210 100% 98%; /* Lighter Ivory/Off-white */
-    --foreground: 210 100% 10%; /* Dark Sapphire for text */
-    --card: 210 100% 100% / 0.6; /* Semi-transparent white for glassmorphism */
-    --card-foreground: 210 100% 10%;
-    --popover: 210 100% 100% / 0.8;
-    --popover-foreground: 210 100% 10%;
-    --primary: 20 100% 40%; /* Warm Terracotta Red */
-    --primary-foreground: 45 100% 95%; /* Light Ivory/Gold */
-    --secondary: 151 50% 90%; /* Soft Aqua */
-    --secondary-foreground: 120 100% 15%; /* Dark Green */
-    --muted: 210 20% 90%; /* Light Earth Gray */
-    --muted-foreground: 210 10% 40%; /* Darker Earth Gray */
-    --accent: 120 100% 20%; /* Vibrant Emerald Green */
-    --accent-foreground: 151 100% 95%; /* Light Aqua */
+    --background: 40 30% 95%; /* Light Earth/Sand */
+    --foreground: 40 20% 15%; /* Dark Earth/Brown */
+    
+    --card: 40 30% 100% / 0.6;
+    --card-foreground: 40 20% 15%;
+    
+    --popover: 40 30% 100% / 0.8;
+    --popover-foreground: 40 20% 15%;
+    
+    --primary: 140 50% 30%; /* Forest Green */
+    --primary-foreground: 140 20% 98%;
+    
+    --secondary: 200 60% 85%; /* Light Water Blue */
+    --secondary-foreground: 200 80% 20%; /* Dark Water Blue */
+    
+    --muted: 40 20% 90%; /* Lighter Earth Gray */
+    --muted-foreground: 40 10% 40%;
+    
+    --accent: 200 70% 45%; /* Vibrant Water Blue */
+    --accent-foreground: 200 100% 95%;
+    
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 210 20% 80%;
-    --input: 210 30% 95% / 0.7;
-    --ring: 20 100% 40%; /* Terracotta */
+    
+    --border: 40 20% 80%;
+    --input: 40 30% 95% / 0.7;
+    --ring: 140 50% 30%; /* Forest Green */
+    
     --radius: 0.75rem;
 
-    --sidebar-background: 210 100% 20%; /* Deep Sapphire Blue */
-    --sidebar-foreground: 210 25% 95%;
-    --sidebar-primary: 20 100% 40%;
-    --sidebar-primary-foreground: 45 100% 95%;
-    --sidebar-accent: 210 100% 30%;
+    --sidebar-background: 40 20% 20%; /* Dark Earth/Brown */
+    --sidebar-foreground: 40 15% 95%;
+    
+    --sidebar-primary: 140 50% 40%; /* Brighter Forest Green */
+    --sidebar-primary-foreground: 140 20% 98%;
+    
+    --sidebar-accent: 40 20% 30%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 210 100% 25%;
-    --sidebar-ring: 20 100% 40%;
+    
+    --sidebar-border: 40 20% 25%;
+    --sidebar-ring: 140 50% 40%;
   }
 
   .dark {
-    --background: 210 100% 10%; /* Dark Sapphire */
-    --foreground: 210 25% 95%;
-    --card: 210 100% 15% / 0.5; /* Darker glass */
-    --card-foreground: 210 25% 95%;
-    --popover: 210 100% 12% / 0.8;
-    --popover-foreground: 210 25% 95%;
-    --primary: 20 100% 45%; /* Terracotta */
-    --primary-foreground: 45 100% 95%;
-    --secondary: 151 100% 30%; /* Darker Aqua */
-    --secondary-foreground: 151 100% 90%;
-    --muted: 210 100% 20%;
-    --muted-foreground: 210 20% 70%;
-    --accent: 120 100% 30%; /* Emerald Green */
-    --accent-foreground: 120 100% 90%;
+    --background: 40 20% 10%; /* Dark Earth/Brown */
+    --foreground: 40 15% 95%;
+    
+    --card: 40 20% 15% / 0.5;
+    --card-foreground: 40 15% 95%;
+    
+    --popover: 40 20% 12% / 0.8;
+    --popover-foreground: 40 15% 95%;
+
+    --primary: 140 50% 40%; /* Brighter Forest Green */
+    --primary-foreground: 140 20% 98%;
+    
+    --secondary: 200 70% 30%; /* Darker Water Blue */
+    --secondary-foreground: 200 60% 90%;
+    
+    --muted: 40 20% 20%;
+    --muted-foreground: 40 15% 70%;
+    
+    --accent: 200 70% 50%; /* Brighter Water Blue */
+    --accent-foreground: 200 100% 95%;
+    
     --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 98%;
-    --border: 210 100% 25%;
-    --input: 210 100% 20% / 0.6;
-    --ring: 20 100% 45%;
     
-    --sidebar-background: 210 100% 12%; 
-    --sidebar-foreground: 210 25% 95%;
-    --sidebar-primary: 20 100% 45%;
-    --sidebar-primary-foreground: 45 100% 95%;
-    --sidebar-accent: 210 100% 25%;
+    --border: 40 20% 25%;
+    --input: 40 20% 20% / 0.6;
+    --ring: 140 50% 40%;
+    
+    --sidebar-background: 40 20% 12%; 
+    --sidebar-foreground: 40 15% 95%;
+    
+    --sidebar-primary: 140 50% 45%;
+    --sidebar-primary-foreground: 140 20% 98%;
+    
+    --sidebar-accent: 40 20% 25%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 210 100% 20%;
-    --sidebar-ring: 20 100% 45%;
+    
+    --sidebar-border: 40 20% 20%;
+    --sidebar-ring: 140 50% 45%;
   }
 }
 

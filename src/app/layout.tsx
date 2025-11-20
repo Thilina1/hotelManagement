@@ -5,8 +5,8 @@ import './globals.css';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 export const metadata: Metadata = {
-  title: 'Restaurant Staff Manager',
-  description: 'Manage your restaurant staff with ease.',
+  title: 'Victoria Retreat',
+  description: 'Manage your hotel and restaurant with ease.',
 };
 
 export default async function RootLayout({

@@ -108,17 +108,23 @@ export default function AppSidebar() {
                   {renderMenuItems(generalMenuItems, user?.role, pathname)}
                   
                   {restaurantSection && (
-                     <SidebarGroup className="p-0">
-                        <SidebarGroupLabel className="flex items-center"><Utensils className="mr-2"/>Restaurant</SidebarGroupLabel>
-                        <SidebarGroupContent>{restaurantSection}</SidebarGroupContent>
-                    </SidebarGroup>
+                     <>
+                        <SidebarSeparator />
+                        <SidebarGroup className="p-0">
+                            <SidebarGroupLabel className="flex items-center"><Utensils className="mr-2"/>Restaurant</SidebarGroupLabel>
+                            <SidebarGroupContent>{restaurantSection}</SidebarGroupContent>
+                        </SidebarGroup>
+                     </>
                   )}
                   
                   {roomBookingSection && (
-                    <SidebarGroup className="p-0">
-                        <SidebarGroupLabel className="flex items-center"><Building className="mr-2"/>Room Booking</SidebarGroupLabel>
-                        <SidebarGroupContent>{roomBookingSection}</SidebarGroupContent>
-                    </SidebarGroup>
+                    <>
+                        <SidebarSeparator />
+                        <SidebarGroup className="p-0">
+                            <SidebarGroupLabel className="flex items-center"><Building className="mr-2"/>Room Booking</SidebarGroupLabel>
+                            <SidebarGroupContent>{roomBookingSection}</SidebarGroupContent>
+                        </SidebarGroup>
+                    </>
                   )}
 
                   <SidebarSeparator />

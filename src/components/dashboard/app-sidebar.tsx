@@ -13,6 +13,7 @@ import {
   SidebarGroup,
   SidebarGroupLabel,
   SidebarSeparator,
+  SidebarGroupContent,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { LogOut, LayoutDashboard, Users, UserCog, UtensilsCrossed, Boxes, CreditCard, BarChart, BedDouble, Star, Building, Utensils } from 'lucide-react';

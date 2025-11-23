@@ -246,8 +246,8 @@ export default function TableOrderPage() {
     }
 
     return (
-        <div className="container mx-auto p-4 space-y-6 flex flex-col h-[calc(100vh-theme(spacing.14))]">
-            <header>
+        <div className="container mx-auto p-4 space-y-6 flex flex-col h-[calc(100vh_-_theme(spacing.24))]">
+            <header className="flex-shrink-0">
                 <h1 className="text-3xl font-headline font-bold">Table {table?.tableNumber} - Order</h1>
                 <p className="text-muted-foreground">Add items to the order and manage the bill.</p>
             </header>
@@ -259,68 +259,75 @@ export default function TableOrderPage() {
                         <CardDescription>Select items to add to the order.</CardDescription>
                     </CardHeader>
                     <CardContent className="flex-1 min-h-0">
-                        <ScrollArea className="h-full">
-                            <div className="space-y-2 pr-4">
-                                {menuItems?.filter(item => item.availability).map(item => (
-                                    <div key={item.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted">
-                                        <div>
-                                            <p className="font-semibold">{item.name}</p>
-                                            <p className="text-sm text-muted-foreground">LKR {item.price.toFixed(2)}</p>
-                                            {item.stockType === 'Inventoried' && <p className="text-xs text-primary">Stock: {item.stock}</p>}
+                        <div className="relative h-full">
+                            <ScrollArea className="absolute inset-0">
+                                <div className="space-y-2 pr-4">
+                                    {menuItems?.filter(item => item.availability).map(item => (
+                                        <div key={item.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted">
+                                            <div>
+                                                <p className="font-semibold">{item.name}</p>
+                                                <p className="text-sm text-muted-foreground">LKR {item.price.toFixed(2)}</p>
+                                                {item.stockType === 'Inventoried' && <p className="text-xs text-primary">Stock: {item.stock}</p>}
+                                            </div>
+                                            <Button size="sm" onClick={() => handleAddItem(item)}>
+                                                <PlusCircle className="mr-2 h-4 w-4" /> Add
+                                            </Button>
                                         </div>
-                                        <Button size="sm" onClick={() => handleAddItem(item)}>
-                                            <PlusCircle className="mr-2 h-4 w-4" /> Add
-                                        </Button>
-                                    </div>
-                                ))}
-                            </div>
-                        </ScrollArea>
+                                    ))}
+                                </div>
+                            </ScrollArea>
+                        </div>
                     </CardContent>
                 </Card>
 
-                <Card className="sticky top-24 flex flex-col h-full">
+                <Card className="h-full flex flex-col">
                     <CardHeader className="flex-shrink-0">
                         <CardTitle className="flex items-center"><ShoppingCart className="mr-2"/> Current Bill</CardTitle>
                          {table && <Badge className="capitalize w-fit">{table.status}</Badge>}
                          {openOrder?.waiterName && <p className="text-sm text-muted-foreground pt-1">Waiter: {openOrder.waiterName}</p>}
                     </CardHeader>
-                    <CardContent className="space-y-4 flex-1 min-h-0 overflow-y-auto">
-                        <Separator />
-                        <h3 className="font-semibold">Current Order</h3>
-                         <ScrollArea className="h-40">
-                             {orderItems && orderItems.map(item => (
-                                <div key={item.id} className="flex justify-between items-center text-sm">
-                                    <p>{item.name} x {item.quantity}</p>
-                                    <p>LKR {(item.price * item.quantity).toFixed(2)}</p>
-                                </div>
-                            ))}
-                            {!areOrderItemsLoading && (!orderItems || orderItems.length === 0) && <p className="text-sm text-muted-foreground">No items in the current order.</p>}
-                         </ScrollArea>
-                        
-                         <Separator />
-                         <h3 className="font-semibold">New Items</h3>
-                        {Object.keys(localOrder).length > 0 ? (
-                           <ScrollArea className="h-32">
-                             {Object.entries(localOrder).map(([id, quantity]) => {
-                                const item = menuItems?.find(m => m.id === id);
-                                if (!item) return null;
-                                return (
-                                    <div key={id} className="flex justify-between items-center text-sm">
-                                        <div>
-                                          <p>{item.name} x {quantity}</p>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <p>LKR {(item.price * quantity).toFixed(2)}</p>
-                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleAddItem(item)}><PlusCircle className="h-4 w-4" /></Button>
-                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRemoveItem(id)}><MinusCircle className="h-4 w-4" /></Button>
-                                        </div>
+                    <CardContent className="space-y-4 flex-1 min-h-0">
+                         <div className="relative h-full">
+                            <ScrollArea className="absolute inset-0">
+                                <div className="space-y-4 pr-4">
+                                    <Separator />
+                                    <h3 className="font-semibold">Current Order</h3>
+                                    <div className="space-y-1">
+                                        {orderItems && orderItems.length > 0 ? orderItems.map(item => (
+                                            <div key={item.id} className="flex justify-between items-center text-sm">
+                                                <p>{item.name} x {item.quantity}</p>
+                                                <p>LKR {(item.price * item.quantity).toFixed(2)}</p>
+                                            </div>
+                                        )) : <p className="text-sm text-muted-foreground">No items in the current order.</p>}
                                     </div>
-                                );
-                            })}
+                                    
+                                    <Separator />
+                                    <h3 className="font-semibold">New Items</h3>
+                                    {Object.keys(localOrder).length > 0 ? (
+                                        <div className="space-y-1">
+                                            {Object.entries(localOrder).map(([id, quantity]) => {
+                                            const item = menuItems?.find(m => m.id === id);
+                                            if (!item) return null;
+                                            return (
+                                                <div key={id} className="flex justify-between items-center text-sm">
+                                                    <div>
+                                                    <p>{item.name} x {quantity}</p>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <p>LKR {(item.price * quantity).toFixed(2)}</p>
+                                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleAddItem(item)}><PlusCircle className="h-4 w-4" /></Button>
+                                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRemoveItem(id)}><MinusCircle className="h-4 w-4" /></Button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-muted-foreground">Add items from the menu.</p>
+                                    )}
+                                </div>
                            </ScrollArea>
-                        ) : (
-                            <p className="text-sm text-muted-foreground">Add items from the menu.</p>
-                        )}
+                        </div>
                     </CardContent>
                     <CardFooter className="flex flex-col gap-4 mt-auto border-t pt-4 flex-shrink-0">
                         <Separator/>
@@ -338,3 +345,5 @@ export default function TableOrderPage() {
         </div>
     );
 }
+
+    

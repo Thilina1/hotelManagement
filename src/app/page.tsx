@@ -61,15 +61,27 @@ export default function LoginPage() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
+    if (!auth) {
+      toast({
+        variant: "destructive",
+        title: "Login Failed",
+        description: "Authentication service is not available.",
+      });
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      if (!auth) throw new Error("Auth service not available");
       await signInWithEmailAndPassword(auth, values.email, values.password);
+      // The onAuthStateChanged listener in the layout will handle the redirect.
+      // We can show a success toast here.
       toast({
         title: "Login Successful",
-        description: "Welcome back!",
+        description: "Redirecting to your dashboard...",
       });
-      router.push("/dashboard");
-    } catch(error) {
+      // No need to setIsLoading(false) here as the page will redirect.
+    } catch (error) {
+      console.error("Login Error:", error);
       toast({
         variant: "destructive",
         title: "Login Failed",

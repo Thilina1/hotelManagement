@@ -339,12 +339,12 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                     </Card>
 
                     <Card className="sticky top-0 h-full flex flex-col">
-                        <CardHeader>
+                        <CardHeader className="flex-shrink-0">
                             <CardTitle className="flex items-center"><ShoppingCart className="mr-2"/> Current Bill</CardTitle>
                             {table && <Badge className="capitalize w-fit">{table.status}</Badge>}
                             {openOrder?.waiterName && <p className="text-sm text-muted-foreground pt-1">Waiter: {openOrder.waiterName}</p>}
                         </CardHeader>
-                        <CardContent className="space-y-4 flex-1 overflow-y-auto">
+                        <CardContent className="space-y-4 flex-1 min-h-0 overflow-y-auto">
                            
                                 <Separator />
                                 <h3 className="font-semibold my-2">Current Order</h3>
@@ -386,7 +386,7 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                                 </div>
                           
                         </CardContent>
-                        <CardFooter className="flex flex-col gap-4 mt-auto border-t pt-4">
+                        <CardFooter className="flex flex-col gap-4 mt-auto border-t pt-4 flex-shrink-0">
                             <div className="w-full flex justify-between items-center text-xl font-bold">
                                 <span>Total Bill:</span>
                                 <span>LKR {totalBill.toFixed(2)}</span>

@@ -246,13 +246,13 @@ export default function TableOrderPage() {
     }
 
     return (
-        <div className="container mx-auto p-4 space-y-6">
+        <div className="container mx-auto p-4 space-y-6 flex flex-col h-[calc(100vh-theme(spacing.14))]">
             <header>
                 <h1 className="text-3xl font-headline font-bold">Table {table?.tableNumber} - Order</h1>
                 <p className="text-muted-foreground">Add items to the order and manage the bill.</p>
             </header>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 items-start">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 items-start flex-1 min-h-0">
                 <Card className="lg:col-span-2 h-full flex flex-col">
                     <CardHeader className="flex-shrink-0">
                         <CardTitle>Menu</CardTitle>
@@ -278,13 +278,13 @@ export default function TableOrderPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="sticky top-24">
-                    <CardHeader>
+                <Card className="sticky top-24 flex flex-col h-full">
+                    <CardHeader className="flex-shrink-0">
                         <CardTitle className="flex items-center"><ShoppingCart className="mr-2"/> Current Bill</CardTitle>
                          {table && <Badge className="capitalize w-fit">{table.status}</Badge>}
                          {openOrder?.waiterName && <p className="text-sm text-muted-foreground pt-1">Waiter: {openOrder.waiterName}</p>}
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-4 flex-1 min-h-0 overflow-y-auto">
                         <Separator />
                         <h3 className="font-semibold">Current Order</h3>
                          <ScrollArea className="h-40">
@@ -322,7 +322,7 @@ export default function TableOrderPage() {
                             <p className="text-sm text-muted-foreground">Add items from the menu.</p>
                         )}
                     </CardContent>
-                    <CardFooter className="flex flex-col gap-4">
+                    <CardFooter className="flex flex-col gap-4 mt-auto border-t pt-4 flex-shrink-0">
                         <Separator/>
                         <div className="w-full flex justify-between items-center text-xl font-bold">
                             <span>Total Bill:</span>

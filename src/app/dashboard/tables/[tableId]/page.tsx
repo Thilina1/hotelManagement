@@ -1,4 +1,3 @@
-
 'use client';
  
 import { useEffect, useMemo, useState } from 'react';
@@ -254,8 +253,8 @@ export default function TableOrderPage() {
             </header>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 items-start">
-                <Card className="lg:col-span-2 h-[calc(100vh-12rem)] flex flex-col">
-                    <CardHeader>
+                <Card className="lg:col-span-2 h-full flex flex-col">
+                    <CardHeader className="flex-shrink-0">
                         <CardTitle>Menu</CardTitle>
                         <CardDescription>Select items to add to the order.</CardDescription>
                     </CardHeader>

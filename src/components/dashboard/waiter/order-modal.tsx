@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
@@ -278,7 +277,7 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                 </DialogHeader>
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 items-start flex-1 min-h-0">
                     <Card className="lg:col-span-2 h-full flex flex-col">
-                        <CardHeader>
+                        <CardHeader className="flex-shrink-0">
                             <CardTitle>Menu</CardTitle>
                             <CardDescription>Select items to add to the order.</CardDescription>
                             <div className="flex gap-2 items-center flex-wrap">

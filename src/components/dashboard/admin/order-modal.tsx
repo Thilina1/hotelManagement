@@ -276,7 +276,7 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                 <DialogHeader>
                     <DialogTitle>Table {table?.tableNumber} - Order</DialogTitle>
                 </DialogHeader>
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 items-start flex-1 overflow-hidden">
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 items-start flex-1 min-h-0">
                     <Card className="lg:col-span-2 h-full flex flex-col">
                         <CardHeader>
                             <CardTitle>Menu</CardTitle>
@@ -297,7 +297,7 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                                 ))}
                             </div>
                         </CardHeader>
-                        <CardContent className="flex-1 overflow-hidden">
+                        <CardContent className="flex-1 min-h-0">
                             <ScrollArea className="h-full">
                                 <div className="space-y-2 pr-4">
                                     {areMenuItemsLoading ? (
@@ -345,7 +345,7 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                             {table && <Badge className="capitalize w-fit">{table.status}</Badge>}
                             {openOrder?.waiterName && <p className="text-sm text-muted-foreground pt-1">Waiter: {openOrder.waiterName}</p>}
                         </CardHeader>
-                        <CardContent className="space-y-4 flex-1 overflow-auto">
+                        <CardContent className="space-y-4 flex-1 overflow-y-auto">
                            
                                 <Separator />
                                 <h3 className="font-semibold my-2">Current Order</h3>

@@ -27,8 +27,8 @@ import { Switch } from '@/components/ui/switch';
 import type { MenuItem, MenuCategory, StockType } from '@/lib/types';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
-const menuCategories: MenuCategory[] = ['Sri Lankan', 'Western', 'Bar'];
-const stockTypes: StockType[] = ['Inventoried', 'Non-Inventoried'];
+const menuCategories = ['Sri Lankan', 'Western', 'Bar'] as const;
+const stockTypes = ['Inventoried', 'Non-Inventoried'] as const;
 
 const formSchema = z.object({
   name: z.string().min(1, { message: 'Item name is required.' }),
@@ -38,14 +38,16 @@ const formSchema = z.object({
   availability: z.boolean(),
   stockType: z.enum(stockTypes),
   stock: z.coerce.number().optional(),
+  varietyOfDishesh: z.string().optional(),
 });
 
 interface MenuItemFormProps {
   item?: MenuItem | null;
   onSubmit: (values: z.infer<typeof formSchema>) => void;
+  varietyOfDishes: Array<{ id: string; name: string; }>;
 }
 
-export function MenuItemForm({ item, onSubmit }: MenuItemFormProps) {
+export function MenuItemForm({ item, onSubmit, varietyOfDishes }: MenuItemFormProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -56,6 +58,7 @@ export function MenuItemForm({ item, onSubmit }: MenuItemFormProps) {
       availability: item?.availability ?? true,
       stockType: item?.stockType || 'Non-Inventoried',
       stock: item?.stock || 0,
+      varietyOfDishesh: item?.varietyOfDishesh || '',
     },
   });
 
@@ -121,6 +124,28 @@ export function MenuItemForm({ item, onSubmit }: MenuItemFormProps) {
                 <SelectContent>
                   {menuCategories.map(cat => (
                     <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="varietyOfDishesh"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Variety of Dishes</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a variety" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {varietyOfDishes.map(variety => (
+                    <SelectItem key={variety.id} value={variety.name}>{variety.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

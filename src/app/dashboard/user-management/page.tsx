@@ -182,7 +182,7 @@ export default function UserManagementPage() {
                     <UserPlus className="mr-2 h-4 w-4" /> Add User
                 </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-h-screen overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>{editingUser ? 'Edit User' : 'Add New User'}</DialogTitle>
                 </DialogHeader>

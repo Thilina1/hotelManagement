@@ -54,6 +54,14 @@ export default function MenuManagementPage() {
 
   const { data: menuItems, isLoading: areMenuItemsLoading } = useCollection<MenuItemType>(menuItemsCollection);
 
+  const varietyOfDishesCollection = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'varietyOfDishesh');
+}, [firestore]);
+
+const { data: varietyOfDishes, isLoading: areVarietyOfDishesLoading } = useCollection(varietyOfDishesCollection);
+
+
   const handleAddItemClick = () => {
     setEditingItem(null);
     setIsDialogOpen(true);
@@ -274,6 +282,7 @@ export default function MenuManagementPage() {
                 <MenuItemForm
                     item={editingItem}
                     onSubmit={handleFormSubmit}
+                    varietyOfDishes={varietyOfDishes || []}
                 />
             </DialogContent>
         </Dialog>

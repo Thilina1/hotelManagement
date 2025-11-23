@@ -20,12 +20,13 @@ export type StockType = 'Inventoried' | 'Non-Inventoried';
 export type MenuItem = {
     id: string;
     name: string;
-    description: string;
+    description?: string;
     price: number;
     category: MenuCategory;
     availability: boolean;
     stockType: StockType;
     stock?: number;
+    varietyOfDishesh?: string;
     createdAt?: string | { seconds: number; nanoseconds: number };
     updatedAt?: string | { seconds: number; nanoseconds: number };
 };

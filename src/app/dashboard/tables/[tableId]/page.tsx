@@ -1,6 +1,6 @@
 
 'use client';
-
+ 
 import { useEffect, useMemo, useState } from 'react';
 import { notFound, useParams } from 'next/navigation';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
@@ -254,13 +254,13 @@ export default function TableOrderPage() {
             </header>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 items-start">
-                <Card className="lg:col-span-2">
+                <Card className="lg:col-span-2 h-[calc(100vh-12rem)] flex flex-col">
                     <CardHeader>
                         <CardTitle>Menu</CardTitle>
                         <CardDescription>Select items to add to the order.</CardDescription>
                     </CardHeader>
-                    <CardContent>
-                        <ScrollArea className="h-[60vh]">
+                    <CardContent className="flex-1 min-h-0">
+                        <ScrollArea className="h-full">
                             <div className="space-y-2 pr-4">
                                 {menuItems?.filter(item => item.availability).map(item => (
                                     <div key={item.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted">
@@ -339,5 +339,3 @@ export default function TableOrderPage() {
         </div>
     );
 }
-
-    

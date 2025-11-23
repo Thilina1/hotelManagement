@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
@@ -272,7 +273,7 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
-                <DialogHeader>
+                <DialogHeader className="flex-shrink-0">
                     <DialogTitle>Table {table?.tableNumber} - Order</DialogTitle>
                 </DialogHeader>
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 items-start flex-1 min-h-0">
@@ -344,47 +345,49 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
                             {table && <Badge className="capitalize w-fit">{table.status}</Badge>}
                             {openOrder?.waiterName && <p className="text-sm text-muted-foreground pt-1">Waiter: {openOrder.waiterName}</p>}
                         </CardHeader>
-                        <CardContent className="space-y-4 flex-1 min-h-0 overflow-y-auto">
-                           
-                                <Separator />
-                                <h3 className="font-semibold my-2">Current Order</h3>
-                                <div className="space-y-1 pr-2 max-h-32 overflow-y-auto">
-                                {areOrderItemsLoading ? <Skeleton className="h-16 w-full" /> : 
-                                 orderItems && orderItems.length > 0 ? (
-                                    orderItems.map(item => (
-                                        <div key={item.id} className="flex justify-between items-center text-sm">
-                                            <p>{item.name} x {item.quantity}</p>
-                                            <p>LKR {(item.price * item.quantity).toFixed(2)}</p>
-                                        </div>
-                                    ))
-                                 ) : (
-                                    <p className="text-sm text-muted-foreground">No items in the current order.</p>
-                                 )}
-                                </div>
-                                
-                                <Separator className="my-2"/>
-                                <h3 className="font-semibold mb-2">New Items</h3>
-                                <div className="space-y-1 pr-2 max-h-48 overflow-y-auto">
-                                {Object.keys(localOrder).length > 0 ? (
-                                    Object.entries(localOrder).map(([id, quantity]) => {
-                                        const item = menuItems?.find(m => m.id === id);
-                                        if (!item) return null;
-                                        return (
-                                            <div key={id} className="flex justify-between items-center text-sm mb-1">
-                                                <div><p>{item.name} x {quantity}</p></div>
-                                                <div className="flex items-center gap-2">
-                                                    <p>LKR {(item.price * quantity).toFixed(2)}</p>
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleAddItem(item)}><PlusCircle className="h-4 w-4" /></Button>
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRemoveItem(id)}><MinusCircle className="h-4 w-4" /></Button>
-                                                </div>
+                        <CardContent className="space-y-4 flex-1 min-h-0">
+                           <ScrollArea className="h-full">
+                                <div className="pr-4 space-y-4">
+                                    <Separator />
+                                    <h3 className="font-semibold">Current Order</h3>
+                                    <div className="space-y-1">
+                                    {areOrderItemsLoading ? <Skeleton className="h-16 w-full" /> : 
+                                     orderItems && orderItems.length > 0 ? (
+                                        orderItems.map(item => (
+                                            <div key={item.id} className="flex justify-between items-center text-sm">
+                                                <p>{item.name} x {item.quantity}</p>
+                                                <p>LKR {(item.price * item.quantity).toFixed(2)}</p>
                                             </div>
-                                        );
-                                    })
-                                ) : (
-                                    <p className="text-sm text-muted-foreground">Add items from the menu.</p>
-                                )}
+                                        ))
+                                     ) : (
+                                        <p className="text-sm text-muted-foreground">No items in the current order.</p>
+                                     )}
+                                    </div>
+                                    
+                                    <Separator/>
+                                    <h3 className="font-semibold">New Items</h3>
+                                    <div className="space-y-1">
+                                    {Object.keys(localOrder).length > 0 ? (
+                                        Object.entries(localOrder).map(([id, quantity]) => {
+                                            const item = menuItems?.find(m => m.id === id);
+                                            if (!item) return null;
+                                            return (
+                                                <div key={id} className="flex justify-between items-center text-sm mb-1">
+                                                    <div><p>{item.name} x {quantity}</p></div>
+                                                    <div className="flex items-center gap-2">
+                                                        <p>LKR {(item.price * quantity).toFixed(2)}</p>
+                                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleAddItem(item)}><PlusCircle className="h-4 w-4" /></Button>
+                                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRemoveItem(id)}><MinusCircle className="h-4 w-4" /></Button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })
+                                    ) : (
+                                        <p className="text-sm text-muted-foreground">Add items from the menu.</p>
+                                    )}
+                                    </div>
                                 </div>
-                          
+                           </ScrollArea>
                         </CardContent>
                         <CardFooter className="flex flex-col gap-4 mt-auto border-t pt-4 flex-shrink-0">
                             <div className="w-full flex justify-between items-center text-xl font-bold">
@@ -402,3 +405,5 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
         </Dialog>
     );
 }
+
+    

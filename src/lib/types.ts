@@ -2,6 +2,7 @@
 
 
 
+
 export type UserRole = 'admin' | 'waiter' | 'payment';
 
 export type User = {
@@ -134,6 +135,11 @@ export type Activity = {
     updatedAt?: string | { seconds: number; nanoseconds: number };
 }
 
-    
-
-    
+export type Experience = {
+    id: string;
+    title: string;
+    description: string;
+    imageUrl: string;
+    createdAt?: string | { seconds: number; nanoseconds: number };
+    updatedAt?: string | { seconds: number; nanoseconds: number };
+}

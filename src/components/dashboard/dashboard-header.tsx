@@ -45,6 +45,8 @@ const getPageTitle = (pathname: string) => {
             return 'Room Management';
         case '/dashboard/activities':
             return 'Activity Management';
+        case '/dashboard/experiences':
+            return 'Experience Management';
         default:
              if (pathname.startsWith('/dashboard/tables/')) {
                 return 'Table Order';

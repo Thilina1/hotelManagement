@@ -214,6 +214,20 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["name", "type"]
+    },
+    "Experience": {
+      "title": "Experience",
+      "description": "Represents a bookable experience offered by the hotel.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "imageUrl": { "type": "string", "description": "URL of an image for the experience." },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "description", "imageUrl"]
     }
   },
   "auth": {
@@ -294,6 +308,13 @@
         "definition": {
             "schema": { "$ref": "#/backend/entities/Activity" },
             "description": "Stores information about available activities."
+        }
+      },
+      {
+        "path": "/experiences/{experienceId}",
+        "definition": {
+            "schema": { "$ref": "#/backend/entities/Experience" },
+            "description": "Stores information about available experiences."
         }
       }
     ],

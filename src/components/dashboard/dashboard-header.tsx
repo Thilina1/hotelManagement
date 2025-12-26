@@ -47,9 +47,16 @@ const getPageTitle = (pathname: string) => {
             return 'Activity Management';
         case '/dashboard/experiences':
             return 'Experience Management';
+        case '/dashboard/blogs':
+            return 'Blog Management';
+        case '/dashboard/blogs/create':
+            return 'Create Blog Post';
         default:
              if (pathname.startsWith('/dashboard/tables/')) {
                 return 'Table Order';
+            }
+            if (pathname.startsWith('/dashboard/blogs/edit/')) {
+                return 'Edit Blog Post';
             }
             return 'Dashboard';
     }

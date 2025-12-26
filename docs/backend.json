@@ -226,6 +226,46 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["title", "description", "imageUrl"]
+    },
+    "Blog": {
+      "title": "Blog",
+      "description": "Represents a single blog post.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "previewHeader": { "type": "string" },
+        "previewDescription": { "type": "string" },
+        "header1": { "type": "string" },
+        "content1": { "type": "string", "format": "html" },
+        "content2": { "type": "string", "format": "html" },
+        "contentImage": { "type": "string", "format": "uri" },
+        "featured": { "type": "boolean" },
+        "featuredPosition": { "type": "number" },
+        "color": { "type": "string", "enum": ["amber", "green", "creme", "blue"] },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "proTips": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": { "type": "string" },
+              "description": { "type": "string" }
+            },
+            "required": ["title", "description"]
+          }
+        },
+        "bookingButtonText": { "type": "string" },
+        "bookingButtonContent": { "type": "string", "format": "uri" },
+        "authorId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "title", "previewHeader", "previewDescription", "header1", "content1",
+        "contentImage", "featured", "color", "tags", "proTips",
+        "bookingButtonText", "bookingButtonContent", "authorId", "createdAt"
+      ]
     }
   },
   "auth": {
@@ -313,6 +353,13 @@
         "definition": {
             "schema": { "$ref": "#/backend/entities/Experience" },
             "description": "Stores information about available experiences."
+        }
+      },
+      {
+        "path": "/blogs/{blogId}",
+        "definition": {
+            "schema": { "$ref": "#/backend/entities/Blog" },
+            "description": "Stores all blog posts for the application."
         }
       }
     ],

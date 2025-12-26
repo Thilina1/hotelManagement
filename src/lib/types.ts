@@ -138,3 +138,26 @@ export type Experience = {
     createdAt?: string | { seconds: number; nanoseconds: number };
     updatedAt?: string | { seconds: number; nanoseconds: number };
 }
+
+export type BlogColor = 'amber' | 'green' | 'creme' | 'blue';
+
+export type Blog = {
+    id: string;
+    title: string;
+    previewHeader: string;
+    previewDescription: string;
+    header1: string;
+    content1: string;
+    content2?: string;
+    contentImage: string;
+    featured: boolean;
+    featuredPosition?: number;
+    color: BlogColor;
+    tags: string[];
+    proTips: { title: string; description: string }[];
+    bookingButtonText: string;
+    bookingButtonContent: string;
+    authorId: string;
+    createdAt: string | { seconds: number; nanoseconds: number };
+    updatedAt?: string | { seconds: number; nanoseconds: number };
+}

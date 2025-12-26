@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from '@/hooks/use-toast';
 import { useUserContext } from '@/context/user-context';
+import Image from 'next/image';
 
 const statusColors: Record<RoomStatus, string> = {
     available: 'bg-green-500 text-white',
@@ -163,7 +164,7 @@ export default function RoomManagementPage() {
                     <PlusCircle className="mr-2 h-4 w-4" /> Add Room
                 </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>{editingRoom ? 'Edit Room' : 'Add New Room'}</DialogTitle>
                 </DialogHeader>
@@ -184,9 +185,12 @@ export default function RoomManagementPage() {
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead>Room No.</TableHead>
+                        <TableHead>Image</TableHead>
+                        <TableHead>Room Info</TableHead>
                         <TableHead>Type</TableHead>
                         <TableHead>Price/Night (LKR)</TableHead>
+                        <TableHead>Count</TableHead>
+                        <TableHead>View</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -196,20 +200,34 @@ export default function RoomManagementPage() {
                         <>
                         {[...Array(5)].map((_, i) => (
                             <TableRow key={i}>
-                            <TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell>
+                            <TableCell colSpan={8}><Skeleton className="h-8 w-full" /></TableCell>
                             </TableRow>
                         ))}
                         </>
                     )}
                     {!areRoomsLoading && rooms && rooms.map((room) => (
                         <TableRow key={room.id}>
-                        <TableCell className="font-medium">{room.roomNumber}</TableCell>
+                        <TableCell>
+                            <Image
+                                src={room.imageUrl || 'https://placehold.co/100x100'}
+                                alt={room.title}
+                                width={80}
+                                height={80}
+                                className="rounded-md object-cover"
+                            />
+                        </TableCell>
+                        <TableCell>
+                            <div className="font-medium">{room.title}</div>
+                            <div className="text-sm text-muted-foreground">No: {room.roomNumber}</div>
+                        </TableCell>
                         <TableCell>{room.type}</TableCell>
                         <TableCell>
                           {typeof room.pricePerNight === 'number'
                             ? room.pricePerNight.toFixed(2)
                             : 'N/A'}
                         </TableCell>
+                        <TableCell>{room.roomCount}</TableCell>
+                        <TableCell>{room.view}</TableCell>
                         <TableCell>
                             <Badge variant="secondary" className={`capitalize ${statusColors[room.status]}`}>
                                 {room.status}
@@ -239,7 +257,7 @@ export default function RoomManagementPage() {
                     ))}
                     {!areRoomsLoading && (!rooms || rooms.length === 0) && (
                         <TableRow>
-                            <TableCell colSpan={5} className="text-center text-muted-foreground py-10">
+                            <TableCell colSpan={8} className="text-center text-muted-foreground py-10">
                                 No rooms found. Add a room to get started.
                             </TableCell>
                         </TableRow>

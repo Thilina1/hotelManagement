@@ -154,11 +154,16 @@
       "properties": {
         "id": { "type": "string" },
         "roomNumber": { "type": "string" },
+        "title": { "type": "string", "description": "The title or name of the room." },
+        "description": { "type": "string", "description": "A description of the room." },
         "type": { "type": "string", "enum": ["Single", "Double", "Suite", "Deluxe"] },
         "pricePerNight": { "type": "number" },
-        "status": { "type": "string", "enum": ["available", "occupied", "maintenance"] }
+        "status": { "type": "string", "enum": ["available", "occupied", "maintenance"] },
+        "imageUrl": { "type": "string", "description": "URL of an image of the room." },
+        "roomCount": { "type": "number", "description": "The number of available rooms of this type." },
+        "view": { "type": "string", "description": "The view from the room (e.g., 'Ocean View', 'Garden View')." }
       },
-      "required": ["roomNumber", "type", "pricePerNight", "status"]
+      "required": ["roomNumber", "title", "description", "type", "pricePerNight", "status", "imageUrl", "roomCount", "view"]
     },
     "Booking": {
       "title": "Booking",
@@ -295,5 +300,3 @@
     "reasoning": "The Firestore structure is designed to support a restaurant staff management system with role-based access control.  It emphasizes simplicity and security, especially concerning user data.\n\nThe core design revolves around storing user data in a dedicated collection, `/users/{userId}`, with `{userId}` corresponding to the Firebase Authentication `uid`. This structure ensures path-based ownership, making security rules straightforward and efficient. No denormalization is needed as only the authenticated user (or an admin via separate, potentially centralized admin data) should have access to user profiles, supporting the required QAPs through structural segregation.\n\nThis approach avoids `get()` calls in security rules, promoting Authorization Independence. It also inherently supports listing users securely, as only an admin (determined by a separate `/roles_admin/{uid}` document) would have list access to the `/users` collection, while regular users can only access their own document at `/users/{uid}`. Roles are explicitly defined in the user document, allowing for content-based authorization checks within the security rules (e.g., `request.resource.data.role == 'admin'`).\n\nTo support the 'no duplicate' constraint on the 'name' field, consider using a Cloud Function triggered on document creation or update. This function can query the collection to check for existing names and reject the write if a duplicate is found, ensuring data integrity."
   }
 }
-
-    

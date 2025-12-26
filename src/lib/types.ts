@@ -1,6 +1,7 @@
 
 
 
+
 export type UserRole = 'admin' | 'waiter' | 'payment';
 
 export type User = {
@@ -95,6 +96,11 @@ export type Room = {
     type: RoomType;
     pricePerNight: number;
     status: RoomStatus;
+    title: string;
+    description: string;
+    imageUrl: string;
+    roomCount: number;
+    view: string;
 }
 
 export type BookingStatus = 'confirmed' | 'checked-in' | 'checked-out' | 'cancelled';

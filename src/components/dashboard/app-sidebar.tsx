@@ -49,7 +49,7 @@ const restaurantMenuItems: MenuItem[] = [
 
 const roomBookingMenuItems: MenuItem[] = [
   { href: '/dashboard/room-management', icon: BedDouble, label: 'Room Management', roles: ['admin'] },
-  { href: '/dashboard/bookings', icon: BedDouble, label: 'Booking Management', roles: ['admin'] },
+  { href: '/dashboard/reservations', icon: BedDouble, label: 'Reservation Management', roles: ['admin'] },
 ];
 
 const otherMenuItems: MenuItem[] = [

@@ -1,8 +1,4 @@
 
-
-
-
-
 export type UserRole = 'admin' | 'waiter' | 'payment';
 
 export type User = {
@@ -104,23 +100,22 @@ export type Room = {
     view: string;
 }
 
-export type BookingStatus = 'confirmed' | 'checked-in' | 'checked-out' | 'cancelled';
+export type ReservationStatus = 'confirmed' | 'checked-in' | 'checked-out' | 'cancelled';
 
-export type Booking = {
+export type Reservation = {
     id: string;
-    bookingNumber: string;
-    roomId: string;
-    roomNumber: string;
-    guestName: string;
-    guestEmail: string;
-    guestContact: string;
-    guestNIC: string;
+    bookingDate: string; // ISO String
     checkInDate: string; // ISO String
     checkOutDate: string; // ISO String
-    adults: number;
-    children: number;
-    advancePayment?: number;
-    status: BookingStatus;
+    guestEmail: string;
+    guestId: string;
+    guestName: string;
+    numberOfGuests: number;
+    roomId: string;
+    roomTitle: string;
+    specialRequests?: string;
+    status: ReservationStatus;
+    totalCost: number;
 }
 
 export type ActivityType = 'priceable' | 'non-priceable';

@@ -6,7 +6,7 @@
  *
  * Data Structure:
  * - User profiles are stored under `/users/{userId}`, where `{userId}` matches the Firebase Auth UID.
- * - Other collections like `/rooms`, `/bookings`, `/menuItems`, `/tables`, `/orders`, `/bills` are top-level collections.
+ * - Other collections like `/rooms`, `/reservations`, `/menuItems`, `/tables`, `/orders`, `/bills` are top-level collections.
  *
  * Key Security Decisions:
  * - User listing is implicitly controlled via path-based ownership on `/users/{userId}`.
@@ -56,16 +56,16 @@ service cloud.firestore {
     }
 
     /**
-     * @description Allow public read access to booking data and restrict writes.
-     * @path /bookings/{bookingId}
-     * @allow (get) Any user can read booking data.
-     * @allow (list) Any user can list bookings.
-     * @deny (create) No one can create a booking through client-side rules.
-     * @deny (update) No one can update a booking through client-side rules.
-     * @deny (delete) No one can delete a booking through client-side rules.
-     * @principle Restricts writes to the booking collection.
+     * @description Allow public read access to reservation data and restrict writes.
+     * @path /reservations/{reservationId}
+     * @allow (get) Any user can read reservation data.
+     * @allow (list) Any user can list reservations.
+     * @deny (create) No one can create a reservation through client-side rules.
+     * @deny (update) No one can update a reservation through client-side rules.
+     * @deny (delete) No one can delete a reservation through client-side rules.
+     * @principle Restricts writes to the reservation collection.
      */
-    match /bookings/{bookingId} {
+    match /reservations/{reservationId} {
       allow get, list: if true;
       allow create, update, delete: if false;
     }

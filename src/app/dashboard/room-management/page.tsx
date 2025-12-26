@@ -185,7 +185,6 @@ export default function RoomManagementPage() {
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead>Image</TableHead>
                         <TableHead>Room Info</TableHead>
                         <TableHead>Type</TableHead>
                         <TableHead>Price/Night (LKR)</TableHead>
@@ -200,22 +199,13 @@ export default function RoomManagementPage() {
                         <>
                         {[...Array(5)].map((_, i) => (
                             <TableRow key={i}>
-                            <TableCell colSpan={8}><Skeleton className="h-8 w-full" /></TableCell>
+                            <TableCell colSpan={7}><Skeleton className="h-8 w-full" /></TableCell>
                             </TableRow>
                         ))}
                         </>
                     )}
                     {!areRoomsLoading && rooms && rooms.map((room) => (
                         <TableRow key={room.id}>
-                        <TableCell>
-                            <Image
-                                src={room.imageUrl || 'https://placehold.co/100x100'}
-                                alt={room.title}
-                                width={80}
-                                height={80}
-                                className="rounded-md object-cover"
-                            />
-                        </TableCell>
                         <TableCell>
                             <div className="font-medium">{room.title}</div>
                             <div className="text-sm text-muted-foreground">No: {room.roomNumber}</div>
@@ -257,7 +247,7 @@ export default function RoomManagementPage() {
                     ))}
                     {!areRoomsLoading && (!rooms || rooms.length === 0) && (
                         <TableRow>
-                            <TableCell colSpan={8} className="text-center text-muted-foreground py-10">
+                            <TableCell colSpan={7} className="text-center text-muted-foreground py-10">
                                 No rooms found. Add a room to get started.
                             </TableCell>
                         </TableRow>

@@ -28,6 +28,12 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'images.getaroom-cdn.com',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
 };

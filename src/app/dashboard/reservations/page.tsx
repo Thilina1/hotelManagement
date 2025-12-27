@@ -223,6 +223,7 @@ export default function ReservationManagementPage() {
                 <TableHead>Room</TableHead>
                 <TableHead>Check-In</TableHead>
                 <TableHead>Check-Out</TableHead>
+                <TableHead>Total Cost</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -232,7 +233,7 @@ export default function ReservationManagementPage() {
                 <>
                   {[...Array(5)].map((_, i) => (
                     <TableRow key={i}>
-                      <TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell>
+                      <TableCell colSpan={7}><Skeleton className="h-8 w-full" /></TableCell>
                     </TableRow>
                   ))}
                 </>
@@ -243,6 +244,7 @@ export default function ReservationManagementPage() {
                   <TableCell>{reservation.roomTitle}</TableCell>
                   <TableCell>{getFormattedDate(reservation.checkInDate)}</TableCell>
                   <TableCell>{getFormattedDate(reservation.checkOutDate)}</TableCell>
+                  <TableCell>LKR {reservation.totalCost.toFixed(2)}</TableCell>
                   <TableCell>
                     <Badge variant="secondary" className={`capitalize ${statusColors[reservation.status]}`}>
                         {reservation.status}
@@ -290,7 +292,7 @@ export default function ReservationManagementPage() {
               ))}
                {!areReservationsLoading && (!sortedReservations || sortedReservations.length === 0) && (
                 <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-10">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-10">
                         No reservations found.
                     </TableCell>
                 </TableRow>

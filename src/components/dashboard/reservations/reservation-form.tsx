@@ -65,8 +65,8 @@ export function ReservationForm({ reservation, rooms, onClose }: ReservationForm
       guestName: reservation?.guestName || '',
       guestEmail: reservation?.guestEmail || '',
       dateRange: {
-        from: reservation?.checkInDate ? new Date(reservation.checkInDate) : undefined,
-        to: reservation?.checkOutDate ? new Date(reservation.checkOutDate) : undefined,
+        from: reservation?.checkInDate ? new Date(reservation.checkInDate) : new Date(),
+        to: reservation?.checkOutDate ? new Date(reservation.checkOutDate) : new Date(),
       },
       numberOfGuests: reservation?.numberOfGuests || 1,
       totalCost: reservation?.totalCost || 0,

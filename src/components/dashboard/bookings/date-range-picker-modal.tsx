@@ -31,7 +31,9 @@ export function DateRangePickerModal({
   const [range, setRange] = useState<DateRange | undefined>(initialDateRange);
 
   useEffect(() => {
+    if (isOpen) {
       setRange(initialDateRange);
+    }
   }, [initialDateRange, isOpen]);
 
   const handleSave = () => {
@@ -52,7 +54,7 @@ export function DateRangePickerModal({
         <DialogHeader>
           <DialogTitle>Select Check-in and Check-out Dates</DialogTitle>
         </DialogHeader>
-        <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex flex-row gap-4">
             <DayPicker
                 mode="range"
                 selected={range}
@@ -65,7 +67,7 @@ export function DateRangePickerModal({
                   selected: 'bg-primary text-primary-foreground hover:bg-primary/90 focus:bg-primary/90',
                   day_range_start: 'day-range-start',
                   day_range_end: 'day-range-end',
-                  day_range_middle: 'bg-accent text-accent-foreground',
+                  day_range_middle: 'bg-accent/80 text-accent-foreground',
                 }}
             />
              <div className="flex flex-col space-y-2 border-l pl-4">

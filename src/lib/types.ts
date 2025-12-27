@@ -100,7 +100,7 @@ export type Room = {
     view: string;
 }
 
-export type ReservationStatus = 'confirmed' | 'checked-in' | 'checked-out' | 'cancelled';
+export type ReservationStatus = 'booked' | 'confirmed' | 'checked-in' | 'checked-out' | 'cancelled';
 
 export type ReservationItem = {
     description: string;

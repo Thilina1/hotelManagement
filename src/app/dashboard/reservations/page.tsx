@@ -37,6 +37,7 @@ import { useUserContext } from '@/context/user-context';
 import { format } from 'date-fns';
 
 const statusColors: Record<ReservationStatus, string> = {
+    booked: 'bg-blue-200 text-blue-800',
     confirmed: 'bg-blue-500 text-white',
     'checked-in': 'bg-yellow-500 text-white',
     'checked-out': 'bg-green-500 text-white',

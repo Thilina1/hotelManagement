@@ -29,11 +29,17 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
       {
-        protocol: 'https',
+        protocol: 'https' ,
         hostname: 'images.getaroom-cdn.com',
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https' ,
+        hostname: 'www.dropbox.com',
+        port: '',
+        pathname: '/**',
+      }
     ],
   },
 };

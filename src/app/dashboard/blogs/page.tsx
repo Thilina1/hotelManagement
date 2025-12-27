@@ -2,7 +2,25 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { DragDropContext, Draggable, DropResult } from 'react-beautiful-dnd';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { restrictToVerticalAxis, restrictToWindowEdges } from '@dnd-kit/modifiers';
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Edit, Trash2, GripVertical } from "lucide-react";
@@ -13,7 +31,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Droppable } from '@/components/dashboard/blogs/droppable-wrapper';
 
 
 export default function BlogManagementPage() {
@@ -30,6 +47,13 @@ export default function BlogManagementPage() {
   const [featuredBlogs, setFeaturedBlogs] = useState<Blog[]>([]);
   const [nonFeaturedBlogs, setNonFeaturedBlogs] = useState<Blog[]>([]);
 
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
   useEffect(() => {
     if (blogs) {
       const featured = blogs
@@ -41,40 +65,40 @@ export default function BlogManagementPage() {
     }
   }, [blogs]);
 
-  const onDragEnd = async (result: DropResult) => {
-    if (!result.destination || !firestore) {
-      return;
-    }
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
 
-    const items = Array.from(featuredBlogs);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
+    if (active.id !== over?.id && firestore) {
+      const oldIndex = featuredBlogs.findIndex(b => b.id === active.id);
+      const newIndex = featuredBlogs.findIndex(b => b.id === over?.id);
+      
+      const newOrder = arrayMove(featuredBlogs, oldIndex, newIndex);
+      setFeaturedBlogs(newOrder);
 
-    setFeaturedBlogs(items);
-
-    try {
-      const batch = writeBatch(firestore);
-      items.forEach((blog, index) => {
-        const blogRef = doc(firestore, 'blogs', blog.id);
-        batch.update(blogRef, { featuredPosition: index + 1 });
-      });
-      await batch.commit();
-      toast({
-        title: 'Reordering Successful',
-        description: 'Featured blogs have been reordered.',
-      });
-    } catch (error) {
-      console.error("Error reordering blogs: ", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to reorder blogs.",
-      });
-      // Revert state on error
-      const originalOrder = blogs
-        ?.filter(b => b.featured)
-        .sort((a, b) => (a.featuredPosition || 0) - (b.featuredPosition || 0));
-      if (originalOrder) setFeaturedBlogs(originalOrder);
+      try {
+        const batch = writeBatch(firestore);
+        newOrder.forEach((blog, index) => {
+          const blogRef = doc(firestore, 'blogs', blog.id);
+          batch.update(blogRef, { featuredPosition: index + 1 });
+        });
+        await batch.commit();
+        toast({
+          title: 'Reordering Successful',
+          description: 'Featured blogs have been reordered.',
+        });
+      } catch (error) {
+        console.error("Error reordering blogs: ", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to reorder blogs.",
+        });
+        // Revert state on error by re-fetching from original blogs prop
+         const originalOrder = blogs
+            ?.filter(b => b.featured)
+            .sort((a, b) => (a.featuredPosition || 0) - (b.featuredPosition || 0));
+         if (originalOrder) setFeaturedBlogs(originalOrder);
+      }
     }
   };
 
@@ -123,31 +147,27 @@ export default function BlogManagementPage() {
     
     if (isFeatured) {
         return (
-            <DragDropContext onDragEnd={onDragEnd}>
-                <Droppable droppableId="featuredBlogs">
-                    {(provided) => (
-                        <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-3">
-                            {blogList.map((blog, index) => (
-                                <Draggable key={blog.id} draggableId={blog.id} index={index}>
-                                    {(provided) => (
-                                        <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
-                                            <BlogListItem blog={blog} onDelete={() => handleDelete(blog.id, true)} />
-                                        </div>
-                                    )}
-                                </Draggable>
-                            ))}
-                            {provided.placeholder}
-                        </div>
-                    )}
-                </Droppable>
-            </DragDropContext>
+            <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+                modifiers={[restrictToVerticalAxis, restrictToWindowEdges]}
+            >
+                <SortableContext items={blogList} strategy={verticalListSortingStrategy}>
+                    <div className="space-y-3">
+                        {blogList.map((blog) => (
+                           <SortableBlogListItem key={blog.id} blog={blog} onDelete={() => handleDelete(blog.id, true)} />
+                        ))}
+                    </div>
+                </SortableContext>
+            </DndContext>
         );
     }
     
     return (
         <div className="space-y-3">
             {blogList.map(blog => (
-                <BlogListItem key={blog.id} blog={blog} onDelete={() => handleDelete(blog.id, false)} />
+                <BlogListItem key={blog.id} blog={blog} onDelete={() => handleDelete(blog.id, false)} isSortable={false} />
             ))}
         </div>
     );
@@ -195,11 +215,12 @@ export default function BlogManagementPage() {
 interface BlogListItemProps {
     blog: Blog;
     onDelete: () => void;
+    isSortable?: boolean;
 }
 
-const BlogListItem = ({ blog, onDelete }: BlogListItemProps) => (
-    <div className="flex items-center gap-4 p-2 rounded-lg border bg-card hover:bg-muted transition-colors">
-        <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab" />
+const BlogListItem = ({ blog, onDelete, isSortable = false, ...props }: BlogListItemProps & React.HTMLAttributes<HTMLDivElement>) => (
+    <div {...props} className="flex items-center gap-4 p-2 rounded-lg border bg-card hover:bg-muted transition-colors">
+        {isSortable && <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab" />}
         <Image
             src={blog.contentImage || 'https://placehold.co/100x100'}
             alt={blog.title}
@@ -223,3 +244,30 @@ const BlogListItem = ({ blog, onDelete }: BlogListItemProps) => (
         </div>
     </div>
 );
+
+const SortableBlogListItem = ({ blog, onDelete }: Omit<BlogListItemProps, 'isSortable'>) => {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+    } = useSortable({ id: blog.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+    };
+
+    return (
+        <BlogListItem
+            ref={setNodeRef}
+            style={style}
+            {...attributes}
+            {...listeners}
+            blog={blog}
+            onDelete={onDelete}
+            isSortable={true}
+        />
+    );
+};

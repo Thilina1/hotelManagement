@@ -13,6 +13,9 @@
     "seed": "tsx scripts/create-admin.ts"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.1.0",
+    "@dnd-kit/modifiers": "^7.0.0",
+    "@dnd-kit/sortable": "^8.0.0",
     "@genkit-ai/google-genai": "^1.20.0",
     "@genkit-ai/next": "^1.20.0",
     "@hookform/resolvers": "^4.1.3",
@@ -49,7 +52,6 @@
     "next": "15.3.8",
     "patch-package": "^8.0.0",
     "react": "^18.3.1",
-    "react-beautiful-dnd": "^13.1.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",
     "recharts": "^2.15.1",
@@ -60,7 +62,6 @@
   "devDependencies": {
     "@types/node": "^20",
     "@types/react": "^18",
-    "@types/react-beautiful-dnd": "^13.1.8",
     "@types/react-dom": "^18",
     "@types/recharts": "^1.8.29",
     "genkit-cli": "^1.20.0",

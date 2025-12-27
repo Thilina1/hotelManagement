@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -27,7 +26,7 @@ import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/fi
 import { useFirestore, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { DateRangePickerModal } from './date-range-picker-modal';
 import { CalendarIcon } from 'lucide-react';
 import type { DateRange } from 'react-day-picker';
@@ -89,8 +88,8 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
     },
   });
 
-  const calculateCost = useCallback((roomId: string, dateRange: DateRange) => {
-    if (roomId && dateRange.from && dateRange.to) {
+  const calculateCost = useCallback((roomId: string, dateRange: DateRange | undefined) => {
+    if (roomId && dateRange?.from && dateRange?.to) {
         const selectedRoom = rooms.find(r => r.id === roomId);
         if (selectedRoom) {
             const numberOfNights = differenceInCalendarDays(dateRange.to, dateRange.from);

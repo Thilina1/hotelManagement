@@ -52,8 +52,8 @@ const formSchema = z.object({
   status: z.enum(['confirmed', 'checked-in', 'checked-out', 'cancelled']),
   items: z.array(itemSchema),
   totalCost: z.coerce.number(),
-}).refine(data => data.dateRange.from && data.dateRange.to && data.dateRange.to > data.dateRange.from, {
-  message: "Check-out date must be after check-in date.",
+}).refine(data => data.dateRange.from && data.dateRange.to && data.dateRange.to >= data.dateRange.from, {
+  message: "Check-out date must be on or after check-in date.",
   path: ["dateRange"],
 });
 
@@ -113,15 +113,15 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
     if (roomId && dateRange?.from && dateRange?.to) {
         const selectedRoom = rooms.find(r => r.id === roomId);
         if (selectedRoom) {
-            const numberOfNights = differenceInCalendarDays(dateRange.to, dateRange.from);
-            if (numberOfNights > 0) {
-                append({
-                    description: `${selectedRoom.title} - ${numberOfNights} night(s)`,
-                    quantity: numberOfNights,
-                    price: selectedRoom.pricePerNight,
-                });
-                return;
-            }
+            const dayDiff = differenceInCalendarDays(dateRange.to, dateRange.from);
+            const numberOfNights = dayDiff >= 0 ? dayDiff + 1 : 1;
+            
+            append({
+                description: `${selectedRoom.title} - ${numberOfNights} night(s)`,
+                quantity: numberOfNights,
+                price: selectedRoom.pricePerNight,
+            });
+            return;
         }
     }
     toast({ variant: 'destructive', title: 'Error', description: 'Please select a room and a valid date range first.'});
@@ -357,5 +357,3 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
     </>
   );
 }
-
-    

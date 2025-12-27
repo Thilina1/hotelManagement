@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -37,8 +38,11 @@ const formSchema = z.object({
   guestName: z.string().min(2, { message: 'Guest name is required.' }),
   guestEmail: z.string().email({ message: 'Invalid email address.' }),
   dateRange: z.object({
-    from: z.date({ required_error: 'Check-in date is required.'}),
-    to: z.date({ required_error: 'Check-out date is required.'}),
+    from: z.date().optional(),
+    to: z.date().optional(),
+  }).refine(data => !!data.from && !!data.to, {
+    message: 'Both check-in and check-out dates are required.',
+    path: ['from'] // you can assign error to any field in the object
   }),
   numberOfGuests: z.coerce.number().min(1, { message: 'At least one guest is required.' }),
   totalCost: z.coerce.number().min(0),
@@ -158,11 +162,11 @@ export function ReservationForm({ reservation, rooms, onClose }: ReservationForm
                       variant={"outline"}
                       className={cn(
                         "w-full justify-start text-left font-normal",
-                        !field.value.from && "text-muted-foreground"
+                        !field.value?.from && "text-muted-foreground"
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {field.value.from ? (
+                      {field.value?.from ? (
                         field.value.to ? (
                           <>
                             {format(field.value.from, "LLL dd, y")} -{" "}
@@ -181,8 +185,8 @@ export function ReservationForm({ reservation, rooms, onClose }: ReservationForm
                   <Calendar
                     initialFocus
                     mode="range"
-                    defaultMonth={field.value.from}
-                    selected={field.value}
+                    defaultMonth={field.value?.from}
+                    selected={field.value as DateRange}
                     onSelect={field.onChange}
                     numberOfMonths={2}
                     disabled={(date) =>

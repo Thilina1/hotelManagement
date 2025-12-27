@@ -27,7 +27,7 @@ import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/fi
 import { useFirestore, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { DateRangePickerModal } from './date-range-picker-modal';
 import { CalendarIcon } from 'lucide-react';
 import type { DateRange } from 'react-day-picker';
@@ -89,26 +89,35 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
     },
   });
 
-  const selectedRoomId = form.watch('roomId');
-  const selectedDateRange = form.watch('dateRange');
-
-  useEffect(() => {
-    if (selectedRoomId && selectedDateRange?.from && selectedDateRange?.to) {
-        const selectedRoom = rooms.find(r => r.id === selectedRoomId);
+  const calculateCost = useCallback((roomId: string, dateRange: DateRange) => {
+    if (roomId && dateRange.from && dateRange.to) {
+        const selectedRoom = rooms.find(r => r.id === roomId);
         if (selectedRoom) {
-            const numberOfNights = differenceInCalendarDays(selectedDateRange.to, selectedDateRange.from);
+            const numberOfNights = differenceInCalendarDays(dateRange.to, dateRange.from);
             if (numberOfNights > 0) {
                 const calculatedCost = numberOfNights * selectedRoom.pricePerNight;
                 form.setValue('totalCost', calculatedCost, { shouldValidate: true });
-            } else {
-                 form.setValue('totalCost', 0);
+                return;
             }
         }
-    } else {
-        form.setValue('totalCost', 0);
     }
-  }, [selectedRoomId, selectedDateRange, rooms, form]);
+    form.setValue('totalCost', 0);
+  }, [rooms, form]);
 
+  const handleDateSave = (range: DateRange | undefined) => {
+    if (range) {
+        form.setValue('dateRange', range, { shouldValidate: true });
+        const currentRoomId = form.getValues('roomId');
+        calculateCost(currentRoomId, range);
+    }
+    setIsDatePickerOpen(false);
+  };
+  
+  const handleRoomChange = (roomId: string) => {
+    form.setValue('roomId', roomId, { shouldValidate: true });
+    const currentDateRange = form.getValues('dateRange');
+    calculateCost(roomId, currentDateRange);
+  }
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!firestore || !user || !values.dateRange.from || !values.dateRange.to) {
@@ -164,7 +173,7 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Room</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!!booking && booking.status !== 'confirmed'}>
+              <Select onValueChange={handleRoomChange} defaultValue={field.value} disabled={!!booking && booking.status !== 'confirmed'}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a room" />
@@ -292,10 +301,7 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
     <DateRangePickerModal
         isOpen={isDatePickerOpen}
         onClose={() => setIsDatePickerOpen(false)}
-        onSave={(range) => {
-            if (range) form.setValue('dateRange', range, { shouldValidate: true });
-            setIsDatePickerOpen(false);
-        }}
+        onSave={handleDateSave}
         initialDateRange={form.getValues('dateRange')}
         disabled={(date) => date < new Date(new Date().setHours(0,0,0,0)) && !booking}
     />

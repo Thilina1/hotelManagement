@@ -28,7 +28,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { useState, useMemo, useCallback } from 'react';
 import { DateRangePickerModal } from './date-range-picker-modal';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, TrendingUp } from 'lucide-react';
 import type { DateRange } from 'react-day-picker';
 
 const formSchema = z.object({
@@ -40,7 +40,7 @@ const formSchema = z.object({
       to: z.date().optional(),
   }).refine(data => data.from, { message: "Check-in date is required.", path: ["from"] }),
   numberOfGuests: z.coerce.number().min(1, { message: 'At least one guest is required.' }),
-  totalCost: z.coerce.number().min(0),
+  totalCost: z.coerce.number(),
   specialRequests: z.string().optional(),
   status: z.enum(['confirmed', 'checked-in', 'checked-out', 'cancelled']),
 }).refine(data => data.dateRange.from && data.dateRange.to && data.dateRange.to > data.dateRange.from, {
@@ -60,6 +60,8 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
   const { toast } = useToast();
   const { user } = useUser();
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [calculatedCost, setCalculatedCost] = useState<number | null>(booking?.totalCost || null);
+
 
   // Parse booking dates correctly for the form's default values
   const initialDateRange = useMemo(() => {
@@ -88,41 +90,43 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
     },
   });
 
-  const calculateCost = useCallback((roomId: string, dateRange: DateRange | undefined) => {
+  const handleCalculateCost = () => {
+    const { roomId, dateRange } = form.getValues();
     if (roomId && dateRange?.from && dateRange?.to) {
         const selectedRoom = rooms.find(r => r.id === roomId);
         if (selectedRoom) {
             const numberOfNights = differenceInCalendarDays(dateRange.to, dateRange.from);
             if (numberOfNights > 0) {
-                const calculatedCost = numberOfNights * selectedRoom.pricePerNight;
-                form.setValue('totalCost', calculatedCost, { shouldValidate: true });
+                const cost = numberOfNights * selectedRoom.pricePerNight;
+                setCalculatedCost(cost);
+                form.setValue('totalCost', cost, { shouldValidate: true });
+                toast({ title: 'Cost Calculated', description: `Total cost is LKR ${cost.toFixed(2)} for ${numberOfNights} night(s).`});
                 return;
             }
         }
     }
+    setCalculatedCost(0);
     form.setValue('totalCost', 0);
-  }, [rooms, form]);
+    toast({ variant: 'destructive', title: 'Calculation Error', description: 'Please select a room and a valid date range.'});
+  };
 
   const handleDateSave = (range: DateRange | undefined) => {
     if (range) {
         form.setValue('dateRange', range, { shouldValidate: true });
-        const currentRoomId = form.getValues('roomId');
-        calculateCost(currentRoomId, range);
     }
     setIsDatePickerOpen(false);
   };
-  
-  const handleRoomChange = (roomId: string) => {
-    form.setValue('roomId', roomId, { shouldValidate: true });
-    const currentDateRange = form.getValues('dateRange');
-    calculateCost(roomId, currentDateRange);
-  }
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!firestore || !user || !values.dateRange.from || !values.dateRange.to) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not save booking. Check-in and Check-out dates are required.' });
         return;
     };
+
+    if (values.totalCost <= 0 && calculatedCost === null) {
+        toast({ variant: 'destructive', title: 'Missing Cost', description: 'Please calculate the total cost before creating the booking.' });
+        return;
+    }
 
     const selectedRoom = rooms.find(r => r.id === values.roomId);
     if (!selectedRoom) {
@@ -172,7 +176,7 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Room</FormLabel>
-              <Select onValueChange={handleRoomChange} defaultValue={field.value} disabled={!!booking && booking.status !== 'confirmed'}>
+              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!!booking && booking.status !== 'confirmed'}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a room" />
@@ -245,13 +249,14 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
                 </FormItem>
               )}
             />
+            {/* Hidden total cost input, the value is displayed below */}
             <FormField
               control={form.control}
               name="totalCost"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="hidden">
                   <FormLabel>Total Cost (LKR)</FormLabel>
-                  <FormControl><Input type="number" placeholder="e.g. 30000" {...field} readOnly /></FormControl>
+                  <FormControl><Input type="number" {...field} readOnly /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -291,6 +296,21 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
                 </FormItem>
               )}
             />
+        
+        <div className="p-4 border-t space-y-4">
+          <Button type="button" variant="outline" className="w-full" onClick={handleCalculateCost}>
+            <TrendingUp className="mr-2 h-4 w-4" />
+            Calculate Total Cost
+          </Button>
+
+          {calculatedCost !== null && (
+            <div className="p-4 bg-muted rounded-lg text-center">
+              <p className="text-sm text-muted-foreground">Total Estimated Cost</p>
+              <p className="text-2xl font-bold">LKR {calculatedCost.toFixed(2)}</p>
+            </div>
+          )}
+        </div>
+
 
         <Button type="submit" className="w-full">
             {booking ? 'Update Booking' : 'Create Booking'}

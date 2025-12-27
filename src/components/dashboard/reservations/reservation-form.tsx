@@ -27,7 +27,7 @@ import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/fi
 import { useFirestore, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DateRangePickerModal } from '../bookings/date-range-picker-modal';
 import { format, differenceInCalendarDays } from 'date-fns';
 
@@ -41,8 +41,8 @@ const formSchema = z.object({
   totalCost: z.coerce.number().min(0),
   specialRequests: z.string().optional(),
   status: z.enum(['confirmed', 'checked-in', 'checked-out', 'cancelled']),
-}).refine(data => data.checkOutDate > data.checkInDate, {
-  message: "Check-out date must be after check-in date.",
+}).refine(data => data.checkOutDate >= data.checkInDate, {
+  message: "Check-out date must be on or after check-in date.",
   path: ["checkOutDate"],
 });
 
@@ -73,6 +73,25 @@ export function ReservationForm({ reservation, rooms, onClose }: ReservationForm
       status: reservation?.status || 'confirmed',
     },
   });
+
+  const { watch, setValue } = form;
+  const roomId = watch('roomId');
+  const checkInDate = watch('checkInDate');
+  const checkOutDate = watch('checkOutDate');
+
+  useEffect(() => {
+    if (roomId && checkInDate && checkOutDate) {
+      const selectedRoom = rooms.find(r => r.id === roomId);
+      if (selectedRoom) {
+        const dayDiff = differenceInCalendarDays(checkOutDate, checkInDate);
+        const numberOfNights = dayDiff >= 0 ? dayDiff + 1 : 1;
+        const newTotalCost = numberOfNights * selectedRoom.pricePerNight;
+        setValue('totalCost', newTotalCost, { shouldValidate: true });
+      }
+    } else {
+        setValue('totalCost', 0);
+    }
+  }, [roomId, checkInDate, checkOutDate, rooms, setValue]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!firestore || !user ) {
@@ -113,10 +132,8 @@ export function ReservationForm({ reservation, rooms, onClose }: ReservationForm
   };
   
   const availableRooms = rooms.filter(room => room.status === 'available' || room.id === reservation?.roomId);
-  const checkInDate = form.watch('checkInDate');
-  const checkOutDate = form.watch('checkOutDate');
   
-  const dayCount = checkInDate && checkOutDate ? differenceInCalendarDays(checkOutDate, checkInDate) : 0;
+  const dayCount = checkInDate && checkOutDate ? differenceInCalendarDays(checkOutDate, checkInDate) + 1 : 0;
 
   return (
     <>
@@ -211,7 +228,7 @@ export function ReservationForm({ reservation, rooms, onClose }: ReservationForm
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Total Cost (LKR)</FormLabel>
-                  <FormControl><Input type="number" placeholder="e.g. 30000" {...field} /></FormControl>
+                  <FormControl><Input type="number" {...field} readOnly className="bg-muted" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -274,3 +291,5 @@ export function ReservationForm({ reservation, rooms, onClose }: ReservationForm
     </>
   );
 }
+
+    

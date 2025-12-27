@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -62,16 +62,26 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
   const { user } = useUser();
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
+  // Parse booking dates correctly for the form's default values
+  const initialDateRange = useMemo(() => {
+    if (booking?.checkInDate && booking?.checkOutDate) {
+      // Create date objects from string, accounting for timezone by setting time to noon
+      const from = new Date(booking.checkInDate);
+      from.setHours(12,0,0,0);
+      const to = new Date(booking.checkOutDate);
+      to.setHours(12,0,0,0);
+      return { from, to };
+    }
+    return { from: new Date(), to: undefined };
+  }, [booking]);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       roomId: booking?.roomId || '',
       guestName: booking?.guestName || '',
       guestEmail: booking?.guestEmail || '',
-      dateRange: {
-        from: booking?.checkInDate ? new Date(booking.checkInDate) : undefined,
-        to: booking?.checkOutDate ? new Date(booking.checkOutDate) : undefined,
-      },
+      dateRange: initialDateRange,
       numberOfGuests: booking?.numberOfGuests || 1,
       totalCost: booking?.totalCost || 0,
       specialRequests: booking?.specialRequests || '',

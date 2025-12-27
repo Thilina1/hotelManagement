@@ -22,12 +22,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { Booking, Room } from '@/lib/types';
-import { format } from 'date-fns';
+import { format, differenceInCalendarDays } from 'date-fns';
 import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { DateRangePickerModal } from './date-range-picker-modal';
 import { CalendarIcon } from 'lucide-react';
 import type { DateRange } from 'react-day-picker';
@@ -88,6 +88,25 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
       status: booking?.status || 'confirmed',
     },
   });
+
+  const selectedRoomId = form.watch('roomId');
+  const selectedDateRange = form.watch('dateRange');
+
+  useEffect(() => {
+    if (selectedRoomId && selectedDateRange?.from && selectedDateRange?.to) {
+        const selectedRoom = rooms.find(r => r.id === selectedRoomId);
+        if (selectedRoom) {
+            const numberOfNights = differenceInCalendarDays(selectedDateRange.to, selectedDateRange.from);
+            if (numberOfNights > 0) {
+                const calculatedCost = numberOfNights * selectedRoom.pricePerNight;
+                form.setValue('totalCost', calculatedCost, { shouldValidate: true });
+            } else {
+                 form.setValue('totalCost', 0);
+            }
+        }
+    }
+  }, [selectedRoomId, selectedDateRange, rooms, form]);
+
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!firestore || !user || !values.dateRange.from || !values.dateRange.to) {
@@ -222,7 +241,7 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Total Cost (LKR)</FormLabel>
-                  <FormControl><Input type="number" placeholder="e.g. 30000" {...field} /></FormControl>
+                  <FormControl><Input type="number" placeholder="e.g. 30000" {...field} readOnly /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}

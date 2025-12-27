@@ -28,25 +28,25 @@ import type { Booking, Room } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
+import { useFirestore, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { DateRange } from 'react-day-picker';
+import { Textarea } from '@/components/ui/textarea';
 
 const formSchema = z.object({
   roomId: z.string().min(1, { message: 'Please select a room.' }),
   guestName: z.string().min(2, { message: 'Guest name is required.' }),
   guestEmail: z.string().email({ message: 'Invalid email address.' }),
-  guestContact: z.string().min(10, { message: 'Contact number is required.' }),
-  guestNIC: z.string().min(10, { message: 'NIC is required.' }),
-  dateRange: z.object({
-    from: z.date(),
-    to: z.date(),
-  }),
-  adults: z.coerce.number().min(1, { message: 'At least one adult is required.' }),
-  children: z.coerce.number().min(0),
-  advancePayment: z.coerce.number().min(0).optional(),
-  status: z.enum(['confirmed', 'checked-in', 'cancelled']),
+  checkInDate: z.date({ required_error: "Check-in date is required."}),
+  checkOutDate: z.date({ required_error: "Check-out date is required."}),
+  numberOfGuests: z.coerce.number().min(1, { message: 'At least one guest is required.' }),
+  totalCost: z.coerce.number().min(0),
+  specialRequests: z.string().optional(),
+  status: z.enum(['confirmed', 'checked-in', 'checked-out', 'cancelled']),
+}).refine(data => data.checkOutDate > data.checkInDate, {
+  message: "Check-out date must be after check-in date.",
+  path: ["checkOutDate"],
 });
+
 
 interface BookingFormProps {
   booking?: Booking | null;
@@ -57,6 +57,7 @@ interface BookingFormProps {
 export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
+  const { user } = useUser();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -64,21 +65,20 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
       roomId: booking?.roomId || '',
       guestName: booking?.guestName || '',
       guestEmail: booking?.guestEmail || '',
-      guestContact: booking?.guestContact || '',
-      guestNIC: booking?.guestNIC || '',
-      dateRange: {
-        from: booking?.checkInDate ? new Date(booking.checkInDate) : new Date(),
-        to: booking?.checkOutDate ? new Date(booking.checkOutDate) : new Date(),
-      },
-      adults: booking?.adults || 1,
-      children: booking?.children || 0,
-      advancePayment: booking?.advancePayment || 0,
-      status: booking?.status === 'checked-in' ? 'checked-in' : (booking?.status === 'cancelled' ? 'cancelled' : 'confirmed'),
+      checkInDate: booking?.checkInDate ? new Date(booking.checkInDate) : undefined,
+      checkOutDate: booking?.checkOutDate ? new Date(booking.checkOutDate) : undefined,
+      numberOfGuests: booking?.numberOfGuests || 1,
+      totalCost: booking?.totalCost || 0,
+      specialRequests: booking?.specialRequests || '',
+      status: booking?.status || 'confirmed',
     },
   });
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    if (!firestore) return;
+    if (!firestore || !user ) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not save booking.' });
+        return;
+    };
 
     const selectedRoom = rooms.find(r => r.id === values.roomId);
     if (!selectedRoom) {
@@ -88,22 +88,20 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
 
     const bookingData = {
         ...values,
-        bookingNumber: booking?.bookingNumber || `BK-${Date.now()}`,
-        roomNumber: selectedRoom.roomNumber,
-        checkInDate: values.dateRange.from.toISOString(),
-        checkOutDate: values.dateRange.to.toISOString(),
+        bookingDate: booking?.bookingDate || new Date().toISOString(),
+        checkInDate: values.checkInDate.toISOString().split('T')[0], // YYYY-MM-DD
+        checkOutDate: values.checkOutDate.toISOString().split('T')[0], // YYYY-MM-DD
+        roomTitle: selectedRoom.title,
+        guestId: reservation?.guestId || user.uid, // Persist guestId on edit
     };
     
-    // remove dateRange from data
-    delete (bookingData as any).dateRange;
-
     try {
       if (booking) {
-        // Update existing booking
+        // Update existing reservation
         await updateDoc(doc(firestore, 'bookings', booking.id), bookingData);
         toast({ title: 'Booking Updated', description: 'The booking has been successfully updated.' });
       } else {
-        // Create new booking
+        // Create new reservation
         await addDoc(collection(firestore, 'bookings'), bookingData);
         toast({ title: 'Booking Created', description: 'A new booking has been successfully created.' });
       }
@@ -134,7 +132,7 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
                 <SelectContent>
                   {availableRooms.map(room => (
                     <SelectItem key={room.id} value={room.id}>
-                      {room.roomNumber} ({room.type}) - LKR {room.pricePerNight}/night
+                      {room.title} ({room.type}) - LKR {room.pricePerNight}/night
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -144,54 +142,78 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
           )}
         />
         
-        <FormField
-          control={form.control}
-          name="dateRange"
-          render={({ field }) => (
-            <FormItem className="flex flex-col">
-              <FormLabel>Booking Dates</FormLabel>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <FormControl>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-full pl-3 text-left font-normal",
-                        !field.value && "text-muted-foreground"
-                      )}
-                    >
-                      {field.value?.from && !isNaN(new Date(field.value.from).getTime()) ? (
-                        field.value.to && !isNaN(new Date(field.value.to).getTime()) ? (
-                          <>
-                            {format(new Date(field.value.from), "LLL dd, y")} -{" "}
-                            {format(new Date(field.value.to), "LLL dd, y")}
-                          </>
-                        ) : (
-                          format(new Date(field.value.from), "LLL dd, y")
-                        )
-                      ) : (
-                        <span>Pick a date range</span>
-                      )}
-                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                    </Button>
-                  </FormControl>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    initialFocus
-                    mode="range"
-                    defaultMonth={field.value?.from}
-                    selected={field.value as DateRange}
-                    onSelect={field.onChange}
-                    numberOfMonths={2}
-                    disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
-                  />
-                </PopoverContent>
-              </Popover>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="checkInDate"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel>Check-in Date</FormLabel>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !field.value && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={field.value}
+                      onSelect={field.onChange}
+                      disabled={(date) => date < new Date(new Date().setHours(0,0,0,0)) && !booking}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="checkOutDate"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel>Check-out Date</FormLabel>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !field.value && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={field.value}
+                      onSelect={field.onChange}
+                      disabled={(date) => date < (form.getValues('checkInDate') || new Date()) && !booking}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
         
         <div className="grid grid-cols-2 gap-4">
             <FormField
@@ -221,35 +243,10 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
         <div className="grid grid-cols-2 gap-4">
              <FormField
               control={form.control}
-              name="guestContact"
+              name="numberOfGuests"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Contact Number</FormLabel>
-                  <FormControl><Input placeholder="0771234567" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="guestNIC"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>NIC / Passport</FormLabel>
-                  <FormControl><Input placeholder="National ID or Passport" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="adults"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Adults</FormLabel>
+                  <FormLabel>Number of Guests</FormLabel>
                   <FormControl><Input type="number" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
@@ -257,11 +254,11 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
             />
             <FormField
               control={form.control}
-              name="children"
+              name="totalCost"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Children</FormLabel>
-                  <FormControl><Input type="number" {...field} /></FormControl>
+                  <FormLabel>Total Cost (LKR)</FormLabel>
+                  <FormControl><Input type="number" placeholder="e.g. 30000" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -269,11 +266,11 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
         </div>
          <FormField
               control={form.control}
-              name="advancePayment"
+              name="specialRequests"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Advance Payment (LKR)</FormLabel>
-                  <FormControl><Input type="number" placeholder="e.g. 5000" {...field} /></FormControl>
+                  <FormLabel>Special Requests</FormLabel>
+                  <FormControl><Textarea placeholder="Any special requests or notes..." {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -293,6 +290,7 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
                     <SelectContent>
                       <SelectItem value="confirmed">Confirmed</SelectItem>
                       <SelectItem value="checked-in">Checked-In</SelectItem>
+                      <SelectItem value="checked-out">Checked-Out</SelectItem>
                       <SelectItem value="cancelled">Cancelled</SelectItem>
                     </SelectContent>
                   </Select>
@@ -308,3 +306,5 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
     </Form>
   );
 }
+
+    

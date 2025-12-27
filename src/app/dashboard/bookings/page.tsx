@@ -297,3 +297,5 @@ export default function BookingManagementPage() {
     </div>
   );
 }
+
+    

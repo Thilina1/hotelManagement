@@ -116,12 +116,6 @@ export type Reservation = {
     specialRequests?: string;
     status: ReservationStatus;
     totalCost: number;
-    bookingNumber?: string;
-    guestContact?: string;
-    guestNIC?: string;
-    adults?: number;
-    children?: number;
-    advancePayment?: number;
 }
 
 export type ActivityType = 'priceable' | 'non-priceable';
@@ -167,3 +161,5 @@ export type Blog = {
     createdAt: string | { seconds: number; nanoseconds: number };
     updatedAt?: string | { seconds: number; nanoseconds: number };
 }
+
+    

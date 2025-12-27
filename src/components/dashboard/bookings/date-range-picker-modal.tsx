@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DateRange, DayPicker } from 'react-day-picker';
 import { Button } from '@/components/ui/button';
 import {
@@ -28,6 +28,12 @@ export function DateRangePickerModal({
   disabled
 }: DateRangePickerModalProps) {
   const [range, setRange] = useState<DateRange | undefined>(initialDateRange);
+
+  useEffect(() => {
+    if (isOpen) {
+      setRange(initialDateRange);
+    }
+  }, [isOpen, initialDateRange]);
 
   const handleSave = () => {
     onSave(range);

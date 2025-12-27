@@ -61,14 +61,16 @@ const formSchema = z.object({
 interface ReservationFormProps {
   reservation?: Reservation | null;
   rooms: Room[];
+  allReservations: Reservation[];
   onClose: () => void;
 }
 
-export function ReservationForm({ reservation, rooms, onClose }: ReservationFormProps) {
+export function ReservationForm({ reservation, rooms, allReservations, onClose }: ReservationFormProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
   const { user } = useUser();
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [isRoomAvailable, setIsRoomAvailable] = useState(true);
 
   const initialDateRange = useMemo(() => {
     if (reservation?.checkInDate && reservation?.checkOutDate) {
@@ -120,6 +122,36 @@ export function ReservationForm({ reservation, rooms, onClose }: ReservationForm
     form.setValue('totalCost', itemsTotal + roomCost, { shouldValidate: true });
   }, [watchedItems, watchedRoomId, watchedDateRange, rooms, form]);
 
+  useEffect(() => {
+    if (watchedRoomId && watchedDateRange.from && watchedDateRange.to) {
+      const newCheckIn = watchedDateRange.from;
+      const newCheckOut = watchedDateRange.to;
+
+      const isOverlapping = allReservations.some(existing => {
+        // Ignore the current reservation being edited and cancelled ones
+        if (existing.id === reservation?.id || existing.status === 'cancelled') {
+          return false;
+        }
+
+        if (existing.roomId !== watchedRoomId) {
+          return false;
+        }
+
+        const existingCheckIn = new Date(existing.checkInDate);
+        const existingCheckOut = new Date(existing.checkOutDate);
+
+        // Overlap condition
+        return newCheckIn < existingCheckOut && newCheckOut > existingCheckIn;
+      });
+      
+      setIsRoomAvailable(!isOverlapping);
+      if (isOverlapping) {
+        form.setError("dateRange", { type: "manual", message: "This room is already booked for the selected dates." });
+      } else {
+        form.clearErrors("dateRange");
+      }
+    }
+  }, [watchedRoomId, watchedDateRange, allReservations, reservation?.id, form]);
 
   const handleDateSave = (range: DateRange | undefined) => {
     if (range) {
@@ -133,6 +165,11 @@ export function ReservationForm({ reservation, rooms, onClose }: ReservationForm
         toast({ variant: 'destructive', title: 'Error', description: 'Could not save reservation. Check-in and Check-out dates are required.' });
         return;
     };
+    
+    if (!isRoomAvailable) {
+        toast({ variant: 'destructive', title: 'Booking Conflict', description: 'The selected room is not available for the chosen dates.' });
+        return;
+    }
 
     const selectedRoom = rooms.find(r => r.id === values.roomId);
     if (!selectedRoom) {
@@ -348,7 +385,7 @@ export function ReservationForm({ reservation, rooms, onClose }: ReservationForm
         </div>
 
 
-        <Button type="submit" className="w-full">
+        <Button type="submit" className="w-full" disabled={!isRoomAvailable}>
             {reservation ? 'Update Reservation' : 'Create Reservation'}
         </Button>
       </form>

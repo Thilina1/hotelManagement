@@ -205,6 +205,7 @@ export default function ReservationManagementPage() {
                 <ReservationForm
                     reservation={editingReservation}
                     rooms={rooms || []}
+                    allReservations={reservations || []}
                     onClose={() => setIsDialogOpen(false)}
                 />
             </DialogContent>

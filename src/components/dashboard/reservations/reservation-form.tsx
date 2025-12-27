@@ -39,13 +39,17 @@ const formSchema = z.object({
   guestEmail: z.string().email({ message: 'Invalid email address.' }),
   dateRange: z.object({
     from: z.date({ required_error: "Check-in date is required."}),
-    to: z.date({ required_error: "Check-out date is required."}),
+    to: z.date().optional(),
   }),
   numberOfGuests: z.coerce.number().min(1, { message: 'At least one guest is required.' }),
   totalCost: z.coerce.number().min(0),
   specialRequests: z.string().optional(),
   status: z.enum(['confirmed', 'checked-in', 'cancelled', 'checked-out']),
+}).refine(data => data.dateRange.from && data.dateRange.to, {
+    message: "Check-out date is required.",
+    path: ["dateRange"],
 });
+
 
 interface ReservationFormProps {
   reservation?: Reservation | null;
@@ -66,7 +70,7 @@ export function ReservationForm({ reservation, rooms, onClose }: ReservationForm
       guestEmail: reservation?.guestEmail || '',
       dateRange: {
         from: reservation?.checkInDate ? new Date(reservation.checkInDate) : new Date(),
-        to: reservation?.checkOutDate ? new Date(reservation.checkOutDate) : new Date(),
+        to: reservation?.checkOutDate ? new Date(reservation.checkOutDate) : undefined,
       },
       numberOfGuests: reservation?.numberOfGuests || 1,
       totalCost: reservation?.totalCost || 0,

@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { MoreHorizontal, PlusCircle, Trash2, Edit, CheckCircle, BedDouble, XCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import type { Booking, BookingStatus, Room } from '@/lib/types';
+import type { Reservation, ReservationStatus, Room } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, deleteDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -36,7 +36,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useUserContext } from '@/context/user-context';
 import { format } from 'date-fns';
 
-const statusColors: Record<BookingStatus, string> = {
+const statusColors: Record<ReservationStatus, string> = {
     confirmed: 'bg-blue-500 text-white',
     'checked-in': 'bg-yellow-500 text-white',
     'checked-out': 'bg-green-500 text-white',
@@ -58,18 +58,18 @@ export default function BookingManagementPage() {
     return collection(firestore, 'rooms');
   }, [firestore]);
 
-  const { data: bookings, isLoading: areBookingsLoading } = useCollection<Booking>(bookingsCollection);
+  const { data: bookings, isLoading: areBookingsLoading } = useCollection<Reservation>(bookingsCollection);
   const { data: rooms, isLoading: areRoomsLoading } = useCollection<Room>(roomsCollection);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
+  const [editingBooking, setEditingBooking] = useState<Reservation | null>(null);
 
   const handleAddBookingClick = () => {
     setEditingBooking(null);
     setIsDialogOpen(true);
   };
 
-  const handleEditBookingClick = (booking: Booking) => {
+  const handleEditBookingClick = (booking: Reservation) => {
     setEditingBooking(booking);
     setIsDialogOpen(true);
   };
@@ -95,7 +95,7 @@ export default function BookingManagementPage() {
     }
   };
 
-  const handleCheckIn = async (booking: Booking) => {
+  const handleCheckIn = async (booking: Reservation) => {
      if(!firestore) return;
      const bookingRef = doc(firestore, 'bookings', booking.id);
      const roomRef = doc(firestore, 'rooms', booking.roomId);
@@ -104,7 +104,7 @@ export default function BookingManagementPage() {
      toast({ title: 'Checked In', description: `${booking.guestName} has been checked in.` });
   }
 
-  const handleCheckOut = async (booking: Booking) => {
+  const handleCheckOut = async (booking: Reservation) => {
     if (!firestore) return;
     const bookingRef = doc(firestore, 'bookings', booking.id);
     const roomRef = doc(firestore, 'rooms', booking.roomId);
@@ -113,7 +113,7 @@ export default function BookingManagementPage() {
     toast({ title: 'Checked Out', description: `${booking.guestName} has been checked out.` });
   };
 
-  const handleCancelBooking = async (booking: Booking) => {
+  const handleCancelBooking = async (booking: Reservation) => {
     if (!firestore) return;
     if (confirm(`Are you sure you want to cancel the booking for ${booking.guestName}?`)) {
       const bookingRef = doc(firestore, 'bookings', booking.id);

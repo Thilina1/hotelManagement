@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -26,10 +27,17 @@ import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/fi
 import { useFirestore, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { DateRangePickerModal } from './date-range-picker-modal';
-import { CalendarIcon, TrendingUp } from 'lucide-react';
+import { CalendarIcon, PlusCircle, Trash2 } from 'lucide-react';
 import type { DateRange } from 'react-day-picker';
+import { Separator } from '@/components/ui/separator';
+
+const itemSchema = z.object({
+  description: z.string().min(1, 'Description is required'),
+  quantity: z.coerce.number().min(1, 'Quantity must be at least 1'),
+  price: z.coerce.number().min(0, 'Price must be a positive number'),
+});
 
 const formSchema = z.object({
   roomId: z.string().min(1, { message: 'Please select a room.' }),
@@ -40,9 +48,10 @@ const formSchema = z.object({
       to: z.date().optional(),
   }).refine(data => data.from, { message: "Check-in date is required.", path: ["from"] }),
   numberOfGuests: z.coerce.number().min(1, { message: 'At least one guest is required.' }),
-  totalCost: z.coerce.number(),
   specialRequests: z.string().optional(),
   status: z.enum(['confirmed', 'checked-in', 'checked-out', 'cancelled']),
+  items: z.array(itemSchema),
+  totalCost: z.coerce.number(),
 }).refine(data => data.dateRange.from && data.dateRange.to && data.dateRange.to > data.dateRange.from, {
   message: "Check-out date must be after check-in date.",
   path: ["dateRange"],
@@ -60,13 +69,9 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
   const { toast } = useToast();
   const { user } = useUser();
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
-  const [calculatedCost, setCalculatedCost] = useState<number | null>(booking?.totalCost || null);
 
-
-  // Parse booking dates correctly for the form's default values
   const initialDateRange = useMemo(() => {
     if (booking?.checkInDate && booking?.checkOutDate) {
-      // Create date objects from string, accounting for timezone by setting time to noon
       const from = new Date(booking.checkInDate);
       from.setHours(12,0,0,0);
       const to = new Date(booking.checkOutDate);
@@ -84,30 +89,42 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
       guestEmail: booking?.guestEmail || '',
       dateRange: initialDateRange,
       numberOfGuests: booking?.numberOfGuests || 1,
-      totalCost: booking?.totalCost || 0,
       specialRequests: booking?.specialRequests || '',
       status: booking?.status || 'confirmed',
+      items: booking?.items || [],
+      totalCost: booking?.totalCost || 0,
     },
   });
 
-  const handleCalculateCost = () => {
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: 'items',
+  });
+  
+  const watchedItems = useWatch({ control: form.control, name: 'items' });
+  
+  useEffect(() => {
+    const total = watchedItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    form.setValue('totalCost', total, { shouldValidate: true });
+  }, [watchedItems, form]);
+
+  const handleAddRoomToItems = () => {
     const { roomId, dateRange } = form.getValues();
     if (roomId && dateRange?.from && dateRange?.to) {
         const selectedRoom = rooms.find(r => r.id === roomId);
         if (selectedRoom) {
             const numberOfNights = differenceInCalendarDays(dateRange.to, dateRange.from);
             if (numberOfNights > 0) {
-                const cost = numberOfNights * selectedRoom.pricePerNight;
-                setCalculatedCost(cost);
-                form.setValue('totalCost', cost, { shouldValidate: true });
-                toast({ title: 'Cost Calculated', description: `Total cost is LKR ${cost.toFixed(2)} for ${numberOfNights} night(s).`});
+                append({
+                    description: `${selectedRoom.title} - ${numberOfNights} night(s)`,
+                    quantity: numberOfNights,
+                    price: selectedRoom.pricePerNight,
+                });
                 return;
             }
         }
     }
-    setCalculatedCost(0);
-    form.setValue('totalCost', 0);
-    toast({ variant: 'destructive', title: 'Calculation Error', description: 'Please select a room and a valid date range.'});
+    toast({ variant: 'destructive', title: 'Error', description: 'Please select a room and a valid date range first.'});
   };
 
   const handleDateSave = (range: DateRange | undefined) => {
@@ -122,11 +139,6 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not save booking. Check-in and Check-out dates are required.' });
         return;
     };
-
-    if (values.totalCost <= 0 && calculatedCost === null) {
-        toast({ variant: 'destructive', title: 'Missing Cost', description: 'Please calculate the total cost before creating the booking.' });
-        return;
-    }
 
     const selectedRoom = rooms.find(r => r.id === values.roomId);
     if (!selectedRoom) {
@@ -143,16 +155,13 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
         guestId: booking?.guestId || user.uid,
     };
     
-    // Remove dateRange from the final object to be saved
     delete (bookingData as any).dateRange;
 
     try {
       if (booking) {
-        // Update existing booking
         await updateDoc(doc(firestore, 'bookings', booking.id), bookingData);
         toast({ title: 'Booking Updated', description: 'The booking has been successfully updated.' });
       } else {
-        // Create new booking
         await addDoc(collection(firestore, 'bookings'), bookingData);
         toast({ title: 'Booking Created', description: 'A new booking has been successfully created.' });
       }
@@ -237,42 +246,70 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
             />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-             <FormField
-              control={form.control}
-              name="numberOfGuests"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Number of Guests</FormLabel>
-                  <FormControl><Input type="number" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            {/* Hidden total cost input, the value is displayed below */}
-            <FormField
-              control={form.control}
-              name="totalCost"
-              render={({ field }) => (
-                <FormItem className="hidden">
-                  <FormLabel>Total Cost (LKR)</FormLabel>
-                  <FormControl><Input type="number" {...field} readOnly /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-        </div>
+        <FormField
+          control={form.control}
+          name="numberOfGuests"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Number of Guests</FormLabel>
+              <FormControl><Input type="number" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
          <FormField
-              control={form.control}
-              name="specialRequests"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Special Requests</FormLabel>
-                  <FormControl><Textarea placeholder="Any special requests or notes..." {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          control={form.control}
+          name="specialRequests"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Special Requests</FormLabel>
+              <FormControl><Textarea placeholder="Any special requests or notes..." {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <Separator />
+        
+        <div>
+          <h3 className="text-lg font-medium mb-2">Billable Items</h3>
+          <div className="space-y-3">
+            {fields.map((field, index) => (
+              <div key={field.id} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center p-2 border rounded-md">
+                <FormField
+                  control={form.control}
+                  name={`items.${index}.description`}
+                  render={({ field }) => <Input {...field} placeholder="Item description" />}
+                />
+                <FormField
+                  control={form.control}
+                  name={`items.${index}.quantity`}
+                  render={({ field }) => <Input type="number" {...field} className="w-20" placeholder="Qty"/>}
+                />
+                <FormField
+                  control={form.control}
+                  name={`items.${index}.price`}
+                  render={({ field }) => <Input type="number" {...field} className="w-24" placeholder="Price" />}
+                />
+                <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
+            ))}
+            <div className="flex gap-2">
+                 <Button type="button" variant="outline" onClick={handleAddRoomToItems} className="w-full">
+                    <PlusCircle className="mr-2 h-4 w-4" /> Add Room Stay
+                </Button>
+                <Button type="button" variant="secondary" onClick={() => append({ description: '', quantity: 1, price: 0 })} className="w-full">
+                    <PlusCircle className="mr-2 h-4 w-4" /> Add Custom Item
+                </Button>
+            </div>
+          </div>
+        </div>
+
+        <Separator />
+
          <FormField
               control={form.control}
               name="status"
@@ -298,17 +335,10 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
             />
         
         <div className="p-4 border-t space-y-4">
-          <Button type="button" variant="outline" className="w-full" onClick={handleCalculateCost}>
-            <TrendingUp className="mr-2 h-4 w-4" />
-            Calculate Total Cost
-          </Button>
-
-          {calculatedCost !== null && (
-            <div className="p-4 bg-muted rounded-lg text-center">
-              <p className="text-sm text-muted-foreground">Total Estimated Cost</p>
-              <p className="text-2xl font-bold">LKR {calculatedCost.toFixed(2)}</p>
-            </div>
-          )}
+          <div className="flex justify-between items-center text-xl font-bold">
+            <span>Total Cost:</span>
+            <span>LKR {form.getValues('totalCost').toFixed(2)}</span>
+          </div>
         </div>
 
 

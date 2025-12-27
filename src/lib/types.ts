@@ -102,6 +102,12 @@ export type Room = {
 
 export type ReservationStatus = 'confirmed' | 'checked-in' | 'checked-out' | 'cancelled';
 
+export type ReservationItem = {
+    description: string;
+    quantity: number;
+    price: number;
+}
+
 export type Reservation = {
     id: string;
     bookingDate: string; // ISO String
@@ -115,6 +121,7 @@ export type Reservation = {
     roomTitle: string;
     specialRequests?: string;
     status: ReservationStatus;
+    items: ReservationItem[];
     totalCost: number;
 }
 
@@ -161,5 +168,3 @@ export type Blog = {
     createdAt: string | { seconds: number; nanoseconds: number };
     updatedAt?: string | { seconds: number; nanoseconds: number };
 }
-
-    

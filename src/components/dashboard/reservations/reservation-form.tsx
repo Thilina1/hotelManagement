@@ -29,7 +29,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { useState } from 'react';
 import { DateRangePickerModal } from '../bookings/date-range-picker-modal';
-import { format } from 'date-fns';
+import { format, differenceInCalendarDays } from 'date-fns';
 
 const formSchema = z.object({
   roomId: z.string().min(1, { message: 'Please select a room.' }),
@@ -115,6 +115,8 @@ export function ReservationForm({ reservation, rooms, onClose }: ReservationForm
   const availableRooms = rooms.filter(room => room.status === 'available' || room.id === reservation?.roomId);
   const checkInDate = form.watch('checkInDate');
   const checkOutDate = form.watch('checkOutDate');
+  
+  const dayCount = checkInDate && checkOutDate ? differenceInCalendarDays(checkOutDate, checkInDate) : 0;
 
   return (
     <>
@@ -146,7 +148,10 @@ export function ReservationForm({ reservation, rooms, onClose }: ReservationForm
         />
         
         <div className="space-y-2">
-            <FormLabel>Booking Dates</FormLabel>
+            <div className="flex justify-between items-center">
+                <FormLabel>Booking Dates</FormLabel>
+                {dayCount > 0 && <span className="text-sm font-medium text-muted-foreground">{dayCount} night(s)</span>}
+            </div>
             <Button
                 type="button"
                 variant="outline"

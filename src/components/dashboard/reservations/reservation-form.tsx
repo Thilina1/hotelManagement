@@ -38,8 +38,8 @@ const formSchema = z.object({
   guestName: z.string().min(2, { message: 'Guest name is required.' }),
   guestEmail: z.string().email({ message: 'Invalid email address.' }),
   dateRange: z.object({
-    from: z.date(),
-    to: z.date(),
+    from: z.date({ required_error: "Check-in date is required."}),
+    to: z.date({ required_error: "Check-out date is required."}),
   }),
   numberOfGuests: z.coerce.number().min(1, { message: 'At least one guest is required.' }),
   totalCost: z.coerce.number().min(0),
@@ -65,8 +65,8 @@ export function ReservationForm({ reservation, rooms, onClose }: ReservationForm
       guestName: reservation?.guestName || '',
       guestEmail: reservation?.guestEmail || '',
       dateRange: {
-        from: reservation?.checkInDate ? new Date(reservation.checkInDate) : new Date(),
-        to: reservation?.checkOutDate ? new Date(reservation.checkOutDate) : new Date(),
+        from: reservation?.checkInDate ? new Date(reservation.checkInDate) : undefined,
+        to: reservation?.checkOutDate ? new Date(reservation.checkOutDate) : undefined,
       },
       numberOfGuests: reservation?.numberOfGuests || 1,
       totalCost: reservation?.totalCost || 0,
@@ -76,7 +76,10 @@ export function ReservationForm({ reservation, rooms, onClose }: ReservationForm
   });
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    if (!firestore || !user) return;
+    if (!firestore || !user || !values.dateRange.from || !values.dateRange.to) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Please select a valid date range.' });
+        return;
+    };
 
     const selectedRoom = rooms.find(r => r.id === values.roomId);
     if (!selectedRoom) {
@@ -86,7 +89,7 @@ export function ReservationForm({ reservation, rooms, onClose }: ReservationForm
 
     const reservationData = {
         ...values,
-        bookingDate: new Date().toISOString(),
+        bookingDate: reservation?.bookingDate || new Date().toISOString(),
         checkInDate: values.dateRange.from.toISOString().split('T')[0], // YYYY-MM-DD
         checkOutDate: values.dateRange.to.toISOString().split('T')[0], // YYYY-MM-DD
         roomTitle: selectedRoom.title,
@@ -154,23 +157,23 @@ export function ReservationForm({ reservation, rooms, onClose }: ReservationForm
                     <Button
                       variant={"outline"}
                       className={cn(
-                        "w-full pl-3 text-left font-normal",
-                        !field.value && "text-muted-foreground"
+                        "w-full justify-start text-left font-normal",
+                        !field.value.from && "text-muted-foreground"
                       )}
                     >
-                      {field.value?.from && !isNaN(new Date(field.value.from).getTime()) ? (
-                        field.value.to && !isNaN(new Date(field.value.to).getTime()) ? (
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {field.value.from ? (
+                        field.value.to ? (
                           <>
-                            {format(new Date(field.value.from), "LLL dd, y")} -{" "}
-                            {format(new Date(field.value.to), "LLL dd, y")}
+                            {format(field.value.from, "LLL dd, y")} -{" "}
+                            {format(field.value.to, "LLL dd, y")}
                           </>
                         ) : (
-                          format(new Date(field.value.from), "LLL dd, y")
+                          format(field.value.from, "LLL dd, y")
                         )
                       ) : (
                         <span>Pick a date range</span>
                       )}
-                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                     </Button>
                   </FormControl>
                 </PopoverTrigger>
@@ -178,8 +181,8 @@ export function ReservationForm({ reservation, rooms, onClose }: ReservationForm
                   <Calendar
                     initialFocus
                     mode="range"
-                    defaultMonth={field.value?.from}
-                    selected={field.value as DateRange}
+                    defaultMonth={field.value.from}
+                    selected={field.value}
                     onSelect={field.onChange}
                     numberOfMonths={2}
                     disabled={!reservation ? (date) => date < new Date(new Date().setHours(0, 0, 0, 0)) : undefined}

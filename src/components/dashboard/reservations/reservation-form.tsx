@@ -189,7 +189,9 @@ export function ReservationForm({ reservation, rooms, onClose }: ReservationForm
                     selected={field.value}
                     onSelect={field.onChange}
                     numberOfMonths={2}
-                    disabled={!reservation ? (date) => date < new Date(new Date().setHours(0, 0, 0, 0)) : undefined}
+                    disabled={(date) =>
+                      !reservation ? date < new Date(new Date().setHours(0, 0, 0, 0)) : false
+                    }
                   />
                 </PopoverContent>
               </Popover>

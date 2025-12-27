@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -38,8 +38,8 @@ const formSchema = z.object({
   guestName: z.string().min(2, { message: 'Guest name is required.' }),
   guestEmail: z.string().email({ message: 'Invalid email address.' }),
   dateRange: z.object({
-    from: z.date({ required_error: "Check-in date is required." }),
-    to: z.date({ required_error: "Check-out date is required." }),
+    from: z.date({ required_error: "A check-in date is required." }),
+    to: z.date({ required_error: "A check-out date is required." }),
   }),
   numberOfGuests: z.coerce.number().min(1, { message: 'At least one guest is required.' }),
   totalCost: z.coerce.number().min(0),
@@ -66,7 +66,7 @@ export function ReservationForm({ reservation, rooms, onClose }: ReservationForm
       guestName: reservation?.guestName || '',
       guestEmail: reservation?.guestEmail || '',
       dateRange: {
-        from: reservation?.checkInDate ? new Date(reservation.checkInDate) : new Date(),
+        from: reservation?.checkInDate ? new Date(reservation.checkInDate) : undefined,
         to: reservation?.checkOutDate ? new Date(reservation.checkOutDate) : undefined,
       },
       numberOfGuests: reservation?.numberOfGuests || 1,

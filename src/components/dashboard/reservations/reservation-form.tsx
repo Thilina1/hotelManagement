@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -45,6 +44,9 @@ const formSchema = z.object({
   totalCost: z.coerce.number().min(0),
   specialRequests: z.string().optional(),
   status: z.enum(['confirmed', 'checked-in', 'cancelled', 'checked-out']),
+}).refine(data => data.dateRange.from && data.dateRange.to, {
+  message: "Both check-in and check-out dates are required.",
+  path: ["dateRange"],
 });
 
 

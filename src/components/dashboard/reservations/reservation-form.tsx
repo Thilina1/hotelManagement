@@ -38,11 +38,8 @@ const formSchema = z.object({
   guestName: z.string().min(2, { message: 'Guest name is required.' }),
   guestEmail: z.string().email({ message: 'Invalid email address.' }),
   dateRange: z.object({
-    from: z.date().optional(),
+    from: z.date({ required_error: "Check-in date is required."}),
     to: z.date().optional(),
-  }).refine(data => !!data.from && !!data.to, {
-    message: 'Both check-in and check-out dates are required.',
-    path: ['from'] // you can assign error to any field in the object
   }),
   numberOfGuests: z.coerce.number().min(1, { message: 'At least one guest is required.' }),
   totalCost: z.coerce.number().min(0),

@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { CalendarIcon, PlusCircle, Trash2 } from 'lucide-react';
+import { CalendarIcon, PlusCircle, Trash2, CheckCircle, XCircle } from 'lucide-react';
 import type { Reservation, Room } from '@/lib/types';
 import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
@@ -109,8 +109,6 @@ export function ReservationForm({ reservation, rooms, allReservations, onClose }
   const watchedDateRange = useWatch({ control: form.control, name: 'dateRange' });
   
   useEffect(() => {
-    const itemsTotal = watchedItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-    
     const selectedRoom = rooms.find(r => r.id === watchedRoomId);
     let roomCost = 0;
     if (selectedRoom && watchedDateRange.from && watchedDateRange.to) {
@@ -119,6 +117,7 @@ export function ReservationForm({ reservation, rooms, allReservations, onClose }
         roomCost = selectedRoom.pricePerNight * numberOfNights;
     }
     
+    const itemsTotal = watchedItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
     form.setValue('totalCost', itemsTotal + roomCost, { shouldValidate: true });
   }, [watchedItems, watchedRoomId, watchedDateRange, rooms, form]);
 
@@ -206,6 +205,8 @@ export function ReservationForm({ reservation, rooms, allReservations, onClose }
   const availableRooms = rooms.filter(room => room.status === 'available' || room.id === reservation?.roomId);
   const dateRange = form.watch('dateRange');
   const dayCount = dateRange.from && dateRange.to ? differenceInCalendarDays(dateRange.to, dateRange.from) + 1 : 0;
+  
+  const showAvailability = watchedRoomId && watchedDateRange.from && watchedDateRange.to;
 
   return (
     <>
@@ -383,7 +384,22 @@ export function ReservationForm({ reservation, rooms, allReservations, onClose }
             <span>LKR {form.getValues('totalCost').toFixed(2)}</span>
           </div>
         </div>
-
+        
+        {showAvailability && (
+            <div className={`p-3 rounded-md text-sm font-medium text-center ${isRoomAvailable ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                {isRoomAvailable ? (
+                    <div className="flex items-center justify-center gap-2">
+                        <CheckCircle className="h-4 w-4" />
+                        <span>Room is available for the selected dates.</span>
+                    </div>
+                ) : (
+                    <div className="flex items-center justify-center gap-2">
+                        <XCircle className="h-4 w-4" />
+                        <span>Room is not available for the selected dates.</span>
+                    </div>
+                )}
+            </div>
+        )}
 
         <Button type="submit" className="w-full" disabled={!isRoomAvailable}>
             {reservation ? 'Update Reservation' : 'Create Reservation'}
@@ -400,3 +416,5 @@ export function ReservationForm({ reservation, rooms, allReservations, onClose }
     </>
   );
 }
+
+    

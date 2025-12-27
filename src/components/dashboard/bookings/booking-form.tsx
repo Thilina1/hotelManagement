@@ -27,23 +27,26 @@ import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/fi
 import { useFirestore, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DateRangePickerModal } from './date-range-picker-modal';
 import { CalendarIcon } from 'lucide-react';
+import type { DateRange } from 'react-day-picker';
 
 const formSchema = z.object({
   roomId: z.string().min(1, { message: 'Please select a room.' }),
   guestName: z.string().min(2, { message: 'Guest name is required.' }),
   guestEmail: z.string().email({ message: 'Invalid email address.' }),
-  checkInDate: z.date({ required_error: "Check-in date is required."}),
-  checkOutDate: z.date({ required_error: "Check-out date is required."}),
+  dateRange: z.object({
+      from: z.date().optional(),
+      to: z.date().optional(),
+  }).refine(data => data.from, { message: "Check-in date is required.", path: ["from"] }),
   numberOfGuests: z.coerce.number().min(1, { message: 'At least one guest is required.' }),
   totalCost: z.coerce.number().min(0),
   specialRequests: z.string().optional(),
   status: z.enum(['confirmed', 'checked-in', 'checked-out', 'cancelled']),
-}).refine(data => data.checkOutDate > data.checkInDate, {
+}).refine(data => data.dateRange.from && data.dateRange.to && data.dateRange.to > data.dateRange.from, {
   message: "Check-out date must be after check-in date.",
-  path: ["checkOutDate"],
+  path: ["dateRange"],
 });
 
 
@@ -65,8 +68,10 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
       roomId: booking?.roomId || '',
       guestName: booking?.guestName || '',
       guestEmail: booking?.guestEmail || '',
-      checkInDate: booking?.checkInDate ? new Date(booking.checkInDate) : undefined,
-      checkOutDate: booking?.checkOutDate ? new Date(booking.checkOutDate) : undefined,
+      dateRange: {
+        from: booking?.checkInDate ? new Date(booking.checkInDate) : undefined,
+        to: booking?.checkOutDate ? new Date(booking.checkOutDate) : undefined,
+      },
       numberOfGuests: booking?.numberOfGuests || 1,
       totalCost: booking?.totalCost || 0,
       specialRequests: booking?.specialRequests || '',
@@ -75,8 +80,8 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
   });
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    if (!firestore || !user ) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not save booking.' });
+    if (!firestore || !user || !values.dateRange.from || !values.dateRange.to) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not save booking. Check-in and Check-out dates are required.' });
         return;
     };
 
@@ -89,12 +94,15 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
     const bookingData = {
         ...values,
         bookingDate: booking?.bookingDate || new Date().toISOString(),
-        checkInDate: values.checkInDate.toISOString().split('T')[0], // YYYY-MM-DD
-        checkOutDate: values.checkOutDate.toISOString().split('T')[0], // YYYY-MM-DD
+        checkInDate: values.dateRange.from.toISOString().split('T')[0], // YYYY-MM-DD
+        checkOutDate: values.dateRange.to.toISOString().split('T')[0], // YYYY-MM-DD
         roomTitle: selectedRoom.title,
         guestId: booking?.guestId || user.uid,
     };
     
+    // Remove dateRange from the final object to be saved
+    delete (bookingData as any).dateRange;
+
     try {
       if (booking) {
         // Update existing booking
@@ -113,8 +121,7 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
   };
   
   const availableRooms = rooms.filter(room => room.status === 'available' || room.id === booking?.roomId);
-  const checkInDate = form.watch('checkInDate');
-  const checkOutDate = form.watch('checkOutDate');
+  const dateRange = form.watch('dateRange');
 
   return (
     <>
@@ -148,18 +155,18 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
         <div className="space-y-2">
             <FormLabel>Booking Dates</FormLabel>
             <Button
+                type="button"
                 variant="outline"
                 className="w-full justify-start text-left font-normal"
                 onClick={() => setIsDatePickerOpen(true)}
             >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {checkInDate && checkOutDate
-                ? `${format(checkInDate, 'PPP')} - ${format(checkOutDate, 'PPP')}`
+                {dateRange?.from && dateRange?.to
+                ? `${format(dateRange.from, 'PPP')} - ${format(dateRange.to, 'PPP')}`
                 : <span>Select check-in and check-out dates</span>
                 }
             </Button>
-            {form.formState.errors.checkInDate && <FormMessage>{form.formState.errors.checkInDate.message}</FormMessage>}
-             {form.formState.errors.checkOutDate && <FormMessage>{form.formState.errors.checkOutDate.message}</FormMessage>}
+            {form.formState.errors.dateRange && <FormMessage>{form.formState.errors.dateRange.message || form.formState.errors.dateRange.from?.message}</FormMessage>}
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -255,14 +262,10 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
         isOpen={isDatePickerOpen}
         onClose={() => setIsDatePickerOpen(false)}
         onSave={(range) => {
-            if (range?.from) form.setValue('checkInDate', range.from, { shouldValidate: true });
-            if (range?.to) form.setValue('checkOutDate', range.to, { shouldValidate: true });
+            if (range) form.setValue('dateRange', range, { shouldValidate: true });
             setIsDatePickerOpen(false);
         }}
-        initialDateRange={{
-            from: form.getValues('checkInDate'),
-            to: form.getValues('checkOutDate'),
-        }}
+        initialDateRange={form.getValues('dateRange')}
         disabled={(date) => date < new Date(new Date().setHours(0,0,0,0)) && !booking}
     />
     </>

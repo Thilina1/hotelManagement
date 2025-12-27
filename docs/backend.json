@@ -177,11 +177,12 @@
         "guestEmail": { "type": "string", "format": "email" },
         "guestId": { "type": "string" },
         "guestName": { "type": "string" },
+        "idCardNumber": { "type": "string", "description": "The guest's ID card number." },
         "numberOfGuests": { "type": "number" },
         "roomId": { "type": "string" },
         "roomTitle": { "type": "string" },
         "specialRequests": { "type": "string" },
-        "status": { "type": "string", "enum": ["confirmed", "checked-in", "checked-out", "cancelled"] },
+        "status": { "type": "string", "enum": ["booked", "confirmed", "checked-in", "checked-out", "cancelled"] },
         "totalCost": { "type": "number" }
       },
       "required": [
@@ -191,6 +192,7 @@
         "guestEmail",
         "guestId",
         "guestName",
+        "idCardNumber",
         "numberOfGuests",
         "roomId",
         "roomTitle",

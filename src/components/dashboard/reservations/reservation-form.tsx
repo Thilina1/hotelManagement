@@ -30,21 +30,21 @@ import { format } from 'date-fns';
 import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { DateRange } from 'react-day-picker';
 import { Textarea } from '@/components/ui/textarea';
 
 const formSchema = z.object({
   roomId: z.string().min(1, { message: 'Please select a room.' }),
   guestName: z.string().min(2, { message: 'Guest name is required.' }),
   guestEmail: z.string().email({ message: 'Invalid email address.' }),
-  dateRange: z.object({
-    from: z.date({ required_error: "Check-in date is required."}),
-    to: z.date().optional(),
-  }),
+  checkInDate: z.date({ required_error: "Check-in date is required."}),
+  checkOutDate: z.date({ required_error: "Check-out date is required."}),
   numberOfGuests: z.coerce.number().min(1, { message: 'At least one guest is required.' }),
   totalCost: z.coerce.number().min(0),
   specialRequests: z.string().optional(),
   status: z.enum(['confirmed', 'checked-in', 'checked-out', 'cancelled']),
+}).refine(data => data.checkOutDate > data.checkInDate, {
+  message: "Check-out date must be after check-in date.",
+  path: ["checkOutDate"],
 });
 
 
@@ -65,10 +65,8 @@ export function ReservationForm({ reservation, rooms, onClose }: ReservationForm
       roomId: reservation?.roomId || '',
       guestName: reservation?.guestName || '',
       guestEmail: reservation?.guestEmail || '',
-      dateRange: {
-        from: reservation?.checkInDate ? new Date(reservation.checkInDate) : undefined,
-        to: reservation?.checkOutDate ? new Date(reservation.checkOutDate) : undefined,
-      },
+      checkInDate: reservation?.checkInDate ? new Date(reservation.checkInDate) : undefined,
+      checkOutDate: reservation?.checkOutDate ? new Date(reservation.checkOutDate) : undefined,
       numberOfGuests: reservation?.numberOfGuests || 1,
       totalCost: reservation?.totalCost || 0,
       specialRequests: reservation?.specialRequests || '',
@@ -77,8 +75,8 @@ export function ReservationForm({ reservation, rooms, onClose }: ReservationForm
   });
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    if (!firestore || !user || !values.dateRange.from || !values.dateRange.to) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Please select a valid date range.' });
+    if (!firestore || !user ) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not save reservation.' });
         return;
     };
 
@@ -91,14 +89,12 @@ export function ReservationForm({ reservation, rooms, onClose }: ReservationForm
     const reservationData = {
         ...values,
         bookingDate: reservation?.bookingDate || new Date().toISOString(),
-        checkInDate: values.dateRange.from.toISOString().split('T')[0], // YYYY-MM-DD
-        checkOutDate: values.dateRange.to.toISOString().split('T')[0], // YYYY-MM-DD
+        checkInDate: values.checkInDate.toISOString().split('T')[0], // YYYY-MM-DD
+        checkOutDate: values.checkOutDate.toISOString().split('T')[0], // YYYY-MM-DD
         roomTitle: selectedRoom.title,
         guestId: reservation?.guestId || user.uid, // Persist guestId on edit
     };
     
-    delete (reservationData as any).dateRange;
-
     try {
       if (reservation) {
         // Update existing reservation
@@ -146,56 +142,78 @@ export function ReservationForm({ reservation, rooms, onClose }: ReservationForm
           )}
         />
         
-        <FormField
-          control={form.control}
-          name="dateRange"
-          render={({ field }) => (
-            <FormItem className="flex flex-col">
-              <FormLabel>Reservation Dates</FormLabel>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <FormControl>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !field.value?.from && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {field.value?.from ? (
-                        field.value.to ? (
-                          <>
-                            {format(field.value.from, "LLL dd, y")} -{" "}
-                            {format(field.value.to, "LLL dd, y")}
-                          </>
-                        ) : (
-                          format(field.value.from, "LLL dd, y")
-                        )
-                      ) : (
-                        <span>Pick a date range</span>
-                      )}
-                    </Button>
-                  </FormControl>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    initialFocus
-                    mode="range"
-                    defaultMonth={field.value?.from}
-                    selected={field.value as DateRange}
-                    onSelect={field.onChange}
-                    numberOfMonths={2}
-                    disabled={(date) =>
-                      !reservation ? date < new Date(new Date().setHours(0, 0, 0, 0)) : false
-                    }
-                  />
-                </PopoverContent>
-              </Popover>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="checkInDate"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel>Check-in Date</FormLabel>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !field.value && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={field.value}
+                      onSelect={field.onChange}
+                      disabled={(date) => date < new Date(new Date().setHours(0,0,0,0)) && !reservation}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="checkOutDate"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel>Check-out Date</FormLabel>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !field.value && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={field.value}
+                      onSelect={field.onChange}
+                      disabled={(date) => date < (form.getValues('checkInDate') || new Date()) && !reservation}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
         
         <div className="grid grid-cols-2 gap-4">
             <FormField

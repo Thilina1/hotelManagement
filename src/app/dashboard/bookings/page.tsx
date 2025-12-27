@@ -104,6 +104,15 @@ export default function BookingManagementPage() {
      toast({ title: 'Checked In', description: `${booking.guestName} has been checked in.` });
   }
 
+  const handleCheckOut = async (booking: Booking) => {
+    if (!firestore) return;
+    const bookingRef = doc(firestore, 'bookings', booking.id);
+    const roomRef = doc(firestore, 'rooms', booking.roomId);
+    await updateDoc(bookingRef, { status: 'checked-out' });
+    await updateDoc(roomRef, { status: 'available' });
+    toast({ title: 'Checked Out', description: `${booking.guestName} has been checked out.` });
+  };
+
   const handleCancelBooking = async (booking: Booking) => {
     if (!firestore) return;
     if (confirm(`Are you sure you want to cancel the booking for ${booking.guestName}?`)) {
@@ -206,7 +215,7 @@ export default function BookingManagementPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Guest Name</TableHead>
-                <TableHead>Room No.</TableHead>
+                <TableHead>Room</TableHead>
                 <TableHead>Check-In</TableHead>
                 <TableHead>Check-Out</TableHead>
                 <TableHead>Status</TableHead>
@@ -226,7 +235,7 @@ export default function BookingManagementPage() {
               {!areBookingsLoading && sortedBookings && sortedBookings.map((booking) => (
                 <TableRow key={booking.id}>
                   <TableCell className="font-medium">{booking.guestName}</TableCell>
-                  <TableCell>{booking.roomNumber}</TableCell>
+                  <TableCell>{booking.roomTitle}</TableCell>
                   <TableCell>{getFormattedDate(booking.checkInDate)}</TableCell>
                   <TableCell>{getFormattedDate(booking.checkOutDate)}</TableCell>
                   <TableCell>
@@ -247,6 +256,12 @@ export default function BookingManagementPage() {
                             <DropdownMenuItem onClick={() => handleCheckIn(booking)}>
                                 <CheckCircle className="mr-2 h-4 w-4"/>
                                 Check-In
+                            </DropdownMenuItem>
+                         )}
+                         {booking.status === 'checked-in' && (
+                            <DropdownMenuItem onClick={() => handleCheckOut(booking)}>
+                                <BedDouble className="mr-2 h-4 w-4"/>
+                                Check-Out
                             </DropdownMenuItem>
                          )}
                         <DropdownMenuItem onClick={() => handleEditBookingClick(booking)}>

@@ -105,8 +105,8 @@ export type ReservationStatus = 'confirmed' | 'checked-in' | 'checked-out' | 'ca
 export type Reservation = {
     id: string;
     bookingDate: string; // ISO String
-    checkInDate: string; // ISO String
-    checkOutDate: string; // ISO String
+    checkInDate: string; // YYYY-MM-DD
+    checkOutDate: string; // YYYY-MM-DD
     guestEmail: string;
     guestId: string;
     guestName: string;
@@ -116,6 +116,12 @@ export type Reservation = {
     specialRequests?: string;
     status: ReservationStatus;
     totalCost: number;
+    bookingNumber?: string;
+    guestContact?: string;
+    guestNIC?: string;
+    adults?: number;
+    children?: number;
+    advancePayment?: number;
 }
 
 export type ActivityType = 'priceable' | 'non-priceable';

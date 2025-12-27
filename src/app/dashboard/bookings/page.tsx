@@ -220,6 +220,7 @@ export default function BookingManagementPage() {
                 <TableHead>Room</TableHead>
                 <TableHead>Check-In</TableHead>
                 <TableHead>Check-Out</TableHead>
+                <TableHead>Total Cost</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -229,7 +230,7 @@ export default function BookingManagementPage() {
                 <>
                   {[...Array(5)].map((_, i) => (
                     <TableRow key={i}>
-                      <TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell>
+                      <TableCell colSpan={7}><Skeleton className="h-8 w-full" /></TableCell>
                     </TableRow>
                   ))}
                 </>
@@ -240,6 +241,7 @@ export default function BookingManagementPage() {
                   <TableCell>{booking.roomTitle}</TableCell>
                   <TableCell>{getFormattedDate(booking.checkInDate)}</TableCell>
                   <TableCell>{getFormattedDate(booking.checkOutDate)}</TableCell>
+                  <TableCell>LKR {booking.totalCost.toFixed(2)}</TableCell>
                   <TableCell>
                     <Badge variant="secondary" className={`capitalize ${statusColors[booking.status]}`}>
                         {booking.status}
@@ -287,7 +289,7 @@ export default function BookingManagementPage() {
               ))}
                {!areBookingsLoading && (!sortedBookings || sortedBookings.length === 0) && (
                 <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-10">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-10">
                         No bookings found.
                     </TableCell>
                 </TableRow>
@@ -299,3 +301,5 @@ export default function BookingManagementPage() {
     </div>
   );
 }
+
+    

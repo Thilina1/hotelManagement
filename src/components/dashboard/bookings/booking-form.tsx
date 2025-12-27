@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { Booking, Room } from '@/lib/types';
+import type { Reservation, Room } from '@/lib/types';
 import { format, differenceInCalendarDays } from 'date-fns';
 import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
@@ -59,7 +59,7 @@ const formSchema = z.object({
 
 
 interface BookingFormProps {
-  booking?: Booking | null;
+  booking?: Reservation | null;
   rooms: Room[];
   onClose: () => void;
 }
@@ -357,3 +357,5 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
     </>
   );
 }
+
+    

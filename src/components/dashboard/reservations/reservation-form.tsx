@@ -29,7 +29,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { useState, useEffect, useMemo } from 'react';
 import { DateRangePickerModal } from '../bookings/date-range-picker-modal';
-import { format, differenceInCalendarDays } from 'date-fns';
+import { format, differenceInCalendarDays, eachDayOfInterval } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
 import { Separator } from '@/components/ui/separator';
 
@@ -71,6 +71,8 @@ export function ReservationForm({ reservation, rooms, allReservations, onClose }
   const { user } = useUser();
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [isRoomAvailable, setIsRoomAvailable] = useState(true);
+  const [unavailableDates, setUnavailableDates] = useState<Date[]>([]);
+
 
   const initialDateRange = useMemo(() => {
     if (reservation?.checkInDate && reservation?.checkOutDate) {
@@ -125,28 +127,29 @@ export function ReservationForm({ reservation, rooms, allReservations, onClose }
     if (watchedRoomId && watchedDateRange.from && watchedDateRange.to) {
       const newCheckIn = watchedDateRange.from;
       const newCheckOut = watchedDateRange.to;
-
-      const isOverlapping = allReservations.some(existing => {
-        // Ignore the current reservation being edited and cancelled ones
+      
+      const overlappingReservations = allReservations.filter(existing => {
         if (existing.id === reservation?.id || existing.status === 'cancelled') {
           return false;
         }
-
         if (existing.roomId !== watchedRoomId) {
           return false;
         }
-
         const existingCheckIn = new Date(existing.checkInDate);
         const existingCheckOut = new Date(existing.checkOutDate);
-
-        // Overlap condition
-        return newCheckIn < existingCheckOut && newCheckOut > existingCheckIn;
+        return newCheckIn <= existingCheckOut && newCheckOut >= existingCheckIn;
       });
-      
-      setIsRoomAvailable(!isOverlapping);
-      if (isOverlapping) {
-        form.setError("dateRange", { type: "manual", message: "This room is already booked for the selected dates." });
+
+      if (overlappingReservations.length > 0) {
+        const bookedDates = overlappingReservations.flatMap(res => 
+          eachDayOfInterval({ start: new Date(res.checkInDate), end: new Date(res.checkOutDate) })
+        );
+        setUnavailableDates(bookedDates);
+        setIsRoomAvailable(false);
+        form.setError("dateRange", { type: "manual", message: "This room is already booked for some of the selected dates." });
       } else {
+        setUnavailableDates([]);
+        setIsRoomAvailable(true);
         form.clearErrors("dateRange");
       }
     }
@@ -393,9 +396,14 @@ export function ReservationForm({ reservation, rooms, allReservations, onClose }
                         <span>Room is available for the selected dates.</span>
                     </div>
                 ) : (
-                    <div className="flex items-center justify-center gap-2">
-                        <XCircle className="h-4 w-4" />
-                        <span>Room is not available for the selected dates.</span>
+                    <div className="flex flex-col items-center justify-center gap-2">
+                        <div className="flex items-center gap-2">
+                            <XCircle className="h-4 w-4" />
+                            <span>Room is not available for some dates.</span>
+                        </div>
+                        <p className="text-xs">
+                           Booked dates: {unavailableDates.map(d => format(d, 'MMM d')).join(', ')}
+                        </p>
                     </div>
                 )}
             </div>
@@ -416,5 +424,3 @@ export function ReservationForm({ reservation, rooms, allReservations, onClose }
     </>
   );
 }
-
-    

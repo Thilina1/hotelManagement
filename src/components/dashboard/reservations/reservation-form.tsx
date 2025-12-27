@@ -101,30 +101,23 @@ export function ReservationForm({ reservation, rooms, onClose }: ReservationForm
   });
   
   const watchedItems = useWatch({ control: form.control, name: 'items' });
+  const watchedRoomId = useWatch({ control: form.control, name: 'roomId' });
+  const watchedDateRange = useWatch({ control: form.control, name: 'dateRange' });
   
   useEffect(() => {
-    const total = watchedItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-    form.setValue('totalCost', total, { shouldValidate: true });
-  }, [watchedItems, form]);
-
-  const handleAddRoomToItems = () => {
-    const { roomId, dateRange } = form.getValues();
-    if (roomId && dateRange?.from && dateRange?.to) {
-        const selectedRoom = rooms.find(r => r.id === roomId);
-        if (selectedRoom) {
-            const dayDiff = differenceInCalendarDays(dateRange.to, dateRange.from);
-            const numberOfNights = dayDiff >= 0 ? dayDiff + 1 : 1;
-            
-            append({
-                description: `${selectedRoom.title} - ${numberOfNights} night(s)`,
-                quantity: numberOfNights,
-                price: selectedRoom.pricePerNight,
-            });
-            return;
-        }
+    const itemsTotal = watchedItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    
+    const selectedRoom = rooms.find(r => r.id === watchedRoomId);
+    let roomCost = 0;
+    if (selectedRoom && watchedDateRange.from && watchedDateRange.to) {
+        const dayDiff = differenceInCalendarDays(watchedDateRange.to, watchedDateRange.from);
+        const numberOfNights = dayDiff >= 0 ? dayDiff + 1 : 1;
+        roomCost = selectedRoom.pricePerNight * numberOfNights;
     }
-    toast({ variant: 'destructive', title: 'Error', description: 'Please select a room and a valid date range first.'});
-  };
+    
+    form.setValue('totalCost', itemsTotal + roomCost, { shouldValidate: true });
+  }, [watchedItems, watchedRoomId, watchedDateRange, rooms, form]);
+
 
   const handleDateSave = (range: DateRange | undefined) => {
     if (range) {
@@ -276,7 +269,7 @@ export function ReservationForm({ reservation, rooms, onClose }: ReservationForm
         <Separator />
         
         <div>
-          <h3 className="text-lg font-medium mb-2">Billable Items</h3>
+          <h3 className="text-lg font-medium mb-2">Additional Billable Items</h3>
           <div className="space-y-3">
             {fields.map((field, index) => (
               <div key={field.id} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center p-2 border rounded-md">
@@ -301,11 +294,8 @@ export function ReservationForm({ reservation, rooms, onClose }: ReservationForm
               </div>
             ))}
             <div className="flex gap-2">
-                 <Button type="button" variant="outline" onClick={handleAddRoomToItems} className="w-full">
-                    <PlusCircle className="mr-2 h-4 w-4" /> Add Room Stay
-                </Button>
                 <Button type="button" variant="secondary" onClick={() => append({ description: '', quantity: 1, price: 0 })} className="w-full">
-                    <PlusCircle className="mr-2 h-4 w-4" /> Add Custom Item
+                    <PlusCircle className="mr-2 h-4 w-4" /> Add Item
                 </Button>
             </div>
           </div>

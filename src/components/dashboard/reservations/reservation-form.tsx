@@ -43,7 +43,7 @@ const formSchema = z.object({
   roomId: z.string().min(1, { message: 'Please select a room.' }),
   guestName: z.string().min(2, { message: 'Guest name is required.' }),
   guestEmail: z.string().email({ message: 'Invalid email address.' }),
-  idCardNumber: z.string().min(1, { message: 'ID card number is required.' }),
+  idCardNumber: z.string().optional(),
   dateRange: z.object({
       from: z.date().optional(),
       to: z.date().optional(),
@@ -249,7 +249,7 @@ export function ReservationForm({ reservation, rooms, onClose }: ReservationForm
           name="idCardNumber"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>ID Card Number</FormLabel>
+              <FormLabel>ID Card Number (Optional)</FormLabel>
               <FormControl><Input placeholder="e.g., 991234567V" {...field} /></FormControl>
               <FormMessage />
             </FormItem>

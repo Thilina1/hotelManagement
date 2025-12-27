@@ -117,7 +117,7 @@ export type Reservation = {
     guestEmail: string;
     guestId: string;
     guestName: string;
-    idCardNumber: string;
+    idCardNumber?: string;
     numberOfGuests: number;
     roomId: string;
     roomTitle: string;

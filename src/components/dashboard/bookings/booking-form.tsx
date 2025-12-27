@@ -72,7 +72,7 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
       to.setHours(12,0,0,0);
       return { from, to };
     }
-    return { from: new Date(), to: undefined };
+    return { from: undefined, to: undefined };
   }, [booking]);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -104,6 +104,8 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
                  form.setValue('totalCost', 0);
             }
         }
+    } else {
+        form.setValue('totalCost', 0);
     }
   }, [selectedRoomId, selectedDateRange, rooms, form]);
 
@@ -122,7 +124,7 @@ export function BookingForm({ booking, rooms, onClose }: BookingFormProps) {
 
     const bookingData = {
         ...values,
-        bookingDate: booking?.bookingDate || new Date().toISOString(),
+        bookingDate: booking?.bookingDate || serverTimestamp(),
         checkInDate: values.dateRange.from.toISOString().split('T')[0], // YYYY-MM-DD
         checkOutDate: values.dateRange.to.toISOString().split('T')[0], // YYYY-MM-DD
         roomTitle: selectedRoom.title,

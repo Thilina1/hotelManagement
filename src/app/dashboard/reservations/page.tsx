@@ -104,6 +104,15 @@ export default function ReservationManagementPage() {
      toast({ title: 'Checked In', description: `${reservation.guestName} has been checked in.` });
   }
 
+  const handleCheckOut = async (reservation: Reservation) => {
+    if (!firestore) return;
+    const reservationRef = doc(firestore, 'reservations', reservation.id);
+    const roomRef = doc(firestore, 'rooms', reservation.roomId);
+    await updateDoc(reservationRef, { status: 'checked-out' });
+    await updateDoc(roomRef, { status: 'available' });
+    toast({ title: 'Checked Out', description: `${reservation.guestName} has been checked out.` });
+  };
+
   const handleCancelReservation = async (reservation: Reservation) => {
     if (!firestore) return;
     if (confirm(`Are you sure you want to cancel the reservation for ${reservation.guestName}?`)) {
@@ -140,7 +149,9 @@ export default function ReservationManagementPage() {
   const getFormattedDate = (dateString: string | undefined) => {
     if (!dateString) return "N/A";
     try {
+      // Add a day to compensate for timezone issues where parsing assumes UTC
       const date = new Date(dateString);
+      date.setDate(date.getDate() + 1);
       if (isNaN(date.getTime())) {
         return "Invalid Date";
       }
@@ -250,6 +261,12 @@ export default function ReservationManagementPage() {
                             <DropdownMenuItem onClick={() => handleCheckIn(reservation)}>
                                 <CheckCircle className="mr-2 h-4 w-4"/>
                                 Check-In
+                            </DropdownMenuItem>
+                         )}
+                         {reservation.status === 'checked-in' && (
+                            <DropdownMenuItem onClick={() => handleCheckOut(reservation)}>
+                                <BedDouble className="mr-2 h-4 w-4"/>
+                                Check-Out
                             </DropdownMenuItem>
                          )}
                         <DropdownMenuItem onClick={() => handleEditReservationClick(reservation)}>

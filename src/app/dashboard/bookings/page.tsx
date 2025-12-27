@@ -153,6 +153,8 @@ export default function BookingManagementPage() {
     if (isNaN(date.getTime())) {
       return "Invalid Date";
     }
+    // Add one day to the date to correct for timezone issues
+    date.setDate(date.getDate() + 1);
     return format(date, 'PPP');
   };
 
@@ -297,5 +299,3 @@ export default function BookingManagementPage() {
     </div>
   );
 }
-
-    

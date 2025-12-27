@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -38,25 +39,12 @@ const formSchema = z.object({
   guestEmail: z.string().email({ message: 'Invalid email address.' }),
   dateRange: z.object({
     from: z.date({ required_error: "Check-in date is required."}),
-    to: z.date().optional(),
+    to: z.date({ required_error: "Check-out date is required."}),
   }),
   numberOfGuests: z.coerce.number().min(1, { message: 'At least one guest is required.' }),
   totalCost: z.coerce.number().min(0),
   specialRequests: z.string().optional(),
   status: z.enum(['confirmed', 'checked-in', 'cancelled', 'checked-out']),
-}).refine(data => {
-    // If a range is selected, 'to' must exist.
-    if (data.dateRange.from && data.dateRange.to) {
-        return true;
-    }
-    // If only 'from' is selected, it's valid during selection.
-    if (data.dateRange.from && !data.dateRange.to) {
-        return true;
-    }
-    return false;
-}, {
-    message: "Check-out date is required.",
-    path: ["dateRange"],
 });
 
 

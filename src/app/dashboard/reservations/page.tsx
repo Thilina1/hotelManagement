@@ -261,7 +261,7 @@ export default function ReservationManagementPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                         {reservation.status === 'confirmed' && (
+                         {(reservation.status === 'confirmed' || reservation.status === 'booked') && (
                             <DropdownMenuItem onClick={() => handleCheckIn(reservation)}>
                                 <CheckCircle className="mr-2 h-4 w-4"/>
                                 Check-In
@@ -277,7 +277,7 @@ export default function ReservationManagementPage() {
                             <Edit className="mr-2 h-4 w-4"/>
                             View/Edit
                         </DropdownMenuItem>
-                        {(reservation.status === 'confirmed' || reservation.status === 'checked-in') && (
+                        {(reservation.status === 'confirmed' || reservation.status === 'checked-in' || reservation.status === 'booked') && (
                             <DropdownMenuItem onClick={() => handleCancelReservation(reservation)}>
                                 <XCircle className="mr-2 h-4 w-4 text-destructive"/>
                                 Cancel Reservation

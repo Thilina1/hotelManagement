@@ -163,6 +163,26 @@ export default function ReservationManagementPage() {
   };
 
   const isLoading = !currentUser || areReservationsLoading || areRoomsLoading;
+  
+  if (isLoading) {
+       return (
+       <div className="space-y-6">
+        <div className="flex justify-between items-start">
+            <Skeleton className="h-12 w-1/2" />
+            <Skeleton className="h-10 w-28" />
+        </div>
+        <Card>
+            <CardHeader>
+                <Skeleton className="h-8 w-1/4" />
+                <Skeleton className="h-4 w-1/2" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-48 w-full" />
+            </CardContent>
+        </Card>
+      </div>
+     )
+  }
 
   return (
     <div className="space-y-6">
@@ -213,7 +233,7 @@ export default function ReservationManagementPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading && (
+              {areReservationsLoading && (
                 <>
                   {[...Array(5)].map((_, i) => (
                     <TableRow key={i}>
@@ -222,7 +242,7 @@ export default function ReservationManagementPage() {
                   ))}
                 </>
               )}
-              {!isLoading && sortedReservations.map((reservation) => (
+              {!areReservationsLoading && reservations && sortedReservations.map((reservation) => (
                 <TableRow key={reservation.id}>
                   <TableCell className="font-medium">{reservation.guestName}</TableCell>
                   <TableCell>{reservation.roomTitle}</TableCell>
@@ -274,7 +294,7 @@ export default function ReservationManagementPage() {
                   </TableCell>
                 </TableRow>
               ))}
-               {!isLoading && sortedReservations.length === 0 && (
+               {!areReservationsLoading && (!reservations || reservations.length === 0) && (
                 <TableRow>
                     <TableCell colSpan={7} className="text-center text-muted-foreground py-10">
                         No reservations found.

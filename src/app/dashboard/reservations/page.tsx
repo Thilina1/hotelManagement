@@ -246,7 +246,7 @@ export default function ReservationManagementPage() {
                   <TableCell>{reservation.roomTitle}</TableCell>
                   <TableCell>{getFormattedDate(reservation.checkInDate)}</TableCell>
                   <TableCell>{getFormattedDate(reservation.checkOutDate)}</TableCell>
-                  <TableCell>LKR {reservation.totalCost.toFixed(2)}</TableCell>
+                  <TableCell>LKR {(reservation.totalCost || 0).toFixed(2)}</TableCell>
                   <TableCell>
                     <Badge variant="secondary" className={`capitalize ${statusColors[reservation.status]}`}>
                         {reservation.status}

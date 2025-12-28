@@ -162,9 +162,7 @@ export default function ReservationManagementPage() {
     }
   };
 
-  const isLoading = !currentUser || areReservationsLoading || areRoomsLoading;
-  
-  if (isLoading) {
+  if (!currentUser || areReservationsLoading || areRoomsLoading) {
        return (
        <div className="space-y-6">
         <div className="flex justify-between items-start">
@@ -242,7 +240,7 @@ export default function ReservationManagementPage() {
                   ))}
                 </>
               )}
-              {!areReservationsLoading && reservations && sortedReservations.map((reservation) => (
+              {!areReservationsLoading && sortedReservations && sortedReservations.map((reservation) => (
                 <TableRow key={reservation.id}>
                   <TableCell className="font-medium">{reservation.guestName}</TableCell>
                   <TableCell>{reservation.roomTitle}</TableCell>
@@ -294,7 +292,7 @@ export default function ReservationManagementPage() {
                   </TableCell>
                 </TableRow>
               ))}
-               {!areReservationsLoading && (!reservations || reservations.length === 0) && (
+               {!areReservationsLoading && (!sortedReservations || sortedReservations.length === 0) && (
                 <TableRow>
                     <TableCell colSpan={7} className="text-center text-muted-foreground py-10">
                         No reservations found.

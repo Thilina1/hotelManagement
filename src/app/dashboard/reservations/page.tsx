@@ -162,25 +162,7 @@ export default function ReservationManagementPage() {
     }
   };
 
-  if (!currentUser || areReservationsLoading || areRoomsLoading) {
-     return (
-       <div className="space-y-6">
-        <div className="flex justify-between items-start">
-            <Skeleton className="h-12 w-1/2" />
-            <Skeleton className="h-10 w-28" />
-        </div>
-        <Card>
-            <CardHeader>
-                <Skeleton className="h-8 w-1/4" />
-                <Skeleton className="h-4 w-1/2" />
-            </CardHeader>
-            <CardContent>
-              <Skeleton className="h-48 w-full" />
-            </CardContent>
-        </Card>
-      </div>
-     )
-  }
+  const isLoading = !currentUser || areReservationsLoading || areRoomsLoading;
 
   return (
     <div className="space-y-6">
@@ -231,7 +213,7 @@ export default function ReservationManagementPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {areReservationsLoading && (
+              {isLoading && (
                 <>
                   {[...Array(5)].map((_, i) => (
                     <TableRow key={i}>
@@ -240,7 +222,7 @@ export default function ReservationManagementPage() {
                   ))}
                 </>
               )}
-              {!areReservationsLoading && sortedReservations && sortedReservations.map((reservation) => (
+              {!isLoading && sortedReservations.map((reservation) => (
                 <TableRow key={reservation.id}>
                   <TableCell className="font-medium">{reservation.guestName}</TableCell>
                   <TableCell>{reservation.roomTitle}</TableCell>
@@ -292,7 +274,7 @@ export default function ReservationManagementPage() {
                   </TableCell>
                 </TableRow>
               ))}
-               {!areReservationsLoading && (!sortedReservations || sortedReservations.length === 0) && (
+               {!isLoading && sortedReservations.length === 0 && (
                 <TableRow>
                     <TableCell colSpan={7} className="text-center text-muted-foreground py-10">
                         No reservations found.

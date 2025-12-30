@@ -58,6 +58,8 @@ const otherMenuItems: MenuItem[] = [
     { href: '/dashboard/blogs', icon: Newspaper, label: 'Blog Management', roles: ['admin'] },
     { href: '/dashboard/expenses', icon: Newspaper, label: 'Expences Management', roles: ['admin'] },
    
+    { href: '/dashboard/expenses', icon: Zap, label: 'Expenses', roles: ['admin' ]},
+    { href: '/dashboard/other-incomes', icon: Zap, label: 'Other Incomes', roles: ['admin'] },
     { href: '/dashboard/reports', icon: BarChart, label: 'Reports', roles: ['admin', 'payment'] },
 ];
 

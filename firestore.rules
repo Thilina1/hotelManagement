@@ -143,6 +143,11 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    match /expenses/{expenseId} {
+      allow read, list: if isSignedIn();
+      allow write: if false; // Managed by admin/payment roles via backend logic, not client
+    }
+
     // Helper Functions
     function isSignedIn() {
       return request.auth != null;

@@ -49,6 +49,8 @@ const getPageTitle = (pathname: string) => {
             return 'Activity Management';
         case '/dashboard/experiences':
             return 'Experience Management';
+        case '/dashboard/expenses':
+            return 'Expense Management';
         case '/dashboard/blogs':
             return 'Blog Management';
         case '/dashboard/blogs/create':
@@ -94,7 +96,7 @@ export default function DashboardHeader() {
             className="overflow-hidden rounded-full"
           >
             <Avatar>
-              {avatar && <AvatarImage src={avatar.imageUrl} alt={user?.name || 'User'} />}
+              {avatar && <AvatarImage src={user?.name || ''} alt={user?.name || 'User'} />}
               <AvatarFallback>{user?.name ? user.name.charAt(0).toUpperCase() : 'U'}</AvatarFallback>
             </Avatar>
           </Button>

@@ -267,6 +267,21 @@
         "contentImage", "featured", "color", "tags", "proTips",
         "bookingButtonText", "bookingButtonContent", "authorId", "createdAt"
       ]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "Represents a business expense.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "name": { "type": "string", "description": "Name or reference for the expense." },
+        "price": { "type": "number", "description": "The cost of the expense in LKR." },
+        "remark": { "type": "string", "description": "Additional notes or remarks about the expense." },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["date", "name", "price"]
     }
   },
   "auth": {
@@ -361,6 +376,13 @@
         "definition": {
             "schema": { "$ref": "#/backend/entities/Blog" },
             "description": "Stores all blog posts for the application."
+        }
+      },
+      {
+        "path": "/expenses/{expenseId}",
+        "definition": {
+            "schema": { "$ref": "#/backend/entities/Expense" },
+            "description": "Stores business expense records."
         }
       }
     ],

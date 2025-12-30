@@ -16,7 +16,7 @@ import {
   SidebarGroupContent,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, LayoutDashboard, Users, UserCog, UtensilsCrossed, Boxes, CreditCard, BarChart, BedDouble, Star, Building, Utensils, Zap, Newspaper, Calendar } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, UserCog, UtensilsCrossed, Boxes, CreditCard, BarChart, BedDouble, Star, Building, Utensils, Zap, Newspaper, Calendar, Wallet } from 'lucide-react';
 import { useAuth } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
@@ -58,6 +58,7 @@ const otherMenuItems: MenuItem[] = [
     { href: '/dashboard/activities', icon: Star, label: 'Activities', roles: ['admin'] },
     { href: '/dashboard/experiences', icon: Zap, label: 'Experiences', roles: ['admin'] },
     { href: '/dashboard/blogs', icon: Newspaper, label: 'Blog Management', roles: ['admin'] },
+    { href: '/dashboard/expenses', icon: Wallet, label: 'Expenses', roles: ['admin', 'payment'] },
     { href: '/dashboard/reports', icon: BarChart, label: 'Reports', roles: ['admin', 'payment'] },
 ];
 

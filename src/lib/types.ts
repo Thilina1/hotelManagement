@@ -170,3 +170,13 @@ export type Blog = {
     createdAt: string | { seconds: number; nanoseconds: number };
     updatedAt?: string | { seconds: number; nanoseconds: number };
 }
+
+export type Expense = {
+    id: string;
+    date: string; // YYYY-MM-DD
+    name: string;
+    price: number;
+    remark?: string;
+    createdAt?: string | { seconds: number; nanoseconds: number };
+    updatedAt?: string | { seconds: number; nanoseconds: number };
+}

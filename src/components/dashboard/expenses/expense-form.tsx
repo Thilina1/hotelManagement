@@ -31,13 +31,15 @@ const formSchema = z.object({
   remark: z.string().optional(),
 });
 
+type FormValues = z.infer<typeof formSchema>;
+
 interface ExpenseFormProps {
   expense?: Expense | null;
-  onSubmit: (values: Omit<Expense, 'id' | 'createdAt' | 'updatedAt' | 'date'> & { date: string }) => void;
+  onSubmit: (values: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>) => void;
 }
 
 export function ExpenseForm({ expense, onSubmit }: ExpenseFormProps) {
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       date: expense?.date ? new Date(expense.date) : new Date(),
@@ -47,7 +49,7 @@ export function ExpenseForm({ expense, onSubmit }: ExpenseFormProps) {
     },
   });
 
-  const handleFormSubmit = (values: z.infer<typeof formSchema>) => {
+  const handleFormSubmit = (values: FormValues) => {
     onSubmit({
       ...values,
       date: format(values.date, 'yyyy-MM-dd'),

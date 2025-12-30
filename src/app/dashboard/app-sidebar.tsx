@@ -56,6 +56,7 @@ const roomBookingMenuItems: MenuItem[] = [
 const moneyManagementMenuItems: MenuItem[] = [
     { href: '/dashboard/billing', icon: CreditCard, label: 'Restaurant Billing', roles: ['admin', 'payment'] },
     { href: '/dashboard/reports', icon: BarChart, label: 'Reports', roles: ['admin', 'payment'] },
+    { href: '/dashboard/expenses', icon: Wallet, label: 'Expenses', roles: ['admin', 'payment'] },
 ];
 
 const otherMenuItems: MenuItem[] = [
@@ -128,7 +129,7 @@ export default function AppSidebar() {
                     <>
                         <SidebarSeparator className="my-2"/>
                         <SidebarGroup>
-                            <SidebarGroupLabel className="flex items-center gap-2"><Building className="size-4"/>Room Booking</SidebarGroupLabel>
+                            <SidebarGroupLabel className="flex items-center gap-2"><Building className="size-4"/>Room Bookings</SidebarGroupLabel>
                             <SidebarGroupContent>{roomBookingSection}</SidebarGroupContent>
                         </SidebarGroup>
                     </>

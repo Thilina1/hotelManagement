@@ -16,7 +16,7 @@ import {
   SidebarRail,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, LayoutDashboard, Users, UserCog, UtensilsCrossed, Boxes, CreditCard, BarChart, BedDouble, Star, Building, Utensils, Zap, Newspaper, Calendar, Wallet } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, UserCog, UtensilsCrossed, Boxes, CreditCard, BarChart, BedDouble, Star, Building, Utensils, Zap, Newspaper, Calendar, Wallet, Banknote } from 'lucide-react';
 import { useAuth } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
@@ -56,6 +56,7 @@ const moneyManagementMenuItems: MenuItem[] = [
     { href: '/dashboard/billing', icon: CreditCard, label: 'Restaurant Billing', roles: ['admin', 'payment'] },
     { href: '/dashboard/reports', icon: BarChart, label: 'Reports', roles: ['admin', 'payment'] },
     { href: '/dashboard/expenses', icon: Wallet, label: 'Expenses', roles: ['admin', 'payment'] },
+    { href: '/dashboard/other-incomes', icon: Banknote, label: 'Other Incomes', roles: ['admin', 'payment'] },
 ];
 
 const otherMenuItems: MenuItem[] = [
@@ -161,7 +162,7 @@ export default function AppSidebar() {
                  <SidebarSeparator className="my-1"/>
                  <Link href="/dashboard/profile" className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-sidebar-accent transition-colors">
                     <Avatar className="size-8">
-                         {avatar && <AvatarImage src={user?.name} />}
+                         {user?.name && <AvatarImage src={user?.name} />}
                         <AvatarFallback className="text-xs">{user?.name ? user.name.charAt(0).toUpperCase() : 'U'}</AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col overflow-hidden group-data-[collapsible=icon]:hidden">

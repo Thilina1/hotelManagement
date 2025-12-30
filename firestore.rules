@@ -154,6 +154,11 @@ service cloud.firestore {
       allow write: if hasAnyRole(['admin', 'payment']);
     }
 
+    match /otherIncomes/{otherIncomeId} {
+      allow read, list: if isSignedIn();
+      allow write: if hasAnyRole(['admin', 'payment']);
+    }
+
     match /activities/{activityId} {
         allow read, list: if true;
         allow write: if hasAnyRole(['admin']);

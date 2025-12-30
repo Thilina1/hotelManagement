@@ -5,10 +5,10 @@ import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { DollarSign, Receipt, Calendar as CalendarIcon, Wallet, CreditCard, Users, BarChart, BedDouble } from "lucide-react";
+import { DollarSign, Receipt, Calendar as CalendarIcon, Wallet, CreditCard, Users, BarChart, BedDouble, Banknote, LandPlot } from "lucide-react";
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy, Timestamp } from 'firebase/firestore';
-import type { Bill, PaymentMethod, Reservation } from '@/lib/types';
+import type { Bill, PaymentMethod, Reservation, Expense, OtherIncome } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -48,6 +48,13 @@ const bookingChartConfig = {
   },
 } satisfies ChartConfig;
 
+const otherIncomeChartConfig = {
+  total: {
+    label: "Total Income",
+    color: "hsl(var(--chart-4))",
+  },
+} satisfies ChartConfig;
+
 
 export default function ReportsPage() {
   const firestore = useFirestore();
@@ -74,10 +81,20 @@ export default function ReportsPage() {
     );
   }, [firestore, dateRange]);
 
+  const otherIncomesInDateRangeQuery = useMemoFirebase(() => {
+    if (!firestore || !dateRange?.from || !dateRange?.to) return null;
+    return query(
+        collection(firestore, 'otherIncomes'),
+        where('date', '>=', format(dateRange.from, 'yyyy-MM-dd')),
+        where('date', '<=', format(dateRange.to, 'yyyy-MM-dd'))
+    );
+  }, [firestore, dateRange]);
+
   const { data: allBills, isLoading: isLoadingBills } = useCollection<Bill>(billsInDateRangeQuery);
   const { data: allReservations, isLoading: isLoadingReservations } = useCollection<Reservation>(reservationsInDateRangeQuery);
-  
-  const isLoading = isLoadingBills || isLoadingReservations;
+  const { data: allOtherIncomes, isLoading: isLoadingOtherIncomes } = useCollection<OtherIncome>(otherIncomesInDateRangeQuery);
+
+  const isLoading = isLoadingBills || isLoadingReservations || isLoadingOtherIncomes;
 
   // Restaurant Sales Data
   const paidBills = useMemo(() => {
@@ -138,6 +155,29 @@ export default function ReportsPage() {
       });
       return Object.entries(bookingsData).map(([date, data]) => ({ date, ...data })).sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [completedBookings]);
+  
+  // Other Incomes Data
+  const otherIncomesKpiData = useMemo(() => {
+    if (!allOtherIncomes) return { totalIncome: 0, totalRecords: 0 };
+    const totalIncome = allOtherIncomes.reduce((acc, income) => acc + income.price, 0);
+    const totalRecords = allOtherIncomes.length;
+    return { totalIncome, totalRecords };
+  }, [allOtherIncomes]);
+
+  const otherIncomesByDay = useMemo(() => {
+      if (!allOtherIncomes) return [];
+      const incomesData: { [key: string]: { total: number } } = {};
+      allOtherIncomes.forEach(income => {
+          if (income.date) {
+              const date = format(new Date(income.date), 'yyyy-MM-dd');
+              if (!incomesData[date]) {
+                  incomesData[date] = { total: 0 };
+              }
+              incomesData[date].total += income.price;
+          }
+      });
+      return Object.entries(incomesData).map(([date, data]) => ({ date, ...data })).sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [allOtherIncomes]);
 
   
   if (!currentUser) {
@@ -200,7 +240,7 @@ export default function ReportsPage() {
           </div>
       </div>
       <Tabs defaultValue="restaurant">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="restaurant">
                 <Receipt className="mr-2 h-4 w-4" />
                 Restaurant Sales
@@ -208,6 +248,10 @@ export default function ReportsPage() {
             <TabsTrigger value="bookings">
                 <BedDouble className="mr-2 h-4 w-4" />
                 Booking Revenue
+            </TabsTrigger>
+            <TabsTrigger value="other-incomes">
+                <Banknote className="mr-2 h-4 w-4" />
+                Other Incomes
             </TabsTrigger>
         </TabsList>
         <TabsContent value="restaurant" className="space-y-6">
@@ -442,9 +486,101 @@ export default function ReportsPage() {
                 </CardContent>
             </Card>
         </TabsContent>
+         <TabsContent value="other-incomes" className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Other Income</CardTitle>
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  {isLoading ? <Skeleton className="h-8 w-3/4" /> : <div className="text-2xl font-bold">LKR {otherIncomesKpiData.totalIncome.toFixed(2)}</div>}
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Records</CardTitle>
+                  <LandPlot className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  {isLoading ? <Skeleton className="h-8 w-3/4" /> : <div className="text-2xl font-bold">{otherIncomesKpiData.totalRecords}</div>}
+                </CardContent>
+              </Card>
+            </div>
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><BarChart/> Other Income Overview</CardTitle>
+                    <CardDescription>A chart showing total other income per day.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {isLoading && <Skeleton className="h-80 w-full" />}
+                    {!isLoading && otherIncomesByDay.length > 0 && (
+                        <ChartContainer config={otherIncomeChartConfig} className="min-h-[200px] w-full h-80">
+                          <RechartsBarChart accessibilityLayer data={otherIncomesByDay}>
+                            <CartesianGrid vertical={false} />
+                            <XAxis
+                              dataKey="date"
+                              tickLine={false}
+                              tickMargin={10}
+                              axisLine={false}
+                              tickFormatter={(value) => format(new Date(value), 'MMM d')}
+                            />
+                            <YAxis />
+                            <ChartTooltip content={<ChartTooltipContent />} />
+                            <Legend />
+                            <Bar dataKey="total" name="Total Income" fill="var(--color-total)" radius={4} />
+                          </RechartsBarChart>
+                        </ChartContainer>
+                    )}
+                    {!isLoading && otherIncomesByDay.length === 0 && (
+                        <div className="h-80 flex items-center justify-center text-muted-foreground">
+                            <p>No other income data for the selected period.</p>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+             <Card>
+                <CardHeader>
+                    <CardTitle>Other Income History</CardTitle>
+                    <CardDescription>A detailed log of all other incomes in the selected date range.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Name/Reference</TableHead>
+                                <TableHead>Amount</TableHead>
+                                <TableHead>Remark</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {isLoading && [...Array(5)].map((_, i) => (
+                                <TableRow key={i}>
+                                    <TableCell colSpan={4}><Skeleton className="h-8 w-full" /></TableCell>
+                                </TableRow>
+                            ))}
+                            {!isLoading && allOtherIncomes && allOtherIncomes.map(income => (
+                                <TableRow key={income.id}>
+                                    <TableCell>{format(new Date(income.date), 'PPP')}</TableCell>
+                                    <TableCell className="font-medium">{income.name}</TableCell>
+                                    <TableCell>LKR {income.price.toFixed(2)}</TableCell>
+                                    <TableCell>{income.remark}</TableCell>
+                                </TableRow>
+                            ))}
+                            {!isLoading && (!allOtherIncomes || allOtherIncomes.length === 0) && (
+                                <TableRow>
+                                    <TableCell colSpan={4} className="text-center py-10 text-muted-foreground">
+                                        No other incomes found for this period.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+        </TabsContent>
       </Tabs>
     </div>
   );
 }
-
-    

@@ -51,6 +51,8 @@ const getPageTitle = (pathname: string) => {
             return 'Experience Management';
         case '/dashboard/expenses':
             return 'Expense Management';
+        case '/dashboard/other-incomes':
+            return 'Other Income Management';
         case '/dashboard/blogs':
             return 'Blog Management';
         case '/dashboard/blogs/create':

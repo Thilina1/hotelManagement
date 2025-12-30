@@ -282,6 +282,21 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["date", "name", "price"]
+    },
+    "OtherIncome": {
+      "title": "Other Income",
+      "description": "Represents other business income.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "name": { "type": "string", "description": "Name or reference for the income." },
+        "price": { "type": "number", "description": "The amount of the income in LKR." },
+        "remark": { "type": "string", "description": "Additional notes or remarks about the income." },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["date", "name", "price"]
     }
   },
   "auth": {
@@ -383,6 +398,13 @@
         "definition": {
             "schema": { "$ref": "#/backend/entities/Expense" },
             "description": "Stores business expense records."
+        }
+      },
+      {
+        "path": "/otherIncomes/{otherIncomeId}",
+        "definition": {
+            "schema": { "$ref": "#/backend/entities/OtherIncome" },
+            "description": "Stores other business income records."
         }
       }
     ],

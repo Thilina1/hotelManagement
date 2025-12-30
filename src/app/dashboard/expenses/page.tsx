@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { MoreHorizontal, PlusCircle, Trash2, Edit } from 'lucide-react';
 import type { Expense } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
@@ -34,6 +34,9 @@ import { useToast } from '@/hooks/use-toast';
 import { useUserContext } from '@/context/user-context';
 import { ExpenseForm } from '@/components/dashboard/expenses/expense-form';
 import { format } from 'date-fns';
+import { Pagination, PaginationContent, PaginationItem } from '@/components/ui/pagination';
+
+const ITEMS_PER_PAGE = 20;
 
 export default function ExpenseManagementPage() {
   const firestore = useFirestore();
@@ -49,6 +52,10 @@ export default function ExpenseManagementPage() {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const totalPages = expenses ? Math.ceil(expenses.length / ITEMS_PER_PAGE) : 0;
+  const paginatedExpenses = expenses?.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const handleAddExpenseClick = () => {
     setEditingExpense(null);
@@ -209,14 +216,14 @@ export default function ExpenseManagementPage() {
                 <TableBody>
                     {areExpensesLoading && (
                         <>
-                        {[...Array(5)].map((_, i) => (
+                        {[...Array(ITEMS_PER_PAGE)].map((_, i) => (
                             <TableRow key={i}>
                             <TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell>
                             </TableRow>
                         ))}
                         </>
                     )}
-                    {!areExpensesLoading && expenses?.map((expense) => (
+                    {!areExpensesLoading && paginatedExpenses?.map((expense) => (
                         <TableRow key={expense.id}>
                           <TableCell>{getFormattedDate(expense.date)}</TableCell>
                           <TableCell className="font-medium">{expense.name}</TableCell>
@@ -244,7 +251,7 @@ export default function ExpenseManagementPage() {
                           </TableCell>
                         </TableRow>
                     ))}
-                    {!areExpensesLoading && (!expenses || expenses.length === 0) && (
+                    {!areExpensesLoading && (!paginatedExpenses || paginatedExpenses.length === 0) && (
                         <TableRow>
                             <TableCell colSpan={5} className="text-center text-muted-foreground py-10">
                                 No expenses found. Add one to get started.
@@ -254,6 +261,23 @@ export default function ExpenseManagementPage() {
                 </TableBody>
             </Table>
         </CardContent>
+         {totalPages > 1 && (
+            <CardFooter>
+                <Pagination>
+                    <PaginationContent>
+                        <PaginationItem>
+                            <Button variant="outline" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>Previous</Button>
+                        </PaginationItem>
+                        <PaginationItem>
+                            <span className="p-2 text-sm text-muted-foreground">Page {currentPage} of {totalPages}</span>
+                        </PaginationItem>
+                        <PaginationItem>
+                            <Button variant="outline" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>Next</Button>
+                        </PaginationItem>
+                    </PaginationContent>
+                </Pagination>
+            </CardFooter>
+        )}
       </Card>
     </div>
   );

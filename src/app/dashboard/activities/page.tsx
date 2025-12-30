@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { MoreHorizontal, PlusCircle, Trash2, Edit } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { Activity } from '@/lib/types';
@@ -34,6 +34,9 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from '@/hooks/use-toast';
 import { useUserContext } from '@/context/user-context';
+import { Pagination, PaginationContent, PaginationItem } from '@/components/ui/pagination';
+
+const ITEMS_PER_PAGE = 20;
 
 export default function ActivityManagementPage() {
   const firestore = useFirestore();
@@ -49,6 +52,10 @@ export default function ActivityManagementPage() {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const totalPages = activities ? Math.ceil(activities.length / ITEMS_PER_PAGE) : 0;
+  const paginatedActivities = activities?.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const handleAddActivityClick = () => {
     setEditingActivity(null);
@@ -200,14 +207,14 @@ export default function ActivityManagementPage() {
                 <TableBody>
                     {areActivitiesLoading && (
                         <>
-                        {[...Array(5)].map((_, i) => (
+                        {[...Array(ITEMS_PER_PAGE)].map((_, i) => (
                             <TableRow key={i}>
                             <TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell>
                             </TableRow>
                         ))}
                         </>
                     )}
-                    {!areActivitiesLoading && activities && activities.map((activity) => (
+                    {!areActivitiesLoading && paginatedActivities && paginatedActivities.map((activity) => (
                         <TableRow key={activity.id}>
                         <TableCell className="font-medium">{activity.name}</TableCell>
                         <TableCell>
@@ -241,7 +248,7 @@ export default function ActivityManagementPage() {
                         </TableCell>
                         </TableRow>
                     ))}
-                    {!areActivitiesLoading && (!activities || activities.length === 0) && (
+                    {!areActivitiesLoading && (!paginatedActivities || paginatedActivities.length === 0) && (
                         <TableRow>
                             <TableCell colSpan={5} className="text-center text-muted-foreground py-10">
                                 No activities found. Add an activity to get started.
@@ -251,9 +258,24 @@ export default function ActivityManagementPage() {
                 </TableBody>
             </Table>
         </CardContent>
+        {totalPages > 1 && (
+            <CardFooter>
+                <Pagination>
+                    <PaginationContent>
+                        <PaginationItem>
+                            <Button variant="outline" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>Previous</Button>
+                        </PaginationItem>
+                        <PaginationItem>
+                            <span className="p-2 text-sm text-muted-foreground">Page {currentPage} of {totalPages}</span>
+                        </PaginationItem>
+                        <PaginationItem>
+                            <Button variant="outline" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>Next</Button>
+                        </PaginationItem>
+                    </PaginationContent>
+                </Pagination>
+            </CardFooter>
+        )}
       </Card>
     </div>
   );
 }
-
-    

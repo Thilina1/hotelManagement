@@ -18,7 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { MoreHorizontal, PlusCircle, Trash2, Edit } from 'lucide-react';
 import type { Experience } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
@@ -34,6 +34,9 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from '@/hooks/use-toast';
 import { useUserContext } from '@/context/user-context';
+import { Pagination, PaginationContent, PaginationItem } from '@/components/ui/pagination';
+
+const ITEMS_PER_PAGE = 20;
 
 export default function ExperienceManagementPage() {
   const firestore = useFirestore();
@@ -49,6 +52,10 @@ export default function ExperienceManagementPage() {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingExperience, setEditingExperience] = useState<Experience | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const totalPages = experiences ? Math.ceil(experiences.length / ITEMS_PER_PAGE) : 0;
+  const paginatedExperiences = experiences?.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const handleAddExperienceClick = () => {
     setEditingExperience(null);
@@ -195,14 +202,14 @@ export default function ExperienceManagementPage() {
                 <TableBody>
                     {areExperiencesLoading && (
                         <>
-                        {[...Array(3)].map((_, i) => (
+                        {[...Array(ITEMS_PER_PAGE)].map((_, i) => (
                             <TableRow key={i}>
                             <TableCell colSpan={5}><Skeleton className="h-16 w-full" /></TableCell>
                             </TableRow>
                         ))}
                         </>
                     )}
-                    {!areExperiencesLoading && experiences && experiences.map((experience) => (
+                    {!areExperiencesLoading && paginatedExperiences && paginatedExperiences.map((experience) => (
                         <TableRow key={experience.id}>
                         <TableCell>
                             <Image
@@ -238,7 +245,7 @@ export default function ExperienceManagementPage() {
                         </TableCell>
                         </TableRow>
                     ))}
-                    {!areExperiencesLoading && (!experiences || experiences.length === 0) && (
+                    {!areExperiencesLoading && (!paginatedExperiences || paginatedExperiences.length === 0) && (
                         <TableRow>
                             <TableCell colSpan={5} className="text-center text-muted-foreground py-10">
                                 No experiences found. Add one to get started.
@@ -248,6 +255,23 @@ export default function ExperienceManagementPage() {
                 </TableBody>
             </Table>
         </CardContent>
+        {totalPages > 1 && (
+            <CardFooter>
+                <Pagination>
+                    <PaginationContent>
+                        <PaginationItem>
+                            <Button variant="outline" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>Previous</Button>
+                        </PaginationItem>
+                        <PaginationItem>
+                            <span className="p-2 text-sm text-muted-foreground">Page {currentPage} of {totalPages}</span>
+                        </PaginationItem>
+                        <PaginationItem>
+                            <Button variant="outline" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>Next</Button>
+                        </PaginationItem>
+                    </PaginationContent>
+                </Pagination>
+            </CardFooter>
+        )}
       </Card>
     </div>
   );

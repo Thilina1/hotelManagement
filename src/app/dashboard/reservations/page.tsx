@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { MoreHorizontal, PlusCircle, Trash2, Edit, CheckCircle, BedDouble, XCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { Reservation, ReservationStatus, Room } from '@/lib/types';
@@ -35,6 +35,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useUserContext } from '@/context/user-context';
 import { format } from 'date-fns';
+import { Pagination, PaginationContent, PaginationItem } from '@/components/ui/pagination';
 
 const statusColors: Record<ReservationStatus, string> = {
     booked: 'bg-blue-200 text-blue-800',
@@ -43,6 +44,8 @@ const statusColors: Record<ReservationStatus, string> = {
     'checked-out': 'bg-green-500 text-white',
     cancelled: 'bg-red-500 text-white',
 };
+
+const ITEMS_PER_PAGE = 20;
 
 export default function ReservationManagementPage() {
   const firestore = useFirestore();
@@ -64,6 +67,7 @@ export default function ReservationManagementPage() {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingReservation, setEditingReservation] = useState<Reservation | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const handleAddReservationClick = () => {
     setEditingReservation(null);
@@ -146,6 +150,9 @@ export default function ReservationManagementPage() {
       return dateB - dateA;
     });
   }, [reservations]);
+  
+  const totalPages = sortedReservations ? Math.ceil(sortedReservations.length / ITEMS_PER_PAGE) : 0;
+  const paginatedReservations = sortedReservations?.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const getFormattedDate = (dateString: string | undefined) => {
     if (!dateString) return "N/A";
@@ -233,14 +240,14 @@ export default function ReservationManagementPage() {
             <TableBody>
               {areReservationsLoading && (
                 <>
-                  {[...Array(5)].map((_, i) => (
+                  {[...Array(ITEMS_PER_PAGE)].map((_, i) => (
                     <TableRow key={i}>
                       <TableCell colSpan={7}><Skeleton className="h-8 w-full" /></TableCell>
                     </TableRow>
                   ))}
                 </>
               )}
-              {!areReservationsLoading && sortedReservations && sortedReservations.map((reservation) => (
+              {!areReservationsLoading && paginatedReservations && paginatedReservations.map((reservation) => (
                 <TableRow key={reservation.id}>
                   <TableCell className="font-medium">{reservation.guestName}</TableCell>
                   <TableCell>{reservation.roomTitle}</TableCell>
@@ -292,7 +299,7 @@ export default function ReservationManagementPage() {
                   </TableCell>
                 </TableRow>
               ))}
-               {!areReservationsLoading && (!sortedReservations || sortedReservations.length === 0) && (
+               {!areReservationsLoading && (!paginatedReservations || paginatedReservations.length === 0) && (
                 <TableRow>
                     <TableCell colSpan={7} className="text-center text-muted-foreground py-10">
                         No reservations found.
@@ -302,6 +309,23 @@ export default function ReservationManagementPage() {
             </TableBody>
           </Table>
         </CardContent>
+        {totalPages > 1 && (
+            <CardFooter>
+                <Pagination>
+                    <PaginationContent>
+                        <PaginationItem>
+                            <Button variant="outline" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>Previous</Button>
+                        </PaginationItem>
+                        <PaginationItem>
+                            <span className="p-2 text-sm text-muted-foreground">Page {currentPage} of {totalPages}</span>
+                        </PaginationItem>
+                        <PaginationItem>
+                            <Button variant="outline" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>Next</Button>
+                        </PaginationItem>
+                    </PaginationContent>
+                </Pagination>
+            </CardFooter>
+        )}
       </Card>
     </div>
   );

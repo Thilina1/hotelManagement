@@ -3,7 +3,7 @@
 
 import { useState, useMemo } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { CreditCard, Eye, CircleSlash, History, Printer, Wallet } from "lucide-react";
@@ -16,6 +16,7 @@ import { PaymentModal } from '@/components/dashboard/billing/payment-modal';
 import { Receipt } from '@/components/dashboard/billing/receipt';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from 'date-fns';
+import { Pagination, PaginationContent, PaginationItem } from '@/components/ui/pagination';
 
 
 const statusColors: Record<string, string> = {
@@ -28,9 +29,13 @@ const paymentMethodIcons: Record<PaymentMethod, React.FC<any>> = {
     card: CreditCard,
 };
 
+const ITEMS_PER_PAGE = 20;
+
 export default function BillingPage() {
   const firestore = useFirestore();
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
+  const [currentPageUnpaid, setCurrentPageUnpaid] = useState(1);
+  const [currentPagePaid, setCurrentPagePaid] = useState(1);
   
   const unpaidBillsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -62,6 +67,13 @@ export default function BillingPage() {
 
   const unpaidBills = useMemo(() => sortBills(unpaidBillsData), [unpaidBillsData]);
   const paidBills = useMemo(() => sortBills(paidBillsData), [paidBillsData]);
+
+  const totalPagesUnpaid = unpaidBills ? Math.ceil(unpaidBills.length / ITEMS_PER_PAGE) : 0;
+  const paginatedUnpaidBills = unpaidBills?.slice((currentPageUnpaid - 1) * ITEMS_PER_PAGE, currentPageUnpaid * ITEMS_PER_PAGE);
+
+  const totalPagesPaid = paidBills ? Math.ceil(paidBills.length / ITEMS_PER_PAGE) : 0;
+  const paginatedPaidBills = paidBills?.slice((currentPagePaid - 1) * ITEMS_PER_PAGE, currentPagePaid * ITEMS_PER_PAGE);
+
 
   const handlePrint = (bill: Bill) => {
     const receiptElement = <Receipt bill={bill} items={bill.items} />;
@@ -182,12 +194,12 @@ export default function BillingPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {isLoadingUnpaid && [...Array(5)].map((_, i) => (
+                            {isLoadingUnpaid && [...Array(ITEMS_PER_PAGE)].map((_, i) => (
                                 <TableRow key={i}>
                                     <TableCell colSpan={7}><Skeleton className="h-8 w-full" /></TableCell>
                                 </TableRow>
                             ))}
-                            {!isLoadingUnpaid && unpaidBills && unpaidBills.map(bill => (
+                            {!isLoadingUnpaid && paginatedUnpaidBills && paginatedUnpaidBills.map(bill => (
                                 <TableRow key={bill.id}>
                                     <TableCell className="font-mono text-xs">{bill.billNumber}</TableCell>
                                     <TableCell className="font-medium">{bill.tableNumber}</TableCell>
@@ -209,7 +221,7 @@ export default function BillingPage() {
                                     </TableCell>
                                 </TableRow>
                             ))}
-                            {!isLoadingUnpaid && (!unpaidBills || unpaidBills.length === 0) && (
+                            {!isLoadingUnpaid && (!paginatedUnpaidBills || paginatedUnpaidBills.length === 0) && (
                                 <TableRow>
                                     <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
                                         <div className="flex flex-col items-center gap-2">
@@ -222,6 +234,23 @@ export default function BillingPage() {
                         </TableBody>
                     </Table>
                 </CardContent>
+                {totalPagesUnpaid > 1 && (
+                  <CardFooter>
+                      <Pagination>
+                          <PaginationContent>
+                              <PaginationItem>
+                                  <Button variant="outline" onClick={() => setCurrentPageUnpaid(p => Math.max(1, p - 1))} disabled={currentPageUnpaid === 1}>Previous</Button>
+                              </PaginationItem>
+                              <PaginationItem>
+                                  <span className="p-2 text-sm text-muted-foreground">Page {currentPageUnpaid} of {totalPagesUnpaid}</span>
+                              </PaginationItem>
+                              <PaginationItem>
+                                  <Button variant="outline" onClick={() => setCurrentPageUnpaid(p => Math.min(totalPagesUnpaid, p + 1))} disabled={currentPageUnpaid === totalPagesUnpaid}>Next</Button>
+                              </PaginationItem>
+                          </PaginationContent>
+                      </Pagination>
+                  </CardFooter>
+                )}
             </Card>
           </TabsContent>
 
@@ -245,12 +274,12 @@ export default function BillingPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {isLoadingPaid && [...Array(5)].map((_, i) => (
+                            {isLoadingPaid && [...Array(ITEMS_PER_PAGE)].map((_, i) => (
                                 <TableRow key={i}>
                                     <TableCell colSpan={7}><Skeleton className="h-8 w-full" /></TableCell>
                                 </TableRow>
                             ))}
-                            {!isLoadingPaid && paidBills && paidBills.map(bill => {
+                            {!isLoadingPaid && paginatedPaidBills && paginatedPaidBills.map(bill => {
                                  const PaymentIcon = bill.paymentMethod ? paymentMethodIcons[bill.paymentMethod] : null;
                                  return (
                                     <TableRow key={bill.id}>
@@ -276,7 +305,7 @@ export default function BillingPage() {
                                     </TableRow>
                                 )
                             })}
-                            {!isLoadingPaid && (!paidBills || paidBills.length === 0) && (
+                            {!isLoadingPaid && (!paginatedPaidBills || paginatedPaidBills.length === 0) && (
                                 <TableRow>
                                     <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
                                         <div className="flex flex-col items-center gap-2">
@@ -289,6 +318,23 @@ export default function BillingPage() {
                         </TableBody>
                     </Table>
                 </CardContent>
+                {totalPagesPaid > 1 && (
+                    <CardFooter>
+                        <Pagination>
+                            <PaginationContent>
+                                <PaginationItem>
+                                    <Button variant="outline" onClick={() => setCurrentPagePaid(p => Math.max(1, p - 1))} disabled={currentPagePaid === 1}>Previous</Button>
+                                </PaginationItem>
+                                <PaginationItem>
+                                    <span className="p-2 text-sm text-muted-foreground">Page {currentPagePaid} of {totalPagesPaid}</span>
+                                </PaginationItem>
+                                <PaginationItem>
+                                    <Button variant="outline" onClick={() => setCurrentPagePaid(p => Math.min(totalPagesPaid, p + 1))} disabled={currentPagePaid === totalPagesPaid}>Next</Button>
+                                </PaginationItem>
+                            </PaginationContent>
+                        </Pagination>
+                    </CardFooter>
+                )}
             </Card>
           </TabsContent>
         </Tabs>

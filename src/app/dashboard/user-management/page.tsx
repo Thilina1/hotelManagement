@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { MoreHorizontal, UserPlus, Trash2, Edit } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { User, UserRole } from '@/lib/types';
@@ -35,12 +35,15 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from '@/hooks/use-toast';
 import { useUserContext } from '@/context/user-context';
+import { Pagination, PaginationContent, PaginationItem, PaginationPrevious, PaginationNext } from '@/components/ui/pagination';
 
 const roleColors: Record<UserRole, string> = {
     admin: 'bg-primary text-primary-foreground',
     waiter: 'bg-accent text-accent-foreground',
     payment: 'bg-emerald-500 text-white',
 };
+
+const ITEMS_PER_PAGE = 20;
 
 export default function UserManagementPage() {
   const firestore = useFirestore();
@@ -56,6 +59,10 @@ export default function UserManagementPage() {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const totalPages = users ? Math.ceil(users.length / ITEMS_PER_PAGE) : 0;
+  const paginatedUsers = users?.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const handleAddUserClick = () => {
     setEditingUser(null);
@@ -213,14 +220,14 @@ export default function UserManagementPage() {
             <TableBody>
               {areUsersLoading && (
                 <>
-                  {[...Array(3)].map((_, i) => (
+                  {[...Array(ITEMS_PER_PAGE)].map((_, i) => (
                     <TableRow key={i}>
                       <TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell>
                     </TableRow>
                   ))}
                 </>
               )}
-              {!areUsersLoading && users && users.map((user) => (
+              {!areUsersLoading && paginatedUsers && paginatedUsers.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">{user.name}</TableCell>
                   <TableCell>
@@ -252,7 +259,7 @@ export default function UserManagementPage() {
                   </TableCell>
                 </TableRow>
               ))}
-               {!areUsersLoading && (!users || users.length === 0) && (
+               {!areUsersLoading && (!paginatedUsers || paginatedUsers.length === 0) && (
                 <TableRow>
                     <TableCell colSpan={5} className="text-center text-muted-foreground py-10">
                         No users found.
@@ -262,6 +269,23 @@ export default function UserManagementPage() {
             </TableBody>
           </Table>
         </CardContent>
+        {totalPages > 1 && (
+            <CardFooter>
+                <Pagination>
+                    <PaginationContent>
+                        <PaginationItem>
+                            <Button variant="outline" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>Previous</Button>
+                        </PaginationItem>
+                        <PaginationItem>
+                            <span className="p-2 text-sm text-muted-foreground">Page {currentPage} of {totalPages}</span>
+                        </PaginationItem>
+                        <PaginationItem>
+                            <Button variant="outline" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>Next</Button>
+                        </PaginationItem>
+                    </PaginationContent>
+                </Pagination>
+            </CardFooter>
+        )}
       </Card>
     </div>
   );

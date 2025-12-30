@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { MoreHorizontal, PlusCircle, Trash2, Edit } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { Room, RoomStatus } from '@/lib/types';
@@ -35,12 +35,15 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useUserContext } from '@/context/user-context';
 import Image from 'next/image';
+import { Pagination, PaginationContent, PaginationItem } from '@/components/ui/pagination';
 
 const statusColors: Record<RoomStatus, string> = {
     available: 'bg-green-500 text-white',
     occupied: 'bg-yellow-500 text-white',
     maintenance: 'bg-gray-500 text-white',
 };
+
+const ITEMS_PER_PAGE = 20;
 
 export default function RoomManagementPage() {
   const firestore = useFirestore();
@@ -56,6 +59,10 @@ export default function RoomManagementPage() {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const totalPages = rooms ? Math.ceil(rooms.length / ITEMS_PER_PAGE) : 0;
+  const paginatedRooms = rooms?.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const handleAddRoomClick = () => {
     setEditingRoom(null);
@@ -197,14 +204,14 @@ export default function RoomManagementPage() {
                 <TableBody>
                     {areRoomsLoading && (
                         <>
-                        {[...Array(5)].map((_, i) => (
+                        {[...Array(ITEMS_PER_PAGE)].map((_, i) => (
                             <TableRow key={i}>
                             <TableCell colSpan={7}><Skeleton className="h-8 w-full" /></TableCell>
                             </TableRow>
                         ))}
                         </>
                     )}
-                    {!areRoomsLoading && rooms && rooms.map((room) => (
+                    {!areRoomsLoading && paginatedRooms && paginatedRooms.map((room) => (
                         <TableRow key={room.id}>
                         <TableCell>
                             <div className="font-medium">{room.title}</div>
@@ -245,7 +252,7 @@ export default function RoomManagementPage() {
                         </TableCell>
                         </TableRow>
                     ))}
-                    {!areRoomsLoading && (!rooms || rooms.length === 0) && (
+                    {!areRoomsLoading && (!paginatedRooms || paginatedRooms.length === 0) && (
                         <TableRow>
                             <TableCell colSpan={7} className="text-center text-muted-foreground py-10">
                                 No rooms found. Add a room to get started.
@@ -255,6 +262,23 @@ export default function RoomManagementPage() {
                 </TableBody>
             </Table>
         </CardContent>
+        {totalPages > 1 && (
+            <CardFooter>
+                <Pagination>
+                    <PaginationContent>
+                        <PaginationItem>
+                            <Button variant="outline" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>Previous</Button>
+                        </PaginationItem>
+                        <PaginationItem>
+                            <span className="p-2 text-sm text-muted-foreground">Page {currentPage} of {totalPages}</span>
+                        </PaginationItem>
+                        <PaginationItem>
+                            <Button variant="outline" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>Next</Button>
+                        </PaginationItem>
+                    </PaginationContent>
+                </Pagination>
+            </CardFooter>
+        )}
       </Card>
     </div>
   );

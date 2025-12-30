@@ -33,7 +33,7 @@ const formSchema = z.object({
 
 interface ExpenseFormProps {
   expense?: Expense | null;
-  onSubmit: (values: z.infer<typeof formSchema>) => void;
+  onSubmit: (values: Omit<Expense, 'id' | 'createdAt' | 'updatedAt' | 'date'> & { date: string }) => void;
 }
 
 export function ExpenseForm({ expense, onSubmit }: ExpenseFormProps) {

@@ -304,7 +304,7 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
     const item = menuItems?.find((m) => m.id === id);
     return acc + (item ? item.price * quantity : 0);
   }, 0);
-  const totalBill = (openOrder?.totalPrice || 0) + totalLocalPrice;
+  const totalBill = (openOrder?.totalPrice || 0) + totalLocalprice;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

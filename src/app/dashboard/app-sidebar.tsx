@@ -14,18 +14,18 @@ import {
   SidebarGroupLabel,
   SidebarSeparator,
   SidebarGroupContent,
+  SidebarRail,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { LogOut, LayoutDashboard, Users, UserCog, UtensilsCrossed, Boxes, CreditCard, BarChart, BedDouble, Star, Building, Utensils, Zap, Newspaper, Calendar, Wallet } from 'lucide-react';
 import { useAuth } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
-import { Logo, TableIcon } from '../icons';
+import { Logo, TableIcon } from '@/components/icons';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useUserContext } from '@/context/user-context';
-import { SidebarRail } from '../ui/sidebar';
 import type { UserRole } from '@/lib/types';
 
 interface MenuItem {
@@ -55,7 +55,6 @@ const roomBookingMenuItems: MenuItem[] = [
 
 const moneyManagementMenuItems: MenuItem[] = [
     { href: '/dashboard/billing', icon: CreditCard, label: 'Restaurant Billing', roles: ['admin', 'payment'] },
-    { href: '/dashboard/expenses', icon: Wallet, label: 'Expenses', roles: ['admin', 'payment'] },
     { href: '/dashboard/reports', icon: BarChart, label: 'Reports', roles: ['admin', 'payment'] },
 ];
 

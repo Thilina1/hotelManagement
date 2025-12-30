@@ -1,3 +1,4 @@
+
 /**
  * @file Firestore Security Rules for Restaurant Staff Management System
  *
@@ -52,7 +53,7 @@ service cloud.firestore {
      */
     match /rooms/{roomId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
+      allow create, update, delete: if hasAnyRole(['admin']);
     }
 
     /**
@@ -67,7 +68,7 @@ service cloud.firestore {
      */
     match /reservations/{reservationId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
+      allow write: if hasAnyRole(['admin']);
     }
 
     /**
@@ -82,7 +83,7 @@ service cloud.firestore {
      */
     match /menuItems/{menuItemId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
+      allow write: if hasAnyRole(['admin']);
     }
 
     /**
@@ -97,7 +98,7 @@ service cloud.firestore {
      */
     match /tables/{tableId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
+      allow write: if hasAnyRole(['admin']);
     }
 
     /**
@@ -111,8 +112,13 @@ service cloud.firestore {
      * @principle Restricts writes to the orders collection.
      */
     match /orders/{orderId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
+      allow read: if isSignedIn();
+      allow write: if hasAnyRole(['admin', 'waiter']);
+
+       match /items/{orderItemId} {
+        allow read: if isSignedIn();
+        allow write: if hasAnyRole(['admin', 'waiter']);
+      }
     }
 
     /**
@@ -140,12 +146,27 @@ service cloud.firestore {
      */
     match /bills/{billId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
+      allow write: if hasAnyRole(['admin', 'waiter', 'payment']);
     }
 
     match /expenses/{expenseId} {
       allow read, list: if isSignedIn();
-      allow write: if false; // Managed by admin/payment roles via backend logic, not client
+      allow write: if hasAnyRole(['admin', 'payment']);
+    }
+
+    match /activities/{activityId} {
+        allow read, list: if true;
+        allow write: if hasAnyRole(['admin']);
+    }
+
+    match /experiences/{experienceId} {
+        allow read, list: if true;
+        allow write: if hasAnyRole(['admin']);
+    }
+    
+    match /blogs/{blogId} {
+        allow read, list: if true;
+        allow write: if hasAnyRole(['admin']);
     }
 
     // Helper Functions
@@ -159,6 +180,14 @@ service cloud.firestore {
 
     function isExistingOwner(userId) {
         return isOwner(userId) && resource != null;
+    }
+    
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function hasAnyRole(roles) {
+      return isSignedIn() && getUserRole() in roles;
     }
   }
 }

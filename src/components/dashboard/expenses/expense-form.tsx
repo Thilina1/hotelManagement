@@ -14,26 +14,26 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import type { Expense } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { CalendarIcon } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import type { Expense } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
 const formSchema = z.object({
   date: z.date({
-    required_error: "A date for the expense is required.",
+    required_error: "An expense date is required.",
   }),
-  name: z.string().min(1, { message: 'Expense name is required.' }),
-  price: z.coerce.number().min(0.01, { message: 'Price must be a positive number.' }),
+  name: z.string().min(1, { message: 'Expense name or reference is required.' }),
+  price: z.coerce.number().min(0, { message: 'Price must be a positive number.' }),
   remark: z.string().optional(),
 });
 
 interface ExpenseFormProps {
   expense?: Expense | null;
-  onSubmit: (values: Omit<Expense, 'id'>) => void;
+  onSubmit: (values: z.infer<typeof formSchema>) => void;
 }
 
 export function ExpenseForm({ expense, onSubmit }: ExpenseFormProps) {
@@ -52,17 +52,17 @@ export function ExpenseForm({ expense, onSubmit }: ExpenseFormProps) {
       ...values,
       date: format(values.date, 'yyyy-MM-dd'),
     });
-  }
+  };
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
-        <FormField
+         <FormField
           control={form.control}
           name="date"
           render={({ field }) => (
             <FormItem className="flex flex-col">
-              <FormLabel>Date</FormLabel>
+              <FormLabel>Date of Expense</FormLabel>
               <Popover>
                 <PopoverTrigger asChild>
                   <FormControl>
@@ -87,6 +87,7 @@ export function ExpenseForm({ expense, onSubmit }: ExpenseFormProps) {
                     mode="single"
                     selected={field.value}
                     onSelect={field.onChange}
+                    disabled={(date) => date > new Date()}
                     initialFocus
                   />
                 </PopoverContent>
@@ -126,9 +127,9 @@ export function ExpenseForm({ expense, onSubmit }: ExpenseFormProps) {
           name="remark"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Remark (Optional)</FormLabel>
+              <FormLabel>Remark</FormLabel>
               <FormControl>
-                <Textarea placeholder="Any additional notes..." {...field} />
+                <Textarea placeholder="Additional notes about the expense." {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

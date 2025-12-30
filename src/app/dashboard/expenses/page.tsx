@@ -130,13 +130,16 @@ export default function ExpenseManagementPage() {
   
   const getFormattedDate = (dateString: string | undefined) => {
     if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) {
-      return "Invalid Date";
+    try {
+      const date = new Date(dateString);
+      date.setUTCHours(12,0,0,0);
+      if (isNaN(date.getTime())) {
+        return "Invalid Date";
+      }
+      return format(date, 'PPP');
+    } catch {
+        return 'Invalid Date';
     }
-    // Add one day to the date to correct for timezone issues
-    date.setDate(date.getDate() + 1);
-    return format(date, 'PPP');
   };
 
   if (!currentUser) {

@@ -1,5 +1,6 @@
 
 
+
 export type UserRole = 'admin' | 'waiter' | 'payment';
 
 export type User = {
@@ -173,10 +174,10 @@ export type Blog = {
 
 export type Expense = {
     id: string;
-    date: string; // YYYY-MM-DD
+    date: string;
     name: string;
     price: number;
     remark?: string;
-    createdAt?: string | { seconds: number; nanoseconds: number };
-    updatedAt?: string | { seconds: number; nanoseconds: number };
-}
+    createdAt?: string | { seconds: number, nanoseconds: number };
+    updatedAt?: string | { seconds: number, nanoseconds: number };
+};

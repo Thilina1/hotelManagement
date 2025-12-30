@@ -89,7 +89,6 @@ export function ExpenseForm({ expense, onSubmit }: ExpenseFormProps) {
                     mode="single"
                     selected={field.value}
                     onSelect={field.onChange}
-                    disabled={(date) => date > new Date()}
                     initialFocus
                   />
                 </PopoverContent>

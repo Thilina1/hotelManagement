@@ -42,7 +42,6 @@ const generalMenuItems: MenuItem[] = [
 ];
 
 const restaurantMenuItems: MenuItem[] = [
-  { href: '/dashboard/billing', icon: CreditCard, label: 'Restaurant Billing', roles: ['admin', 'payment'] },
   { href: '/dashboard/menu-management', icon: UtensilsCrossed, label: 'Menu Management', roles: ['admin'] },
   { href: '/dashboard/table-management', icon: TableIcon, label: 'Table Management', roles: ['admin'] },
   { href: '/dashboard/inventory-management', icon: Boxes, label: 'Inventory', roles: ['admin'] },
@@ -54,12 +53,16 @@ const roomBookingMenuItems: MenuItem[] = [
   { href: '/dashboard/reservations', icon: BedDouble, label: 'Reservation Management', roles: ['admin'] },
 ];
 
+const moneyManagementMenuItems: MenuItem[] = [
+    { href: '/dashboard/billing', icon: CreditCard, label: 'Restaurant Billing', roles: ['admin', 'payment'] },
+    { href: '/dashboard/expenses', icon: Wallet, label: 'Expenses', roles: ['admin', 'payment'] },
+    { href: '/dashboard/reports', icon: BarChart, label: 'Reports', roles: ['admin', 'payment'] },
+];
+
 const otherMenuItems: MenuItem[] = [
     { href: '/dashboard/activities', icon: Star, label: 'Activities', roles: ['admin'] },
     { href: '/dashboard/experiences', icon: Zap, label: 'Experiences', roles: ['admin'] },
     { href: '/dashboard/blogs', icon: Newspaper, label: 'Blog Management', roles: ['admin'] },
-    { href: '/dashboard/expenses', icon: Wallet, label: 'Expenses', roles: ['admin', 'payment'] },
-    { href: '/dashboard/reports', icon: BarChart, label: 'Reports', roles: ['admin', 'payment'] },
 ];
 
 
@@ -97,6 +100,7 @@ export default function AppSidebar() {
     
     const restaurantSection = renderMenuItems(restaurantMenuItems, user?.role, pathname);
     const roomBookingSection = renderMenuItems(roomBookingMenuItems, user?.role, pathname);
+    const moneyManagementSection = renderMenuItems(moneyManagementMenuItems, user?.role, pathname);
 
     return (
         <Sidebar collapsible="icon">
@@ -127,6 +131,16 @@ export default function AppSidebar() {
                         <SidebarGroup>
                             <SidebarGroupLabel className="flex items-center gap-2"><Building className="size-4"/>Room Booking</SidebarGroupLabel>
                             <SidebarGroupContent>{roomBookingSection}</SidebarGroupContent>
+                        </SidebarGroup>
+                    </>
+                  )}
+
+                  {moneyManagementSection && (
+                    <>
+                        <SidebarSeparator className="my-2"/>
+                        <SidebarGroup>
+                            <SidebarGroupLabel className="flex items-center gap-2"><Wallet className="size-4"/>Money Management</SidebarGroupLabel>
+                            <SidebarGroupContent>{moneyManagementSection}</SidebarGroupContent>
                         </SidebarGroup>
                     </>
                   )}

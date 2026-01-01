@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -29,6 +30,7 @@ import {
   getDocs,
   query,
   increment,
+  where,
 } from 'firebase/firestore';
 import type {
   MenuItem,
@@ -57,6 +59,7 @@ import {
   Wallet,
   CreditCard,
   ArrowLeft,
+  Phone,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -92,6 +95,7 @@ export default function POSPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [cashReceived, setCashReceived] = useState<number | string>('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
+  const [customerMobile, setCustomerMobile] = useState('');
 
 
   const fallbackImage = PlaceHolderImages.find(
@@ -213,6 +217,7 @@ export default function POSPage() {
     setDiscount(0);
     setCashReceived('');
     setPaymentMethod('cash');
+    setCustomerMobile('');
   }
 
   const handleFinalizeAndPay = async () => {
@@ -230,13 +235,16 @@ export default function POSPage() {
     try {
       const batch = writeBatch(firestore);
 
+      // Decrement stock for inventoried items
       for (const item of billItems) {
-        if ((item as any).stockType === 'Inventoried') {
+        const menuItem = menuItems?.find(mi => mi.id === item.id);
+        if (menuItem?.stockType === 'Inventoried') {
             const menuItemRef = doc(firestore, 'menuItems', item.id);
             batch.update(menuItemRef, { stock: increment(-item.quantity) });
         }
       }
       
+      // Create bill
       const billsQuery = query(collection(firestore, 'bills'));
       const billsSnapshot = await getDocs(billsQuery);
       const billNumber = `BILL-${(billsSnapshot.size + 1).toString().padStart(4, '0')}`;
@@ -254,9 +262,23 @@ export default function POSPage() {
         total,
         createdAt: serverTimestamp(),
         paidAt: serverTimestamp(),
+        customerMobileNumber: customerMobile,
       };
       batch.set(billRef, finalBillData);
       
+       // Update Loyalty Points if mobile number is provided
+      if (customerMobile) {
+        const loyaltyQuery = query(collection(firestore, 'loyaltyCustomers'), where('mobileNumber', '==', customerMobile));
+        const loyaltySnapshot = await getDocs(loyaltyQuery);
+        if (!loyaltySnapshot.empty) {
+          const customerDoc = loyaltySnapshot.docs[0];
+          const pointsToAdd = Math.floor(total / 1000);
+          if (pointsToAdd > 0) {
+            batch.update(customerDoc.ref, { totalLoyaltyPoints: increment(pointsToAdd) });
+          }
+        }
+      }
+
       await batch.commit();
       
       toast({
@@ -451,6 +473,23 @@ export default function POSPage() {
                  <div className="flex justify-between text-xl font-bold">
                     <span>Total</span>
                     <span>LKR {total.toFixed(2)}</span>
+                </div>
+
+                <Separator />
+
+                 <div className="space-y-2">
+                    <Label htmlFor="customer-mobile">Customer Mobile Number (for Loyalty)</Label>
+                    <div className="relative">
+                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            id="customer-mobile"
+                            placeholder="e.g., 0771234567"
+                            value={customerMobile}
+                            onChange={(e) => setCustomerMobile(e.target.value)}
+                            className="pl-10"
+                            disabled={isProcessing}
+                        />
+                    </div>
                 </div>
                 
                 <RadioGroup defaultValue="cash" onValueChange={(value: PaymentMethod) => setPaymentMethod(value)} className="flex gap-4 pt-2">

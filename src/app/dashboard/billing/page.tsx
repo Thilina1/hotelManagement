@@ -6,7 +6,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { CreditCard, Eye, CircleSlash, History, Printer, Wallet, ShoppingCart } from "lucide-react";
+import { CreditCard, Eye, CircleSlash, History, Printer, Wallet, ShoppingCart, Phone } from "lucide-react";
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where, Timestamp } from 'firebase/firestore';
 import type { Bill, PaymentMethod } from '@/lib/types';
@@ -286,7 +286,7 @@ export default function BillingPage() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Bill No.</TableHead>
-                                <TableHead>Table No.</TableHead>
+                                <TableHead>Table/Customer</TableHead>
                                 <TableHead>Waiter/Staff</TableHead>
                                 <TableHead>Total</TableHead>
                                 <TableHead>Payment Method</TableHead>
@@ -305,7 +305,15 @@ export default function BillingPage() {
                                  return (
                                     <TableRow key={bill.id}>
                                         <TableCell className="font-mono text-xs">{bill.billNumber}</TableCell>
-                                        <TableCell className="font-medium">{bill.tableNumber === 'walk-in' ? 'Walk-in' : bill.tableNumber}</TableCell>
+                                        <TableCell className="font-medium">
+                                            <div>{bill.tableNumber === 'walk-in' ? 'Walk-in' : `Table ${bill.tableNumber}`}</div>
+                                            {bill.customerMobileNumber && (
+                                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                                    <Phone className="h-3 w-3" />
+                                                    {bill.customerMobileNumber}
+                                                </div>
+                                            )}
+                                        </TableCell>
                                         <TableCell>{bill.waiterName || 'N/A'}</TableCell>
                                         <TableCell>LKR {bill.total.toFixed(2)}</TableCell>
                                         <TableCell>

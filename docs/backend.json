@@ -132,6 +132,7 @@
             "orderId": { "type": "string", "description": "The ID of the corresponding order." },
             "tableId": { "type": "string", "description": "The ID of the table." },
             "tableNumber": { "type": "string", "description": "The number of the table." },
+            "customerMobileNumber": { "type": "string", "description": "The mobile number of the customer for loyalty points." },
             "items": {
               "type": "array",
               "description": "A list of all items included in the bill.",

@@ -82,7 +82,10 @@ service cloud.firestore {
 
     match /loyaltyCustomers/{customerId} {
         allow read: if isSignedIn();
-        allow write: if hasAnyRole(['admin', 'payment', 'waiter']);
+        // Allow creating/updating points by waiters/payment staff, and full control for admin
+        allow create: if hasAnyRole(['admin', 'payment', 'waiter']);
+        allow update: if hasAnyRole(['admin', 'payment', 'waiter']);
+        allow delete: if hasAnyRole(['admin']);
     }
   }
 }

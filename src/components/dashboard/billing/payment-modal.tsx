@@ -2,16 +2,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { doc, writeBatch, serverTimestamp, getDoc } from 'firebase/firestore';
+import { doc, writeBatch, serverTimestamp, getDocs, collection, query, where, increment } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
-import type { Bill, OrderItem, PaymentMethod } from '@/lib/types';
+import type { Bill, PaymentMethod } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { CheckCircle, Receipt, CreditCard, Wallet } from 'lucide-react';
+import { CheckCircle, Receipt, CreditCard, Wallet, Phone } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 interface PaymentModalProps {
@@ -27,6 +27,7 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [cashReceived, setCashReceived] = useState<number | string>('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
+  const [customerMobile, setCustomerMobile] = useState('');
 
   const subtotal = bill.subtotal;
   const discountAmount = (subtotal * discount) / 100;
@@ -47,6 +48,7 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
     const batch = writeBatch(firestore);
     const paidAtTimestamp = serverTimestamp();
 
+    // Update Bill
     const billRef = doc(firestore, 'bills', bill.id);
     const finalBillData: Partial<Bill> = {
       discount: discount,
@@ -54,18 +56,35 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
       status: 'paid' as const,
       paidAt: paidAtTimestamp,
       paymentMethod: paymentMethod,
+      customerMobileNumber: customerMobile,
     };
     batch.update(billRef, finalBillData);
     
+    // Update Order
     if (bill.orderId) { 
         const orderRef = doc(firestore, 'orders', bill.orderId);
         batch.update(orderRef, { status: 'paid', updatedAt: paidAtTimestamp });
         
+        // Update Table Status
         if (bill.tableId) {
             const tableRef = doc(firestore, 'tables', bill.tableId);
             batch.update(tableRef, { status: 'available' });
         }
     }
+
+    // Update Loyalty Points if mobile number is provided
+    if (customerMobile) {
+      const loyaltyQuery = query(collection(firestore, 'loyaltyCustomers'), where('mobileNumber', '==', customerMobile));
+      const loyaltySnapshot = await getDocs(loyaltyQuery);
+      if (!loyaltySnapshot.empty) {
+        const customerDoc = loyaltySnapshot.docs[0];
+        const pointsToAdd = Math.floor(total / 1000);
+        if (pointsToAdd > 0) {
+          batch.update(customerDoc.ref, { totalLoyaltyPoints: increment(pointsToAdd) });
+        }
+      }
+    }
+
 
     try {
       await batch.commit();
@@ -89,6 +108,7 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
    useEffect(() => {
     setDiscount(bill.discount || 0);
     setCashReceived('');
+    setCustomerMobile(bill.customerMobileNumber || '');
   }, [bill]);
 
 
@@ -143,6 +163,23 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
                     <span>LKR {total.toFixed(2)}</span>
                 </div>
                 
+                <Separator />
+
+                <div className="space-y-2">
+                    <Label htmlFor="customer-mobile">Customer Mobile Number (for Loyalty)</Label>
+                    <div className="relative">
+                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            id="customer-mobile"
+                            placeholder="e.g., 0771234567"
+                            value={customerMobile}
+                            onChange={(e) => setCustomerMobile(e.target.value)}
+                            className="pl-10"
+                            disabled={isProcessing}
+                        />
+                    </div>
+                </div>
+
                 <RadioGroup defaultValue="cash" onValueChange={(value: PaymentMethod) => setPaymentMethod(value)} className="flex gap-4 pt-2">
                     <Label htmlFor="cash" className="flex items-center gap-2 p-3 border rounded-md has-[:checked]:bg-accent has-[:checked]:text-accent-foreground has-[:checked]:border-primary flex-1 cursor-pointer">
                         <RadioGroupItem value="cash" id="cash" />

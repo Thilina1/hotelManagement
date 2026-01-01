@@ -83,13 +83,13 @@ export type Bill = {
   orderId?: string;
   tableId?: string;
   tableNumber: string;
-  customerName?: string;
+  customerMobileNumber?: string;
   waiterName?: string;
   items: BillItem[];
   status: BillStatus;
   paymentMethod?: PaymentMethod;
-  subtotal?: number;
-  discount?: number; // Percentage
+  subtotal: number;
+  discount: number; // Percentage
   total: number;
   createdAt?: string | { seconds: number; nanoseconds: number } | FieldValue;
   paidAt?: string | { seconds: number; nanoseconds: number } | FieldValue;

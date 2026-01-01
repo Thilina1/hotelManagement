@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -28,6 +27,7 @@ import {
   serverTimestamp,
   getDocs,
   query,
+  increment,
 } from 'firebase/firestore';
 import type {
   MenuItem,
@@ -35,6 +35,7 @@ import type {
   BillItem,
   Table as TableType,
   MenuCategory,
+  PaymentMethod,
 } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
@@ -51,6 +52,9 @@ import {
   ShoppingCart,
   Trash2,
   Utensils,
+  CheckCircle,
+  Wallet,
+  CreditCard,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -62,7 +66,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { PosPaymentModal } from '@/components/dashboard/pos/pos-payment-modal';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Separator } from '@/components/ui/separator';
 
 const menuCategories: MenuCategory[] = ['Sri Lankan', 'Western', 'Bar'];
 
@@ -77,7 +83,14 @@ export default function POSPage() {
     null
   );
   const [selectedVariety, setSelectedVariety] = useState<string | null>(null);
-  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+
+  // Payment state
+  const [discount, setDiscount] = useState(0);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [cashReceived, setCashReceived] = useState<number | string>('');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
+
+
   const fallbackImage = PlaceHolderImages.find(
     (p) => p.id === 'login-background'
   );
@@ -175,11 +188,27 @@ export default function POSPage() {
     );
   };
 
-  const total = useMemo(() => {
+  const subtotal = useMemo(() => {
     return billItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
   }, [billItems]);
 
-  const handleFinalizeAndPay = () => {
+  const discountAmount = (subtotal * discount) / 100;
+  const total = subtotal - discountAmount;
+  const cashReceivedNumber = Number(cashReceived);
+  const balance = cashReceivedNumber > 0 ? cashReceivedNumber - total : 0;
+  const canProcessCashPayment = cashReceivedNumber >= total && !isProcessing;
+  const canProcessCardPayment = total >= 0 && !isProcessing;
+  const canProcessPayment = paymentMethod === 'cash' ? canProcessCashPayment : canProcessCardPayment;
+
+  const resetPOS = () => {
+    setBillItems([]);
+    setSelectedTable('walk-in');
+    setDiscount(0);
+    setCashReceived('');
+    setPaymentMethod('cash');
+  }
+
+  const handleFinalizeAndPay = async () => {
     if (billItems.length === 0) {
       toast({
         title: 'Error',
@@ -188,14 +217,58 @@ export default function POSPage() {
       });
       return;
     }
-    setIsPaymentModalOpen(true);
+    if (!firestore || !currentUser || !canProcessPayment) return;
+    setIsProcessing(true);
+
+    try {
+      const batch = writeBatch(firestore);
+
+      for (const item of billItems) {
+        if ((item as any).stockType === 'Inventoried') {
+            const menuItemRef = doc(firestore, 'menuItems', item.id);
+            batch.update(menuItemRef, { stock: increment(-item.quantity) });
+        }
+      }
+      
+      const billsQuery = query(collection(firestore, 'bills'));
+      const billsSnapshot = await getDocs(billsQuery);
+      const billNumber = `BILL-${(billsSnapshot.size + 1).toString().padStart(4, '0')}`;
+
+      const billRef = doc(collection(firestore, 'bills'));
+      const finalBillData: Omit<Bill, 'id'> = {
+        billNumber,
+        tableNumber: selectedTable,
+        waiterName: currentUser.name,
+        items: billItems,
+        status: 'paid',
+        paymentMethod,
+        subtotal,
+        discount,
+        total,
+        createdAt: serverTimestamp(),
+        paidAt: serverTimestamp(),
+      };
+      batch.set(billRef, finalBillData);
+      
+      await batch.commit();
+      
+      toast({
+        title: 'Payment Successful',
+        description: `Bill for ${selectedTable} has been paid.`,
+      });
+      resetPOS();
+    } catch (error) {
+      console.error("Error processing POS payment:", error);
+      toast({
+        variant: 'destructive',
+        title: 'Payment Failed',
+        description: 'There was an error processing the payment.',
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
   
-  const resetPOS = () => {
-    setBillItems([]);
-    setSelectedTable('walk-in');
-    setIsPaymentModalOpen(false);
-  }
 
   return (
     <>
@@ -278,7 +351,7 @@ export default function POSPage() {
       <Card className="h-full flex flex-col">
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><ShoppingCart /> Current Bill</CardTitle>
-          <CardDescription>Review items before creating the bill.</CardDescription>
+          <CardDescription>Review items before finalizing payment.</CardDescription>
         </CardHeader>
         <CardContent className="flex-1 overflow-hidden">
             <ScrollArea className="h-full pr-4">
@@ -337,27 +410,72 @@ export default function POSPage() {
           </ScrollArea>
         </CardContent>
         <CardFooter className="flex flex-col gap-4 border-t pt-4">
-            <div className="w-full flex justify-between items-center text-xl font-bold">
-              <span>Total:</span>
-              <span>LKR {total.toFixed(2)}</span>
+            <div className="w-full space-y-3">
+                <div className="flex justify-between">
+                    <span className="font-medium">Subtotal</span>
+                    <span>LKR {subtotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                    <Label htmlFor="discount">Discount (%)</Label>
+                    <Input 
+                        id="discount"
+                        type="number"
+                        value={discount}
+                        onChange={(e) => setDiscount(Math.max(0, Math.min(100, Number(e.target.value))))}
+                        className="w-24 h-8"
+                        disabled={isProcessing}
+                    />
+                </div>
+                 <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>Discount Amount</span>
+                    <span>-LKR {discountAmount.toFixed(2)}</span>
+                </div>
+                <Separator />
+                 <div className="flex justify-between text-xl font-bold">
+                    <span>Total</span>
+                    <span>LKR {total.toFixed(2)}</span>
+                </div>
+                
+                <RadioGroup defaultValue="cash" onValueChange={(value: PaymentMethod) => setPaymentMethod(value)} className="flex gap-4 pt-2">
+                    <Label htmlFor="cash" className="flex items-center gap-2 p-3 border rounded-md has-[:checked]:bg-accent has-[:checked]:text-accent-foreground has-[:checked]:border-primary flex-1 cursor-pointer">
+                        <RadioGroupItem value="cash" id="cash" />
+                        <Wallet /> Cash
+                    </Label>
+                    <Label htmlFor="card" className="flex items-center gap-2 p-3 border rounded-md has-[:checked]:bg-accent has-[:checked]:text-accent-foreground has-[:checked]:border-primary flex-1 cursor-pointer">
+                         <RadioGroupItem value="card" id="card" />
+                        <CreditCard /> Card
+                    </Label>
+                </RadioGroup>
+
+                {paymentMethod === 'cash' && (
+                    <div className="space-y-3 pt-2">
+                        <div className="flex justify-between items-center">
+                            <Label htmlFor="cash-received">Cash Received</Label>
+                            <Input 
+                                id="cash-received"
+                                type="number"
+                                placeholder='0.00'
+                                value={cashReceived}
+                                onChange={(e) => setCashReceived(e.target.value)}
+                                className="w-32 h-9 text-right"
+                                disabled={isProcessing}
+                            />
+                        </div>
+                        <div className="flex justify-between font-medium text-lg">
+                            <span>Balance</span>
+                            <span className={balance > 0 ? 'text-green-600 font-bold' : ''}>LKR {balance > 0 ? balance.toFixed(2) : '0.00'}</span>
+                        </div>
+                    </div>
+                )}
             </div>
 
-            <Button onClick={handleFinalizeAndPay} className="w-full" disabled={billItems.length === 0}>
-              Finalize & Pay
+            <Button onClick={handleFinalizeAndPay} className="w-full mt-4" disabled={billItems.length === 0 || !canProcessPayment}>
+              <CheckCircle className="mr-2 h-4 w-4"/>
+              {isProcessing ? 'Processing...' : 'Pay Bill'}
             </Button>
         </CardFooter>
       </Card>
     </div>
-    {isPaymentModalOpen && (
-      <PosPaymentModal
-        isOpen={isPaymentModalOpen}
-        onClose={() => setIsPaymentModalOpen(false)}
-        onSuccessfulPayment={resetPOS}
-        billItems={billItems}
-        subtotal={total}
-        tableNumber={selectedTable}
-      />
-    )}
     </>
   );
 }

@@ -59,6 +59,8 @@ const getPageTitle = (pathname: string) => {
             return 'Blog Management';
         case '/dashboard/blogs/create':
             return 'Create Blog Post';
+        case '/dashboard/loyalty':
+            return 'Loyalty Customers';
         default:
              if (pathname.startsWith('/dashboard/tables/')) {
                 return 'Table Order';

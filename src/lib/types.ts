@@ -200,3 +200,13 @@ export type OtherIncome = {
     createdAt?: string | { seconds: number, nanoseconds: number } | FieldValue;
     updatedAt?: string | { seconds: number, nanoseconds: number } | FieldValue;
 };
+
+export type LoyaltyCustomer = {
+    id: string;
+    name: string;
+    mobileNumber: string;
+    dob: string; // YYYY-MM-DD
+    totalLoyaltyPoints: number;
+    createdAt?: string | { seconds: number, nanoseconds: number } | FieldValue;
+    updatedAt?: string | { seconds: number, nanoseconds: number } | FieldValue;
+}

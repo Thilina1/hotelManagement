@@ -297,6 +297,21 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["date", "name", "price"]
+    },
+    "LoyaltyCustomer": {
+      "title": "Loyalty Customer",
+      "description": "Represents a loyalty program customer.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Document ID." },
+        "name": { "type": "string" },
+        "mobileNumber": { "type": "string" },
+        "dob": { "type": "string", "format": "date", "description": "Date of Birth" },
+        "totalLoyaltyPoints": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "mobileNumber", "dob", "totalLoyaltyPoints"]
     }
   },
   "auth": {
@@ -405,6 +420,13 @@
         "definition": {
             "schema": { "$ref": "#/backend/entities/OtherIncome" },
             "description": "Stores other business income records."
+        }
+      },
+      {
+        "path": "/loyaltyCustomers/{customerId}",
+        "definition": {
+            "schema": { "$ref": "#/backend/entities/LoyaltyCustomer" },
+            "description": "Stores loyalty customer information."
         }
       }
     ],

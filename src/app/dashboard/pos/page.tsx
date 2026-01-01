@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -55,6 +56,7 @@ import {
   CheckCircle,
   Wallet,
   CreditCard,
+  ArrowLeft,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -76,6 +78,7 @@ export default function POSPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const { user: currentUser } = useUserContext();
+  const router = useRouter();
   const [billItems, setBillItems] = useState<BillItem[]>([]);
   const [selectedTable, setSelectedTable] = useState<string>('walk-in');
   const [searchTerm, setSearchTerm] = useState('');
@@ -122,7 +125,6 @@ export default function POSPage() {
         selectedCategory ? item.category === selectedCategory : true
       )
       .filter(item => selectedVariety ? item.varietyOfDishesh === selectedVariety : true)
-      .filter((item) => item.name.toLowerCase().includes(searchTerm.toLowerCase()))
       .map(item => {
         if (item.stockType === 'Inventoried') {
             const quantityInCart = billItems.find(cartItem => cartItem.id === item.id)?.quantity || 0;
@@ -134,7 +136,7 @@ export default function POSPage() {
         }
         return item;
       });
-  }, [menuItems, searchTerm, selectedCategory, selectedVariety, billItems]);
+  }, [menuItems, selectedCategory, selectedVariety, billItems]);
 
   const addToBill = (item: MenuItem) => {
     const itemInBill = billItems.find(i => i.id === item.id);
@@ -187,6 +189,11 @@ export default function POSPage() {
       prevItems.map((i) => (i.id === itemId ? { ...i, quantity } : i))
     );
   };
+  
+  const searchedItems = useMemo(() => {
+    if(!filteredMenuItems) return [];
+    return filteredMenuItems.filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()))
+  }, [filteredMenuItems, searchTerm]);
 
   const subtotal = useMemo(() => {
     return billItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
@@ -272,7 +279,17 @@ export default function POSPage() {
 
   return (
     <>
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh_-_theme(spacing.24))]">
+    <div className="flex justify-between items-center mb-6">
+        <div>
+            <h1 className="text-3xl font-headline font-bold">Point of Sale (POS)</h1>
+            <p className="text-muted-foreground">Create and process bills for walk-in customers.</p>
+        </div>
+        <Button variant="outline" onClick={() => router.back()}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+        </Button>
+    </div>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh_-_theme(spacing.24)_-_theme(spacing.24))]">
       <Card className="lg:col-span-2 h-full flex flex-col">
         <CardHeader>
           <CardTitle>Menu Items</CardTitle>
@@ -316,8 +333,8 @@ export default function POSPage() {
             <div className="space-y-2">
                 {isLoadingMenu ? (
                    [...Array(10)].map((_, i) => <Skeleton key={i} className="h-20 w-full" />)
-                ) : filteredMenuItems.length > 0 ? (
-                    filteredMenuItems.map((item) => (
+                ) : searchedItems.length > 0 ? (
+                    searchedItems.map((item) => (
                          <div key={item.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted">
                             <div className="flex items-center gap-4">
                                 <div className="relative w-16 h-16 rounded-md overflow-hidden bg-muted flex items-center justify-center shrink-0">

@@ -25,6 +25,8 @@ const getPageTitle = (pathname: string) => {
     switch (pathname) {
         case '/dashboard':
             return 'Dashboard';
+        case '/dashboard/pos':
+            return 'Point of Sale';
         case '/dashboard/profile':
             return 'Profile';
         case '/dashboard/user-management':
@@ -98,7 +100,7 @@ export default function DashboardHeader() {
             className="overflow-hidden rounded-full"
           >
             <Avatar>
-              {avatar && <AvatarImage src={user?.name || ''} alt={user?.name || 'User'} />}
+              {user?.name && <AvatarImage src={user?.name} />}
               <AvatarFallback>{user?.name ? user.name.charAt(0).toUpperCase() : 'U'}</AvatarFallback>
             </Avatar>
           </Button>

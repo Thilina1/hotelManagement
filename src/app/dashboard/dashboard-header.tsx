@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useUserContext } from '@/context/user-context';
-import { SidebarTrigger } from '../ui/sidebar';
+import { SidebarTrigger } from '@/components/ui/sidebar';
 
 const getPageTitle = (pathname: string) => {
     switch (pathname) {

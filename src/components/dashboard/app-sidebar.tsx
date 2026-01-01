@@ -52,14 +52,17 @@ const roomBookingMenuItems: MenuItem[] = [
   { href: '/dashboard/reservations', icon: BedDouble, label: 'Reservation Management', roles: ['admin'] },
 ];
 
+
+const otherMenue: MenuItem[] =[
+    { href: '/dashboard/expenses', icon: Zap, label: 'Expenses', roles: ['admin' ]},
+    { href: '/dashboard/other-incomes', icon: Zap, label: 'Other Incomes', roles: ['admin'] },
+]
+
+
 const otherMenuItems: MenuItem[] = [
     { href: '/dashboard/activities', icon: Star, label: 'Activities', roles: ['admin'] },
     { href: '/dashboard/experiences', icon: Zap, label: 'Experiences', roles: ['admin'] },
-    { href: '/dashboard/blogs', icon: Newspaper, label: 'Blog Management', roles: ['admin'] },
-    { href: '/dashboard/expenses', icon: Newspaper, label: 'Expences Management', roles: ['admin'] },
-   
-    { href: '/dashboard/expenses', icon: Zap, label: 'Expenses', roles: ['admin' ]},
-    { href: '/dashboard/other-incomes', icon: Zap, label: 'Other Incomes', roles: ['admin'] },
+    { href: '/dashboard/blogs', icon: Newspaper, label: 'Blog Management', roles: ['admin'] }, 
     { href: '/dashboard/reports', icon: BarChart, label: 'Reports', roles: ['admin', 'payment'] },
 ];
 
@@ -98,6 +101,8 @@ export default function AppSidebar() {
     
     const restaurantSection = renderMenuItems(restaurantMenuItems, user?.role, pathname);
     const roomBookingSection = renderMenuItems(roomBookingMenuItems, user?.role, pathname);
+    const otherSection = renderMenuItems(otherMenue, user?.role, pathname);
+
 
     return (
         <Sidebar collapsible="icon">
@@ -121,6 +126,22 @@ export default function AppSidebar() {
                         </SidebarGroup>
                      </>
                   )}
+
+{otherSection && (
+  <>
+    <SidebarSeparator className="my-2" />
+    <SidebarGroup>
+      <SidebarGroupLabel className="flex items-center gap-2">
+        <Zap className="size-4" />
+        Other
+      </SidebarGroupLabel>
+      <SidebarGroupContent>
+        {otherSection}
+      </SidebarGroupContent>
+    </SidebarGroup>
+  </>
+)}
+
                   
                   {roomBookingSection && (
                     <>

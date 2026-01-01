@@ -195,6 +195,7 @@ const { data: varietyOfDishes, isLoading: areVarietyOfDishesLoading } = useColle
                 <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Price</TableHead>
+                <TableHead>Buying Price</TableHead>
                 <TableHead>Stock</TableHead>
                 <TableHead>Availability</TableHead>
                 <TableHead>Last Updated</TableHead>
@@ -206,7 +207,7 @@ const { data: varietyOfDishes, isLoading: areVarietyOfDishesLoading } = useColle
                     <>
                     {[...Array(3)].map((_, i) => (
                         <TableRow key={i}>
-                        <TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell>
+                        <TableCell colSpan={7}><Skeleton className="h-8 w-full" /></TableCell>
                         </TableRow>
                     ))}
                     </>
@@ -215,6 +216,7 @@ const { data: varietyOfDishes, isLoading: areVarietyOfDishesLoading } = useColle
                     <TableRow key={item.id}>
                     <TableCell className="font-medium">{item.name}</TableCell>
                     <TableCell>LKR {item.price.toFixed(2)}</TableCell>
+                    <TableCell>LKR {item.buyingPrice ? item.buyingPrice.toFixed(2) : 'N/A'}</TableCell>
                     <TableCell>
                       {item.stockType === 'Inventoried' ? item.stock : 'N/A'}
                     </TableCell>
@@ -249,7 +251,7 @@ const { data: varietyOfDishes, isLoading: areVarietyOfDishesLoading } = useColle
                 ))}
                 {!areMenuItemsLoading && (!filteredItems || filteredItems.length === 0) && (
                     <TableRow>
-                        <TableCell colSpan={6} className="text-center text-muted-foreground py-10">
+                        <TableCell colSpan={7} className="text-center text-muted-foreground py-10">
                             No items found in this category.
                         </TableCell>
                     </TableRow>

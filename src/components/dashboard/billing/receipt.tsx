@@ -15,9 +15,9 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ bill, i
     
     let date;
     if (typeof bill.paidAt === 'string') {
-      date = new Date(bill.paidAt);
-    } else if (bill.paidAt.seconds) {
-      date = new Date(bill.paidAt.seconds * 1000);
+      date = new Date(bill.paidAt as string);
+    } else if ((bill.paidAt as any).seconds) {
+      date = new Date((bill.paidAt as any).seconds * 1000);
     } else {
       return 'N/A';
     }
@@ -59,12 +59,12 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ bill, i
           </tr>
         </thead>
         <tbody>
-          {items.map(item => (
-            <tr key={item.id}>
-              <td className="py-1">{item.name}</td>
-              <td className="text-center py-1">{item.quantity}</td>
-              <td className="text-right py-1">LKR {item.price.toFixed(2)}</td>
-              <td className="text-right py-1">LKR {(item.price * item.quantity).toFixed(2)}</td>
+          {items.map((item, index) => (
+            <tr key={item.id || `item-${index}`}>
+              <td className="py-1">{item.name || 'Unknown Item'}</td>
+              <td className="text-center py-1">{item.quantity || 1}</td>
+              <td className="text-right py-1">LKR {(item.price || 0).toFixed(2)}</td>
+              <td className="text-right py-1">LKR {((item.price || 0) * (item.quantity || 1)).toFixed(2)}</td>
             </tr>
           ))}
         </tbody>
@@ -73,22 +73,22 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ bill, i
       <div className="space-y-2">
         <div className="flex justify-between">
           <span>Subtotal:</span>
-          <span>LKR {bill.subtotal.toFixed(2)}</span>
+          <span>LKR {(bill.subtotal || 0).toFixed(2)}</span>
         </div>
         {bill.discount > 0 && (
             <div className="flex justify-between">
             <span>Discount ({bill.discount}%):</span>
-            <span>-LKR {(bill.subtotal * bill.discount / 100).toFixed(2)}</span>
+            <span>-LKR {((bill.subtotal || 0) * bill.discount / 100).toFixed(2)}</span>
             </div>
         )}
          <div className="flex justify-between font-bold text-lg border-t-2 border-dashed border-black pt-2 mt-2">
           <span>Total:</span>
-          <span>LKR {bill.total.toFixed(2)}</span>
+          <span>LKR {(bill.total || 0).toFixed(2)}</span>
         </div>
       </div>
       
       <div className="mt-4">
-        <p><strong>Payment Method:</strong> <span className="capitalize">{bill.paymentMethod}</span></p>
+        <p><strong>Payment Method:</strong> <span className="capitalize">{bill.paymentMethod || 'N/A'}</span></p>
       </div>
 
       <div className="text-center mt-8">

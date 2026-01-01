@@ -89,7 +89,6 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
    useEffect(() => {
     setDiscount(bill.discount || 0);
     setCashReceived('');
-    setPaymentMethod('cash');
   }, [bill]);
 
 
@@ -188,5 +187,3 @@ export function PaymentModal({ bill, isOpen, onClose }: PaymentModalProps) {
     </Dialog>
   );
 }
-
-    

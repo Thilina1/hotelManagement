@@ -26,6 +26,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import type { MenuItem, MenuCategory, StockType } from '@/lib/types';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const menuCategories = ['Sri Lankan', 'Western', 'Bar'] as const;
 const stockTypes = ['Inventoried', 'Non-Inventoried'] as const;
@@ -34,6 +35,7 @@ const formSchema = z.object({
   name: z.string().min(1, { message: 'Item name is required.' }),
   description: z.string().optional(),
   price: z.coerce.number().min(0, { message: 'Price must be a positive number.' }),
+  buyingPrice: z.coerce.number().min(0, { message: 'Buying price must be a positive number.' }),
   category: z.enum(menuCategories),
   availability: z.boolean(),
   stockType: z.enum(stockTypes),
@@ -54,6 +56,7 @@ export function MenuItemForm({ item, onSubmit, varietyOfDishes }: MenuItemFormPr
       name: item?.name || '',
       description: item?.description || '',
       price: item?.price || 0,
+      buyingPrice: item?.buyingPrice || 0,
       category: item?.category || 'Sri Lankan',
       availability: item?.availability ?? true,
       stockType: item?.stockType || 'Non-Inventoried',
@@ -70,161 +73,176 @@ export function MenuItemForm({ item, onSubmit, varietyOfDishes }: MenuItemFormPr
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Name</FormLabel>
-              <FormControl>
-                <Input placeholder="e.g., Fish and Chips" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Description</FormLabel>
-              <FormControl>
-                <Textarea placeholder="A short description of the item." {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="price"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Price (LKR)</FormLabel>
-              <FormControl>
-                <Input type="number" step="0.01" placeholder="e.g., 1250.00" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="category"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Category</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a category" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {menuCategories.map(cat => (
-                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="varietyOfDishesh"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Variety of Dishes</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a variety" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {varietyOfDishes.map(variety => (
-                    <SelectItem key={variety.id} value={variety.name}>{variety.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="stockType"
-          render={({ field }) => (
-            <FormItem className="space-y-3">
-              <FormLabel>Stock Type</FormLabel>
-              <FormControl>
-                <RadioGroup
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                  className="flex space-x-4"
-                >
-                  <FormItem className="flex items-center space-x-2 space-y-0">
-                    <FormControl>
-                      <RadioGroupItem value="Non-Inventoried" />
-                    </FormControl>
-                    <FormLabel className="font-normal">
-                      Non-Inventoried
-                    </FormLabel>
-                  </FormItem>
-                  <FormItem className="flex items-center space-x-2 space-y-0">
-                    <FormControl>
-                      <RadioGroupItem value="Inventoried" />
-                    </FormControl>
-                    <FormLabel className="font-normal">
-                      Inventoried
-                    </FormLabel>
-                  </FormItem>
-                </RadioGroup>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {watchedStockType === 'Inventoried' && (
+        <ScrollArea className="h-[60vh] w-full">
           <FormField
             control={form.control}
-            name="stock"
+            name="name"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Stock</FormLabel>
+                <FormLabel>Name</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="e.g., 100" {...field} />
+                  <Input placeholder="e.g., Fish and Chips" {...field} />
                 </FormControl>
-                 <FormDescription>
-                  Current quantity on hand.
-                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
           />
-        )}
-        
-        <FormField
-          control={form.control}
-          name="availability"
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                <div className="space-y-0.5">
-                    <FormLabel>Available</FormLabel>
-                     <FormMessage />
-                </div>
-                 <FormControl>
-                    <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                    />
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Description</FormLabel>
+                <FormControl>
+                  <Textarea placeholder="A short description of the item." {...field} />
                 </FormControl>
-            </FormItem>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="price"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Price (LKR)</FormLabel>
+                <FormControl>
+                  <Input type="number" step="0.01" placeholder="e.g., 1250.00" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="buyingPrice"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Buying Price (LKR)</FormLabel>
+                <FormControl>
+                  <Input type="number" step="0.01" placeholder="e.g., 800.00" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="category"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Category</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a category" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {menuCategories.map(cat => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="varietyOfDishesh"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Variety of Dishes</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a variety" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {varietyOfDishes.map(variety => (
+                      <SelectItem key={variety.id} value={variety.name}>{variety.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="stockType"
+            render={({ field }) => (
+              <FormItem className="space-y-3">
+                <FormLabel>Stock Type</FormLabel>
+                <FormControl>
+                  <RadioGroup
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                    className="flex space-x-4"
+                  >
+                    <FormItem className="flex items-center space-x-2 space-y-0">
+                      <FormControl>
+                        <RadioGroupItem value="Non-Inventoried" />
+                      </FormControl>
+                      <FormLabel className="font-normal">
+                        Non-Inventoried
+                      </FormLabel>
+                    </FormItem>
+                    <FormItem className="flex items-center space-x-2 space-y-0">
+                      <FormControl>
+                        <RadioGroupItem value="Inventoried" />
+                      </FormControl>
+                      <FormLabel className="font-normal">
+                        Inventoried
+                      </FormLabel>
+                    </FormItem>
+                  </RadioGroup>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {watchedStockType === 'Inventoried' && (
+            <FormField
+              control={form.control}
+              name="stock"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Stock</FormLabel>
+                  <FormControl>
+                    <Input type="number" placeholder="e.g., 100" {...field} />
+                  </FormControl>
+                   <FormDescription>
+                    Current quantity on hand.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           )}
-        />
+          
+          <FormField
+            control={form.control}
+            name="availability"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                  <div className="space-y-0.5">
+                      <FormLabel>Available</FormLabel>
+                       <FormMessage />
+                  </div>
+                   <FormControl>
+                      <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                      />
+                  </FormControl>
+              </FormItem>
+            )}
+          />
+        </ScrollArea>
         <Button type="submit" className="w-full">
             {item ? 'Update Item' : 'Create Item'}
         </Button>
@@ -232,5 +250,3 @@ export function MenuItemForm({ item, onSubmit, varietyOfDishes }: MenuItemFormPr
     </Form>
   );
 }
-
-    

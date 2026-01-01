@@ -15,10 +15,11 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import type { Activity, ActivityType } from '@/lib/types';
+import type { Activity } from '@/lib/types';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
-const activityTypes: ActivityType[] = ['priceable', 'non-priceable'];
+const activityTypes = ['priceable', 'non-priceable'] as const;
 
 const formSchema = z.object({
   name: z.string().min(1, { message: 'Activity name is required.' }),
@@ -51,84 +52,85 @@ export function ActivityForm({ activity, onSubmit }: ActivityFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Name</FormLabel>
-              <FormControl>
-                <Input placeholder="e.g., Guided Jungle Trek" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Description</FormLabel>
-              <FormControl>
-                <Textarea placeholder="A short description of the activity." {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        
-        <FormField
-          control={form.control}
-          name="type"
-          render={({ field }) => (
-            <FormItem className="space-y-3">
-              <FormLabel>Activity Type</FormLabel>
-              <FormControl>
-                <RadioGroup
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                  className="flex space-x-4"
-                >
-                  <FormItem className="flex items-center space-x-2 space-y-0">
-                    <FormControl>
-                      <RadioGroupItem value="non-priceable" />
-                    </FormControl>
-                    <FormLabel className="font-normal">
-                      Non-Priceable
-                    </FormLabel>
-                  </FormItem>
-                  <FormItem className="flex items-center space-x-2 space-y-0">
-                    <FormControl>
-                      <RadioGroupItem value="priceable" />
-                    </FormControl>
-                    <FormLabel className="font-normal">
-                      Priceable
-                    </FormLabel>
-                  </FormItem>
-                </RadioGroup>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {watchedActivityType === 'priceable' && (
+        <ScrollArea className="h-[60vh] w-full">
           <FormField
             control={form.control}
-            name="pricePerPerson"
+            name="name"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Price Per Person (LKR)</FormLabel>
+                <FormLabel>Name</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="e.g., 2500" {...field} />
+                  <Input placeholder="e.g., Guided Jungle Trek" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
-        )}
-        
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Description</FormLabel>
+                <FormControl>
+                  <Textarea placeholder="A short description of the activity." {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          <FormField
+            control={form.control}
+            name="type"
+            render={({ field }) => (
+              <FormItem className="space-y-3">
+                <FormLabel>Activity Type</FormLabel>
+                <FormControl>
+                  <RadioGroup
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                    className="flex space-x-4"
+                  >
+                    <FormItem className="flex items-center space-x-2 space-y-0">
+                      <FormControl>
+                        <RadioGroupItem value="non-priceable" />
+                      </FormControl>
+                      <FormLabel className="font-normal">
+                        Non-Priceable
+                      </FormLabel>
+                    </FormItem>
+                    <FormItem className="flex items-center space-x-2 space-y-0">
+                      <FormControl>
+                        <RadioGroupItem value="priceable" />
+                      </FormControl>
+                      <FormLabel className="font-normal">
+                        Priceable
+                      </FormLabel>
+                    </FormItem>
+                  </RadioGroup>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {watchedActivityType === 'priceable' && (
+            <FormField
+              control={form.control}
+              name="pricePerPerson"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Price Per Person (LKR)</FormLabel>
+                  <FormControl>
+                    <Input type="number" placeholder="e.g., 2500" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+        </ScrollArea>
         <Button type="submit" className="w-full">
             {activity ? 'Update Activity' : 'Create Activity'}
         </Button>
@@ -136,5 +138,3 @@ export function ActivityForm({ activity, onSubmit }: ActivityFormProps) {
     </Form>
   );
 }
-
-    

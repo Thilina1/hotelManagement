@@ -6,9 +6,9 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { CreditCard, Eye, CircleSlash, History, Printer, Wallet } from "lucide-react";
+import { CreditCard, Eye, CircleSlash, History, Printer, Wallet, ShoppingCart } from "lucide-react";
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where, Timestamp, orderBy } from 'firebase/firestore';
+import { collection, query, where, Timestamp } from 'firebase/firestore';
 import type { Bill, PaymentMethod } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,8 @@ import { Receipt } from '@/components/dashboard/billing/receipt';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from 'date-fns';
 import { Pagination, PaginationContent, PaginationItem } from '@/components/ui/pagination';
-
+import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 
 const statusColors: Record<string, string> = {
     'unpaid': 'bg-red-500 text-white',
@@ -33,10 +34,12 @@ const ITEMS_PER_PAGE = 20;
 
 export default function BillingPage() {
   const firestore = useFirestore();
+  const { toast } = useToast();
+  const router = useRouter();
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
   const [currentPageUnpaid, setCurrentPageUnpaid] = useState(1);
   const [currentPagePaid, setCurrentPagePaid] = useState(1);
-  
+
   const unpaidBillsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     return query(
@@ -76,6 +79,17 @@ export default function BillingPage() {
 
 
   const handlePrint = (bill: Bill) => {
+    if (!bill.items || !Array.isArray(bill.items) || bill.items.length === 0) {
+        toast({ title: 'Error', description: 'The bill has no items to display.', variant: 'destructive' });
+        return;
+    }
+
+    const hasInvalidItems = bill.items.some(item => typeof item.price !== 'number' || typeof item.quantity !== 'number');
+    if (hasInvalidItems) {
+        toast({ title: 'Error', description: 'The bill contains invalid items and cannot be printed.', variant: 'destructive' });
+        return;
+    }
+
     const receiptElement = <Receipt bill={bill} items={bill.items} />;
     const staticMarkup = renderToStaticMarkup(receiptElement);
     const printWindow = window.open('', '_blank');
@@ -158,10 +172,17 @@ export default function BillingPage() {
   return (
     <>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-headline font-bold">Restaurant Billing</h1>
-          <p className="text-muted-foreground">Process payments for restaurant tables and view transaction history.</p>
+        <div className="flex justify-between items-start">
+            <div>
+                <h1 className="text-3xl font-headline font-bold">Restaurant Billing</h1>
+                <p className="text-muted-foreground">Create bills, process payments, and view transaction history.</p>
+            </div>
+            <Button onClick={() => router.push('/dashboard/pos')}>
+                <ShoppingCart className="mr-2 h-4 w-4" />
+                <span>POS</span>
+            </Button>
         </div>
+
         <Tabs defaultValue="pending">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="pending">
@@ -284,7 +305,7 @@ export default function BillingPage() {
                                  return (
                                     <TableRow key={bill.id}>
                                         <TableCell className="font-mono text-xs">{bill.billNumber}</TableCell>
-                                        <TableCell className="font-medium">{bill.tableNumber}</TableCell>
+                                        <TableCell className="font-medium">{bill.tableNumber === 'walk-in' ? 'Walk-in' : bill.tableNumber}</TableCell>
                                         <TableCell>{bill.waiterName || 'N/A'}</TableCell>
                                         <TableCell>LKR {bill.total.toFixed(2)}</TableCell>
                                         <TableCell>

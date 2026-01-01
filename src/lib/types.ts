@@ -1,4 +1,5 @@
 
+import type { FieldValue } from 'firebase/firestore';
 
 export type UserRole = 'admin' | 'waiter' | 'payment';
 
@@ -7,8 +8,8 @@ export type User = {
   name: string;
   role: UserRole;
   birthday: string; // YYYY-MM-DD
-  createdAt?: string | { seconds: number; nanoseconds: number };
-  updatedAt?: string | { seconds: number; nanoseconds: number };
+  createdAt?: string | { seconds: number; nanoseconds: number } | FieldValue;
+  updatedAt?: string | { seconds: number; nanoseconds: number } | FieldValue;
   createdBy?: string;
   updatedBy?: string;
 };
@@ -21,13 +22,14 @@ export type MenuItem = {
     name: string;
     description?: string;
     price: number;
+    buyingPrice: number;
     category: MenuCategory;
     availability: boolean;
     stockType: StockType;
     stock?: number;
     varietyOfDishesh?: string;
-    createdAt?: string | { seconds: number; nanoseconds: number };
-    updatedAt?: string | { seconds: number; nanoseconds: number };
+    createdAt?: string | { seconds: number; nanoseconds: number } | FieldValue;
+    updatedAt?: string | { seconds: number; nanoseconds: number } | FieldValue;
 };
 
 export type TableSection = 'Sri Lankan' | 'Western' | 'Outdoor' | 'Bar';
@@ -39,8 +41,8 @@ export type Table = {
     section: TableSection;
     capacity: number;
     status: TableStatus;
-    createdAt?: string | { seconds: number; nanoseconds: number };
-    updatedAt?: string | { seconds: number; nanoseconds: number };
+    createdAt?: string | { seconds: number; nanoseconds: number } | FieldValue;
+    updatedAt?: string | { seconds: number; nanoseconds: number } | FieldValue;
 }
 
 export type OrderStatus = 'open' | 'billed' | 'paid' | 'cancelled';
@@ -52,8 +54,8 @@ export type Order = {
     totalPrice: number;
     waiterId?: string;
     waiterName?: string;
-    createdAt?: string | { seconds: number; nanoseconds: number };
-    updatedAt?: string | { seconds: number; nanoseconds: number };
+    createdAt?: string | { seconds: number; nanoseconds: number } | FieldValue;
+    updatedAt?: string | { seconds: number; nanoseconds: number } | FieldValue;
 };
 
 export type OrderItem = {
@@ -65,24 +67,32 @@ export type OrderItem = {
     quantity: number;
 };
 
+export type BillItem = {
+    id: string; // menuItemId
+    name: string;
+    price: number;
+    quantity: number;
+}
+
 export type BillStatus = 'unpaid' | 'paid';
 export type PaymentMethod = 'cash' | 'card';
 
 export type Bill = {
   id: string;
   billNumber: string;
-  orderId: string;
-  tableId: string;
+  orderId?: string;
+  tableId?: string;
   tableNumber: string;
+  customerName?: string;
   waiterName?: string;
-  items: OrderItem[];
+  items: BillItem[];
   status: BillStatus;
   paymentMethod?: PaymentMethod;
-  subtotal: number;
-  discount: number; // Percentage
+  subtotal?: number;
+  discount?: number; // Percentage
   total: number;
-  createdAt?: string | { seconds: number; nanoseconds: number };
-  paidAt?: string | { seconds: number; nanoseconds: number };
+  createdAt?: string | { seconds: number; nanoseconds: number } | FieldValue;
+  paidAt?: string | { seconds: number; nanoseconds: number } | FieldValue;
 };
 
 export type RoomType = 'Single' | 'Double' | 'Suite' | 'Deluxe';
@@ -135,8 +145,8 @@ export type Activity = {
     description: string;
     type: ActivityType;
     pricePerPerson?: number;
-    createdAt?: string | { seconds: number; nanoseconds: number };
-    updatedAt?: string | { seconds: number; nanoseconds: number };
+    createdAt?: string | { seconds: number; nanoseconds: number } | FieldValue;
+    updatedAt?: string | { seconds: number; nanoseconds: number } | FieldValue;
 }
 
 export type Experience = {
@@ -144,8 +154,8 @@ export type Experience = {
     title: string;
     description: string;
     imageUrl: string;
-    createdAt?: string | { seconds: number; nanoseconds: number };
-    updatedAt?: string | { seconds: number; nanoseconds: number };
+    createdAt?: string | { seconds: number; nanoseconds: number } | FieldValue;
+    updatedAt?: string | { seconds: number; nanoseconds: number } | FieldValue;
 }
 
 export type BlogColor = 'amber' | 'green' | 'creme' | 'blue';
@@ -167,8 +177,8 @@ export type Blog = {
     bookingButtonText: string;
     bookingButtonContent: string;
     authorId: string;
-    createdAt: string | { seconds: number; nanoseconds: number };
-    updatedAt?: string | { seconds: number; nanoseconds: number };
+    createdAt: string | { seconds: number; nanoseconds: number } | FieldValue;
+    updatedAt: string | { seconds: number; nanoseconds: number } | FieldValue;
 }
 
 export type Expense = {
@@ -177,8 +187,8 @@ export type Expense = {
     name: string;
     price: number;
     remark?: string;
-    createdAt?: string | { seconds: number, nanoseconds: number };
-    updatedAt?: string | { seconds: number, nanoseconds: number };
+    createdAt?: string | { seconds: number, nanoseconds: number } | FieldValue;
+    updatedAt?: string | { seconds: number, nanoseconds: number } | FieldValue;
 };
 
 export type OtherIncome = {
@@ -187,6 +197,6 @@ export type OtherIncome = {
     name: string;
     price: number;
     remark?: string;
-    createdAt?: string | { seconds: number, nanoseconds: number };
-    updatedAt?: string | { seconds: number, nanoseconds: number };
+    createdAt?: string | { seconds: number, nanoseconds: number } | FieldValue;
+    updatedAt?: string | { seconds: number, nanoseconds: number } | FieldValue;
 };

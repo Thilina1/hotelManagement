@@ -15,7 +15,7 @@ import {
   SidebarGroupContent,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, LayoutDashboard, Users, UserCog, UtensilsCrossed, Boxes, CreditCard, BarChart, BedDouble, Star, Building, Utensils, Zap, Newspaper } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, UserCog, UtensilsCrossed, Boxes, CreditCard, BarChart, BedDouble, Star, Building, Utensils, Zap, Newspaper, Gem } from 'lucide-react';
 import { useAuth } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
@@ -38,6 +38,10 @@ const generalMenuItems: MenuItem[] = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', roles: ['admin', 'waiter', 'payment'] },
   { href: '/dashboard/profile', icon: UserCog, label: 'Profile', roles: ['admin', 'waiter', 'payment'] },
   { href: '/dashboard/user-management', icon: Users, label: 'User Management', roles: ['admin'] },
+];
+
+const customerMenuItems: MenuItem[] = [
+    { href: '/dashboard/loyalty', icon: Gem, label: 'Loyalty Customers', roles: ['admin', 'payment', 'waiter'] },
 ];
 
 const restaurantMenuItems: MenuItem[] = [
@@ -102,6 +106,7 @@ export default function AppSidebar() {
     const restaurantSection = renderMenuItems(restaurantMenuItems, user?.role, pathname);
     const roomBookingSection = renderMenuItems(roomBookingMenuItems, user?.role, pathname);
     const otherSection = renderMenuItems(otherMenue, user?.role, pathname);
+    const customerSection = renderMenuItems(customerMenuItems, user?.role, pathname);
 
 
     return (
@@ -117,6 +122,18 @@ export default function AppSidebar() {
                 <SidebarMenu>
                   {renderMenuItems(generalMenuItems, user?.role, pathname)}
                   
+
+                  {customerSection && (
+                     <>
+                        <SidebarSeparator className="my-2"/>
+                        <SidebarGroup>
+                            <SidebarGroupLabel className="flex items-center gap-2"><Users className="size-4"/>Customers</SidebarGroupLabel>
+                            <SidebarGroupContent>{customerSection}</SidebarGroupContent>
+                        </SidebarGroup>
+                     </>
+                  )}
+
+
                   {restaurantSection && (
                      <>
                         <SidebarSeparator className="my-2"/>

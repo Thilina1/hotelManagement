@@ -43,7 +43,7 @@ export function LoyaltyForm({ customer, onSubmit }: LoyaltyFormProps) {
     defaultValues: {
       name: customer?.name || '',
       mobileNumber: customer?.mobileNumber || '',
-      dob: customer?.dob ? new Date(customer.dob) : new Date(),
+      dob: customer?.dob ? new Date(customer.dob) : undefined,
       totalLoyaltyPoints: customer?.totalLoyaltyPoints || 0,
     },
   });
@@ -114,7 +114,14 @@ export function LoyaltyForm({ customer, onSubmit }: LoyaltyFormProps) {
                     mode="single"
                     selected={field.value}
                     onSelect={field.onChange}
+                    captionLayout="dropdown-nav"
+                    fromYear={1920}
+                    toYear={new Date().getFullYear()}
                     initialFocus
+                    disabled={(date) =>
+                        date > new Date() || date < new Date("1900-01-01")
+                    }
+                    defaultMonth={field.value || new Date(new Date().setFullYear(new Date().getFullYear() - 20))}
                   />
                 </PopoverContent>
               </Popover>

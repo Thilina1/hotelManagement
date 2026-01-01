@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -102,8 +103,18 @@ export default function POSPage() {
       .filter((item) =>
         selectedCategory ? item.category === selectedCategory : true
       )
-      .filter((item) => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [menuItems, searchTerm, selectedCategory]);
+      .filter((item) => item.name.toLowerCase().includes(searchTerm.toLowerCase()))
+      .map(item => {
+        if (item.stockType === 'Inventoried') {
+            const quantityInCart = billItems.find(cartItem => cartItem.id === item.id)?.quantity || 0;
+            return {
+                ...item,
+                stock: (item.stock ?? 0) - quantityInCart,
+            };
+        }
+        return item;
+      });
+  }, [menuItems, searchTerm, selectedCategory, billItems]);
 
   const addToBill = (item: MenuItem) => {
     if (item.stockType === 'Inventoried' && (item.stock ?? 0) <= 0) {
@@ -134,6 +145,17 @@ export default function POSPage() {
       removeFromBill(itemId);
       return;
     }
+    const menuItem = menuItems?.find(mi => mi.id === itemId);
+    if (menuItem && menuItem.stockType === 'Inventoried' && quantity > (menuItem.stock ?? 0)) {
+        toast({
+            variant: 'destructive',
+            title: 'Not Enough Stock',
+            description: `Only ${menuItem.stock} of ${menuItem.name} available.`,
+        });
+        setBillItems(prevItems => prevItems.map(i => i.id === itemId ? {...i, quantity: menuItem.stock ?? 0} : i));
+        return;
+    }
+    
     setBillItems((prevItems) =>
       prevItems.map((i) => (i.id === itemId ? { ...i, quantity } : i))
     );
@@ -158,10 +180,12 @@ export default function POSPage() {
 
       // 1. Update inventory for inventoried items
       for (const item of billItems) {
-        const menuItem = menuItems?.find((mi) => mi.id === item.id);
-        if (menuItem?.stockType === 'Inventoried') {
-          const menuItemRef = doc(firestore, 'menuItems', item.id);
-          const newStock = (menuItem.stock ?? 0) - item.quantity;
+        const menuItemRef = doc(firestore, 'menuItems', item.id);
+        const menuItemDoc = await getDoc(menuItemRef);
+        const menuItemData = menuItemDoc.data() as MenuItem | undefined;
+
+        if (menuItemData?.stockType === 'Inventoried') {
+          const newStock = (menuItemData.stock ?? 0) - item.quantity;
           if (newStock < 0) {
             throw new Error(`Not enough stock for ${item.name}.`);
           }

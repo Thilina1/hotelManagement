@@ -28,7 +28,6 @@ import {
   serverTimestamp,
   getDocs,
   query,
-  getDoc,
 } from 'firebase/firestore';
 import type {
   MenuItem,
@@ -63,6 +62,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { PosPaymentModal } from '@/components/dashboard/pos/pos-payment-modal';
 
 const menuCategories: MenuCategory[] = ['Sri Lankan', 'Western', 'Bar'];
 
@@ -72,12 +72,12 @@ export default function POSPage() {
   const { user: currentUser } = useUserContext();
   const [billItems, setBillItems] = useState<BillItem[]>([]);
   const [selectedTable, setSelectedTable] = useState<string>('walk-in');
-  const [customerName, setCustomerName] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<MenuCategory | null>(
     null
   );
   const [selectedVariety, setSelectedVariety] = useState<string | null>(null);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const fallbackImage = PlaceHolderImages.find(
     (p) => p.id === 'login-background'
   );
@@ -156,13 +156,17 @@ export default function POSPage() {
       return;
     }
     const menuItem = menuItems?.find(mi => mi.id === itemId);
-    if (menuItem && menuItem.stockType === 'Inventoried' && quantity > (menuItem.stock ?? 0)) {
+    const originalStock = menuItem?.stock ?? 0;
+    const currentItemsInCart = billItems.find(i => i.id === itemId)?.quantity || 0;
+    const stockWithoutCart = originalStock + currentItemsInCart;
+
+    if (menuItem && menuItem.stockType === 'Inventoried' && quantity > stockWithoutCart) {
         toast({
             variant: 'destructive',
             title: 'Not Enough Stock',
-            description: `Only ${menuItem.stock} of ${menuItem.name} available.`,
+            description: `Only ${stockWithoutCart} of ${menuItem.name} available.`,
         });
-        setBillItems(prevItems => prevItems.map(i => i.id === itemId ? {...i, quantity: menuItem.stock ?? 0} : i));
+        setBillItems(prevItems => prevItems.map(i => i.id === itemId ? {...i, quantity: stockWithoutCart} : i));
         return;
     }
     
@@ -175,77 +179,26 @@ export default function POSPage() {
     return billItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
   }, [billItems]);
 
-  const handleCreateBill = async () => {
-    if (!firestore || billItems.length === 0 || !currentUser) {
+  const handleFinalizeAndPay = () => {
+    if (billItems.length === 0) {
       toast({
         title: 'Error',
-        description: 'Cannot create an empty bill.',
+        description: 'Cannot process an empty bill.',
         variant: 'destructive',
       });
       return;
     }
-
-    try {
-      const batch = writeBatch(firestore);
-
-      // 1. Update inventory for inventoried items
-      for (const item of billItems) {
-        if (!menuItems) continue;
-        const originalMenuItem = menuItems.find(mi => mi.id === item.id);
-        if (originalMenuItem?.stockType === 'Inventoried') {
-           const menuItemRef = doc(firestore, 'menuItems', item.id);
-           const newStock = (originalMenuItem.stock ?? 0) - item.quantity;
-            if (newStock < 0) {
-                throw new Error(`Not enough stock for ${item.name}.`);
-            }
-           batch.update(menuItemRef, { stock: newStock });
-        }
-      }
-
-      // 2. Create new bill
-      const billsQuery = query(collection(firestore, 'bills'));
-      const billsSnapshot = await getDocs(billsQuery);
-      const billNumber = `BILL-${(billsSnapshot.size + 1)
-        .toString()
-        .padStart(4, '0')}`;
-
-      const newBill: Omit<Bill, 'id'> = {
-        billNumber,
-        tableNumber: selectedTable,
-        waiterName: currentUser.name,
-        items: billItems,
-        subtotal: total,
-        discount: 0,
-        total,
-        status: 'unpaid',
-        createdAt: serverTimestamp(),
-      };
-      
-      const billRef = doc(collection(firestore, 'bills'));
-      batch.set(billRef, newBill);
-
-      await batch.commit();
-
-      toast({
-        title: 'Bill Created',
-        description: 'The bill has been sent for payment.',
-      });
-
-      // Reset state
-      setBillItems([]);
-      setSelectedTable('walk-in');
-      setCustomerName('');
-    } catch (error: any) {
-      console.error('Bill creation failed: ', error);
-      toast({
-        title: 'Bill Creation Failed',
-        description: error.message || 'An unexpected error occurred.',
-        variant: 'destructive',
-      });
-    }
+    setIsPaymentModalOpen(true);
   };
+  
+  const resetPOS = () => {
+    setBillItems([]);
+    setSelectedTable('walk-in');
+    setIsPaymentModalOpen(false);
+  }
 
   return (
+    <>
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh_-_theme(spacing.24))]">
       <Card className="lg:col-span-2 h-full flex flex-col">
         <CardHeader>
@@ -389,13 +342,22 @@ export default function POSPage() {
               <span>LKR {total.toFixed(2)}</span>
             </div>
 
-            <Button onClick={handleCreateBill} className="w-full" disabled={billItems.length === 0}>
-              Create Bill & Send to Payment
+            <Button onClick={handleFinalizeAndPay} className="w-full" disabled={billItems.length === 0}>
+              Finalize & Pay
             </Button>
         </CardFooter>
       </Card>
     </div>
+    {isPaymentModalOpen && (
+      <PosPaymentModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        onSuccessfulPayment={resetPOS}
+        billItems={billItems}
+        subtotal={total}
+        tableNumber={selectedTable}
+      />
+    )}
+    </>
   );
 }
-
-    

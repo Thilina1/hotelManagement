@@ -35,6 +35,8 @@ import { useUserContext } from '@/context/user-context';
 import { LoyaltyForm } from '@/components/dashboard/loyalty/loyalty-form';
 import { format } from 'date-fns';
 import { Pagination, PaginationContent, PaginationItem } from '@/components/ui/pagination';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -70,20 +72,20 @@ export default function LoyaltyCustomerPage() {
   const handleDeleteCustomer = async (id: string) => {
     if(!firestore) return;
     if(confirm('Are you sure you want to delete this customer? This cannot be undone.')) {
-      deleteDoc(doc(firestore, 'loyaltyCustomers', id))
+      const docRef = doc(firestore, 'loyaltyCustomers', id);
+      deleteDoc(docRef)
         .then(() => {
             toast({
                 title: 'Customer Deleted',
                 description: 'The customer has been successfully removed.',
             });
         })
-        .catch(error => {
-            console.error("Error deleting customer: ", error);
-            toast({
-                variant: "destructive",
-                title: "Error",
-                description: "Failed to delete customer.",
+        .catch(async (serverError) => {
+            const permissionError = new FirestorePermissionError({
+              path: docRef.path,
+              operation: 'delete',
             });
+            errorEmitter.emit('permission-error', permissionError);
         });
     }
   };
@@ -92,43 +94,47 @@ export default function LoyaltyCustomerPage() {
     if (!firestore) return;
   
     if (editingCustomer) {
-        updateDoc(doc(firestore, 'loyaltyCustomers', editingCustomer.id), {
+        const docRef = doc(firestore, 'loyaltyCustomers', editingCustomer.id);
+        const dataToUpdate = {
           ...values,
           updatedAt: serverTimestamp(),
-        })
+        };
+        updateDoc(docRef, dataToUpdate)
             .then(() => {
                 toast({
                   title: "Customer Updated",
                   description: "The customer details have been updated.",
                 });
             })
-            .catch(error => {
-                console.error("Error updating customer: ", error);
-                toast({
-                    variant: "destructive",
-                    title: "Error",
-                    description: "Failed to update customer.",
+            .catch(async (serverError) => {
+                const permissionError = new FirestorePermissionError({
+                  path: docRef.path,
+                  operation: 'update',
+                  requestResourceData: dataToUpdate
                 });
+                errorEmitter.emit('permission-error', permissionError);
             });
     } else {
-        addDoc(collection(firestore, 'loyaltyCustomers'), {
+        const collectionRef = collection(firestore, 'loyaltyCustomers');
+        const dataToCreate = {
           ...values,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
-        })
+        };
+        addDoc(collectionRef, dataToCreate)
             .then(() => {
                 toast({
                   title: "Customer Added",
                   description: "A new loyalty customer has been registered.",
                 });
             })
-            .catch(error => {
-                console.error("Error creating customer: ", error);
-                toast({
-                    variant: "destructive",
-                    title: "Error",
-                    description: "Failed to register customer.",
+            .catch(async (serverError) => {
+                const permissionError = new FirestorePermissionError({
+                  path: collectionRef.path,
+                  operation: 'create',
+                  requestResourceData: dataToCreate,
                 });
+                errorEmitter.emit('permission-error', permissionError);
             });
     }
     setIsDialogOpen(false);

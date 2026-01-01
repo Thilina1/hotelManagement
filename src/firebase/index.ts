@@ -1,9 +1,11 @@
+
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore, enableIndexedDbPersistence, initializeFirestore, Firestore, persistentLocalCache } from 'firebase/firestore'
+import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase() {
@@ -36,3 +38,8 @@ export * from './client-provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 export * from './firestore/use-memo-firebase';
+export * from './errors';
+export * from './error-emitter';
+
+// This export is for convenience, so we can just import it from one place.
+export { FirebaseErrorListener };

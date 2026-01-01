@@ -26,10 +26,9 @@ import {
   doc,
   writeBatch,
   serverTimestamp,
-  addDoc,
   getDocs,
   query,
-  increment,
+  getDoc,
 } from 'firebase/firestore';
 import type {
   MenuItem,
@@ -78,6 +77,7 @@ export default function POSPage() {
   const [selectedCategory, setSelectedCategory] = useState<MenuCategory | null>(
     null
   );
+  const [selectedVariety, setSelectedVariety] = useState<string | null>(null);
   const fallbackImage = PlaceHolderImages.find(
     (p) => p.id === 'login-background'
   );
@@ -90,11 +90,16 @@ export default function POSPage() {
     () => (firestore ? collection(firestore, 'tables') : null),
     [firestore]
   );
+  const varietyOfDishesCollection = useMemoFirebase(
+    () => (firestore ? collection(firestore, 'varietyOfDishesh') : null),
+    [firestore]
+  );
 
   const { data: menuItems, isLoading: isLoadingMenu } =
     useCollection<MenuItem>(menuItemsCollection);
   const { data: tables, isLoading: isLoadingTables } =
     useCollection<TableType>(tablesCollection);
+  const { data: varietyOfDishes, isLoading: isLoadingVarieties } = useCollection<{id: string, name: string}>(varietyOfDishesCollection);
 
   const filteredMenuItems = useMemo(() => {
     if (!menuItems) return [];
@@ -103,21 +108,26 @@ export default function POSPage() {
       .filter((item) =>
         selectedCategory ? item.category === selectedCategory : true
       )
+      .filter(item => selectedVariety ? item.varietyOfDishesh === selectedVariety : true)
       .filter((item) => item.name.toLowerCase().includes(searchTerm.toLowerCase()))
       .map(item => {
         if (item.stockType === 'Inventoried') {
             const quantityInCart = billItems.find(cartItem => cartItem.id === item.id)?.quantity || 0;
+            const effectiveStock = (item.stock ?? 0) - quantityInCart;
             return {
                 ...item,
-                stock: (item.stock ?? 0) - quantityInCart,
+                stock: effectiveStock < 0 ? 0 : effectiveStock,
             };
         }
         return item;
       });
-  }, [menuItems, searchTerm, selectedCategory, billItems]);
+  }, [menuItems, searchTerm, selectedCategory, selectedVariety, billItems]);
 
   const addToBill = (item: MenuItem) => {
-    if (item.stockType === 'Inventoried' && (item.stock ?? 0) <= 0) {
+    const itemInBill = billItems.find(i => i.id === item.id);
+    const quantityInBill = itemInBill?.quantity || 0;
+
+    if (item.stockType === 'Inventoried' && (item.stock ?? 0) <= quantityInBill) {
       toast({
         variant: 'destructive',
         title: 'Out of Stock',
@@ -180,16 +190,15 @@ export default function POSPage() {
 
       // 1. Update inventory for inventoried items
       for (const item of billItems) {
-        const menuItemRef = doc(firestore, 'menuItems', item.id);
-        const menuItemDoc = await getDoc(menuItemRef);
-        const menuItemData = menuItemDoc.data() as MenuItem | undefined;
-
-        if (menuItemData?.stockType === 'Inventoried') {
-          const newStock = (menuItemData.stock ?? 0) - item.quantity;
-          if (newStock < 0) {
-            throw new Error(`Not enough stock for ${item.name}.`);
-          }
-          batch.update(menuItemRef, { stock: newStock });
+        if (!menuItems) continue;
+        const originalMenuItem = menuItems.find(mi => mi.id === item.id);
+        if (originalMenuItem?.stockType === 'Inventoried') {
+           const menuItemRef = doc(firestore, 'menuItems', item.id);
+           const newStock = (originalMenuItem.stock ?? 0) - item.quantity;
+            if (newStock < 0) {
+                throw new Error(`Not enough stock for ${item.name}.`);
+            }
+           batch.update(menuItemRef, { stock: newStock });
         }
       }
 
@@ -262,6 +271,17 @@ export default function POSPage() {
                   <DropdownMenuItem key={cat} onSelect={() => setSelectedCategory(cat)}>{cat}</DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
+            </DropdownMenu>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="outline" disabled={isLoadingVarieties}>{selectedVariety || 'All Varieties'}</Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                    <DropdownMenuItem onSelect={() => setSelectedVariety(null)}>All Varieties</DropdownMenuItem>
+                    {varietyOfDishes?.map((variety) => (
+                      <DropdownMenuItem key={variety.id} onSelect={() => setSelectedVariety(variety.name)}>{variety.name}</DropdownMenuItem>
+                    ))}
+                </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </CardHeader>
@@ -377,3 +397,5 @@ export default function POSPage() {
     </div>
   );
 }
+
+    

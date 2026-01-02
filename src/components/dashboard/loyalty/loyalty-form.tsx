@@ -97,6 +97,7 @@ export function LoyaltyForm({ customer, onSubmit }: LoyaltyFormProps) {
                   <FormControl>
                     <Button
                       variant={"outline"}
+                      onClick={() => setIsDatePickerOpen(true)}
                       className={cn(
                         "w-full pl-3 text-left font-normal",
                         !field.value && "text-muted-foreground"

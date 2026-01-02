@@ -14,20 +14,23 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
 import type { LoyaltyCustomer } from '@/lib/types';
-import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { useState } from 'react';
 
 const formSchema = z.object({
   name: z.string().min(1, { message: 'Customer name is required.' }),
   mobileNumber: z.string().min(10, { message: 'A valid mobile number is required.' }),
-  dob: z.date({
-    required_error: "A date of birth is required.",
-  }),
+  dob_day: z.string().min(1, 'Day is required.'),
+  dob_month: z.string().min(1, 'Month is required.'),
+  dob_year: z.string().min(1, 'Year is required.'),
   totalLoyaltyPoints: z.coerce.number().min(0, { message: 'Loyalty points must be a positive number.' }),
 });
 
@@ -38,22 +41,49 @@ interface LoyaltyFormProps {
   onSubmit: (values: Omit<LoyaltyCustomer, 'id' | 'createdAt' | 'updatedAt'>) => void;
 }
 
+const months = [
+    { value: '01', label: 'January' }, { value: '02', label: 'February' },
+    { value: '03', label: 'March' }, { value: '04', label: 'April' },
+    { value: '05', label: 'May' }, { value: '06', label: 'June' },
+    { value: '07', label: 'July' }, { value: '08', label: 'August' },
+    { value: '09', label: 'September' }, { value: '10', label: 'October' },
+    { value: '11', label: 'November' }, { value: '12', label: 'December' },
+];
+
+const currentYear = new Date().getFullYear();
+const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
+const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString().padStart(2, '0'));
+
+
 export function LoyaltyForm({ customer, onSubmit }: LoyaltyFormProps) {
-  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const defaultDob = customer?.dob ? new Date(customer.dob) : null;
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: customer?.name || '',
       mobileNumber: customer?.mobileNumber || '',
-      dob: customer?.dob ? new Date(customer.dob) : undefined,
+      dob_day: defaultDob ? format(defaultDob, 'dd') : '',
+      dob_month: defaultDob ? format(defaultDob, 'MM') : '',
+      dob_year: defaultDob ? format(defaultDob, 'yyyy') : '',
       totalLoyaltyPoints: customer?.totalLoyaltyPoints || 0,
     },
   });
 
   const handleFormSubmit = (values: FormValues) => {
+    const { dob_day, dob_month, dob_year, ...rest } = values;
+    const dob = `${dob_year}-${dob_month}-${dob_day}`;
+    
+    // Validate date
+    const date = new Date(dob);
+    if (isNaN(date.getTime()) || format(date, 'yyyy-MM-dd') !== dob) {
+        form.setError('dob_day', { type: 'manual', message: 'Invalid date.' });
+        return;
+    }
+
     onSubmit({
-      ...values,
-      dob: format(values.dob, 'yyyy-MM-dd'),
+      ...rest,
+      dob,
     });
   };
 
@@ -86,55 +116,52 @@ export function LoyaltyForm({ customer, onSubmit }: LoyaltyFormProps) {
             </FormItem>
           )}
         />
-         <FormField
-          control={form.control}
-          name="dob"
-          render={({ field }) => (
-            <FormItem className="flex flex-col">
-              <FormLabel>Date of Birth</FormLabel>
-              <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
-                <PopoverTrigger asChild>
-                  <FormControl>
-                    <Button
-                      variant={"outline"}
-                      onClick={() => setIsDatePickerOpen(true)}
-                      className={cn(
-                        "w-full pl-3 text-left font-normal",
-                        !field.value && "text-muted-foreground"
-                      )}
-                    >
-                      {field.value ? (
-                        format(field.value, "PPP")
-                      ) : (
-                        <span>Pick a date</span>
-                      )}
-                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                    </Button>
-                  </FormControl>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={field.value}
-                    onSelect={(date) => {
-                        field.onChange(date);
-                        setIsDatePickerOpen(false);
-                    }}
-                    captionLayout="dropdown-nav"
-                    fromYear={1920}
-                    toYear={new Date().getFullYear()}
-                    initialFocus
-                    disabled={(date) =>
-                        date > new Date() || date < new Date("1900-01-01")
-                    }
-                    defaultMonth={field.value || new Date(new Date().setFullYear(new Date().getFullYear() - 20))}
-                  />
-                </PopoverContent>
-              </Popover>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        
+        <div>
+          <FormLabel>Date of Birth</FormLabel>
+          <div className="grid grid-cols-3 gap-2 mt-2">
+            <FormField
+              control={form.control}
+              name="dob_day"
+              render={({ field }) => (
+                <FormItem>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl><SelectTrigger><SelectValue placeholder="Day" /></SelectTrigger></FormControl>
+                    <SelectContent>{days.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+                  </Select>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="dob_month"
+              render={({ field }) => (
+                <FormItem>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl><SelectTrigger><SelectValue placeholder="Month" /></SelectTrigger></FormControl>
+                    <SelectContent>{months.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="dob_year"
+              render={({ field }) => (
+                <FormItem>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl><SelectTrigger><SelectValue placeholder="Year" /></SelectTrigger></FormControl>
+                    <SelectContent>{years.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
+                  </Select>
+                </FormItem>
+              )}
+            />
+          </div>
+           {form.formState.errors.dob_day && <FormMessage className="mt-2">{form.formState.errors.dob_day.message}</FormMessage>}
+           {form.formState.errors.dob_month && <FormMessage className="mt-2">{form.formState.errors.dob_month.message}</FormMessage>}
+           {form.formState.errors.dob_year && <FormMessage className="mt-2">{form.formState.errors.dob_year.message}</FormMessage>}
+        </div>
+
         <FormField
           control={form.control}
           name="totalLoyaltyPoints"

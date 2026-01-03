@@ -17,7 +17,7 @@ import {
   SidebarRail,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, LayoutDashboard, Users, UserCog, UtensilsCrossed, Boxes, CreditCard, BarChart, BedDouble, Star, Building, Utensils, Zap, Newspaper, Calendar, Wallet, Banknote, Gem } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, UserCog, UtensilsCrossed, Boxes, CreditCard, BarChart, BedDouble, Star, Building, Utensils, Zap, Newspaper, Calendar, Wallet, Banknote, Gem, Percent } from 'lucide-react';
 import { useAuth } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
@@ -43,6 +43,7 @@ const generalMenuItems: MenuItem[] = [
 
 const customerMenuItems: MenuItem[] = [
     { href: '/dashboard/loyalty', icon: Gem, label: 'Loyalty Customers', roles: ['admin', 'payment', 'waiter'] },
+    { href: '/dashboard/loyalty-discounts', icon: Percent, label: 'Loyalty Discounts', roles: ['admin'] },
 ];
 
 const restaurantMenuItems: MenuItem[] = [

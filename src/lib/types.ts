@@ -16,6 +16,8 @@ export type User = {
 
 export type MenuCategory = 'Sri Lankan' | 'Western' | 'Bar';
 export type StockType = 'Inventoried' | 'Non-Inventoried';
+export type SellType = 'Direct' | 'Indirect';
+export type Unit = 'kg' | 'g' | 'l' | 'ml';
 
 export type MenuItem = {
     id: string;
@@ -28,6 +30,8 @@ export type MenuItem = {
     stockType: StockType;
     stock?: number;
     varietyOfDishesh?: string;
+    sellType?: SellType;
+    unit?: Unit;
     createdAt?: string | { seconds: number; nanoseconds: number } | FieldValue;
     updatedAt?: string | { seconds: number; nanoseconds: number } | FieldValue;
 };
@@ -210,3 +214,13 @@ export type LoyaltyCustomer = {
     createdAt?: string | { seconds: number, nanoseconds: number } | FieldValue;
     updatedAt?: string | { seconds: number, nanoseconds: number } | FieldValue;
 }
+
+export type LoyaltyDiscount = {
+    id: string;
+    name: string;
+    pointsRequired: number;
+    discountPercentage: number;
+    isActive: boolean;
+    createdAt?: string | { seconds: number, nanoseconds: number } | FieldValue;
+    updatedAt?: string | { seconds: number, nanoseconds: number } | FieldValue;
+};

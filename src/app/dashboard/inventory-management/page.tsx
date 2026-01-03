@@ -11,17 +11,47 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from '@/components/ui/input';
-import { Search, Save, ArrowUpDown } from 'lucide-react';
+import { Search, Save, ArrowUpDown, PlusCircle, Edit } from 'lucide-react';
 import type { MenuItem as MenuItemType } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, updateDoc, serverTimestamp, increment, query, where } from 'firebase/firestore';
+import { collection, doc, updateDoc, serverTimestamp, increment, query, where, addDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useUserContext } from '@/context/user-context';
+import { InventoryItemForm } from '@/components/dashboard/inventory-management/inventory-item-form';
+import * as z from 'zod';
 
-type SortKey = keyof Pick<MenuItemType, 'name' | 'category' | 'stock'>;
+const menuCategories = ['Sri Lankan', 'Western', 'Bar'] as const;
+const stockTypes = ['Inventoried', 'Non-Inventoried'] as const;
+const sellTypes = ['Direct', 'Indirect'] as const;
+const units = ['kg', 'g', 'l', 'ml'] as const;
+
+const formSchema = z.object({
+  name: z.string().min(1, { message: 'Item name is required.' }),
+  description: z.string().optional(),
+  price: z.coerce.number().min(0, { message: 'Price must be a positive number.' }),
+  buyingPrice: z.coerce.number().min(0, { message: 'Buying price must be a positive number.' }),
+  category: z.enum(menuCategories).optional(),
+  availability: z.boolean(),
+  stockType: z.enum(stockTypes),
+  stock: z.coerce.number().optional(),
+  varietyOfDishesh: z.string().optional(),
+  sellType: z.enum(sellTypes).default('Direct'),
+  unit: z.enum(units).optional(),
+});
+
+
+type SortKey = keyof Pick<MenuItemType, 'name' | 'stock'>;
 
 export default function InventoryManagementPage() {
   const firestore = useFirestore();
@@ -31,6 +61,8 @@ export default function InventoryManagementPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [stockLevels, setStockLevels] = useState<Record<string, number | string>>({});
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'ascending' | 'descending' }>({ key: 'name', direction: 'ascending' });
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<MenuItemType | null>(null);
 
 
   const inventoryItemsCollection = useMemoFirebase(() => {
@@ -39,6 +71,13 @@ export default function InventoryManagementPage() {
   }, [firestore]);
 
   const { data: inventoryItems, isLoading: areItemsLoading } = useCollection<MenuItemType>(inventoryItemsCollection);
+
+  const varietyOfDishesCollection = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'varietyOfDishesh');
+  }, [firestore]);
+
+  const { data: varietyOfDishes, isLoading: areVarietyOfDishesLoading } = useCollection(varietyOfDishesCollection);
 
   const filteredItems = useMemo(() => {
     if (!inventoryItems) return [];
@@ -116,7 +155,57 @@ export default function InventoryManagementPage() {
         });
     });
   };
+
+  const handleAddItemClick = () => {
+    setEditingItem(null);
+    setIsFormOpen(true);
+  };
+
+  const handleEditClick = (item: MenuItemType) => {
+    setEditingItem(item);
+    setIsFormOpen(true);
+  };
   
+  const handleFormSubmit = async (values: z.infer<typeof formSchema>) => {
+    if (!firestore) return;
+    try {
+      const cleanedValues = Object.fromEntries(
+        Object.entries(values).filter(([_, v]) => v !== undefined)
+      );
+
+      if (editingItem) {
+        await updateDoc(doc(firestore, 'menuItems', editingItem.id), {
+          ...cleanedValues,
+          updatedAt: serverTimestamp(),
+        });
+        toast({
+          title: 'Menu item updated',
+          description: `The menu item "${values.name}" has been successfully updated.`,
+        });
+      } else {
+        const newMenuItem = {
+          ...cleanedValues,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        };
+        await addDoc(collection(firestore, 'menuItems'), newMenuItem);
+        toast({
+          title: 'Menu item created',
+          description: `The menu item "${values.name}" has been successfully created.`,
+        });
+      }
+      setIsFormOpen(false);
+      setEditingItem(null);
+    } catch (error) {
+      console.error('Error creating menu item:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error creating item',
+        description: 'An unexpected error occurred.',
+      });
+    }
+  };
+
   if (!currentUser || areItemsLoading) {
      return (
        <div className="space-y-6">
@@ -143,7 +232,34 @@ export default function InventoryManagementPage() {
             <h1 className="text-3xl font-headline font-bold">Inventory Management</h1>
             <p className="text-muted-foreground">Update stock levels for inventoried items.</p>
         </div>
+        <Dialog open={isFormOpen} onOpenChange={isOpen => {
+          setIsFormOpen(isOpen);
+          if (!isOpen) {
+            setEditingItem(null);
+          }
+        }}>
+          <DialogTrigger asChild>
+              <Button onClick={handleAddItemClick}>
+                  <PlusCircle className="mr-2 h-4 w-4" /> Add Menu Item
+              </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{editingItem ? 'Edit Menu Item' : 'Add New Menu Item'}</DialogTitle>
+              <DialogDescription>
+                {editingItem ? 'Update the details for this item.' : 'Fill in the details below to add a new item to the menu.'}
+              </DialogDescription>
+            </DialogHeader>
+            <InventoryItemForm 
+                item={editingItem}
+                onSubmit={handleFormSubmit}
+                varietyOfDishes={varietyOfDishes || []} 
+            />
+          </DialogContent>
+        </Dialog>
       </div>
+
+
 
       <Card>
         <CardHeader>
@@ -170,17 +286,12 @@ export default function InventoryManagementPage() {
                   </Button>
                 </TableHead>
                 <TableHead>
-                   <Button variant="ghost" onClick={() => requestSort('category')}>
-                    Category
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                  </Button>
-                </TableHead>
-                <TableHead>
                    <Button variant="ghost" onClick={() => requestSort('stock')}>
                     Current Stock
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                   </Button>
                 </TableHead>
+                <TableHead>Actions</TableHead>
                 <TableHead className="text-right w-[30%]">Update Stock</TableHead>
               </TableRow>
             </TableHeader>
@@ -197,8 +308,13 @@ export default function InventoryManagementPage() {
               {!areItemsLoading && sortedItems?.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">{item.name}</TableCell>
-                  <TableCell>{item.category}</TableCell>
                   <TableCell>{item.stock}</TableCell>
+                  <TableCell>
+                    <Button variant="outline" size="sm" onClick={() => handleEditClick(item)}>
+                      <Edit className="mr-2 h-4 w-4" />
+                      View / Edit
+                    </Button>
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
                       <Input

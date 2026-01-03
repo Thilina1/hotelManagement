@@ -169,7 +169,7 @@ export function LoyaltyForm({ customer, onSubmit }: LoyaltyFormProps) {
             <FormItem>
               <FormLabel>Total Loyalty Points</FormLabel>
               <FormControl>
-                <Input type="number" {...field} />
+                <Input type="number" {...field} disabled />
               </FormControl>
               <FormMessage />
             </FormItem>

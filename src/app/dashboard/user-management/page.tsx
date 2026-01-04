@@ -1,292 +1,156 @@
-
 'use client';
 
-import { useState } from 'react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { MoreHorizontal, UserPlus, Trash2, Edit } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import type { User, UserRole } from '@/lib/types';
+import { useState, useMemo } from 'react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, deleteDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
-import { Skeleton } from '@/components/ui/skeleton';
-import { UserForm } from '@/components/dashboard/user-management/user-form';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { collection, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import type { User, UserRole } from '@/lib/types';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from '@/components/ui/button';
+import { Trash2, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useUserContext } from '@/context/user-context';
-import { Pagination, PaginationContent, PaginationItem, PaginationPrevious, PaginationNext } from '@/components/ui/pagination';
+import { Skeleton } from '@/components/ui/skeleton';
 
-const roleColors: Record<UserRole, string> = {
-    admin: 'bg-primary text-primary-foreground',
-    waiter: 'bg-accent text-accent-foreground',
-    payment: 'bg-emerald-500 text-white',
-};
-
-const ITEMS_PER_PAGE = 20;
+const ROLES: UserRole[] = ['admin', 'waiter', 'kitchen', 'payment'];
 
 export default function UserManagementPage() {
-  const firestore = useFirestore();
-  const { toast } = useToast();
-  const { user: currentUser } = useUserContext();
-  
-  const usersCollection = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return collection(firestore, 'users');
-  }, [firestore]);
-  
-  const { data: users, isLoading: areUsersLoading } = useCollection<User>(usersCollection);
+    const firestore = useFirestore();
+    const { toast } = useToast();
 
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
+    const usersCollection = useMemoFirebase(() => firestore ? collection(firestore, 'users') : null, [firestore]);
+    const { data: users, isLoading: areUsersLoading } = useCollection<User>(usersCollection);
 
-  const totalPages = users ? Math.ceil(users.length / ITEMS_PER_PAGE) : 0;
-  const paginatedUsers = users?.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+    const [userRoles, setUserRoles] = useState<Record<string, UserRole>>({});
 
-  const handleAddUserClick = () => {
-    setEditingUser(null);
-    setIsDialogOpen(true);
-  };
+    const handleRoleChange = (userId: string, role: UserRole) => {
+        setUserRoles(prev => ({ ...prev, [userId]: role }));
+    };
 
-  const handleEditUserClick = (user: User) => {
-    setEditingUser(user);
-    setIsDialogOpen(true);
-  };
-  
-  const handleDeleteUser = async (id: string) => {
-    if(!firestore) return;
-    if(confirm('Are you sure you want to delete this user? This cannot be undone.')) {
-      deleteDoc(doc(firestore, 'users', id))
-        .then(() => {
-            toast({
-                title: 'User Deleted',
-                description: 'The user has been successfully removed.',
-            });
-        })
-        .catch(error => {
-            console.error("Error deleting user: ", error);
-            toast({
-                variant: "destructive",
-                title: "Error",
-                description: "Failed to delete user.",
-            });
-        });
-    }
-  };
-
-  const handleFormSubmit = async (values: Partial<User> & { email?: string; password?: string }) => {
-    if (!firestore || !currentUser) return;
-  
-    try {
-      if (editingUser) {
-        // Update existing user
-        const { email, password, ...firestoreData } = values; // email and password are not updated here
-        await updateDoc(doc(firestore, 'users', editingUser.id), {
-          ...firestoreData,
-          updatedAt: serverTimestamp(),
-          updatedBy: currentUser.id,
-        });
-        toast({
-          title: "User Updated",
-          description: "The user's details have been updated.",
-        });
-      } else {
-        // Create new user
-        if (!values.email || !values.password) {
-          throw new Error("Email and password are required for new users.");
+    const handleSaveChanges = async (userId: string) => {
+        if (!firestore) return;
+        const newRole = userRoles[userId];
+        if (!newRole) {
+            toast({ variant: 'destructive', title: 'No change', description: 'Please select a new role first.' });
+            return;
         }
-        
-        // This creates the user in a temporary auth instance so it doesn't log out the admin
-        const tempAuth = getAuth(); 
-        const userCredential = await createUserWithEmailAndPassword(tempAuth, values.email, values.password);
-        const newUser = userCredential.user;
-        
-        const { email, password, ...firestoreData } = values;
-        
-        await setDoc(doc(firestore, 'users', newUser.uid), {
-          ...firestoreData,
-          id: newUser.uid,
-          createdAt: serverTimestamp(),
-          createdBy: currentUser.id,
-          updatedAt: serverTimestamp(),
-          updatedBy: currentUser.id,
-        });
-        toast({
-          title: "User Created",
-          description: "A new user has been successfully added.",
-        });
-      }
-      setIsDialogOpen(false);
-      setEditingUser(null);
-    } catch (error: any) {
-      console.error("Error saving user:", error);
-      let description = `Failed to save user. ${error.message}`;
-      if (error.code === 'auth/email-already-in-use') {
-        description = 'This email address is already in use by another account.';
-      }
-       toast({
-        variant: "destructive",
-        title: "Uh oh! Something went wrong.",
-        description: description,
-      });
+
+        const userRef = doc(firestore, 'users', userId);
+        try {
+            await updateDoc(userRef, { role: newRole });
+            toast({ title: 'Role Updated', description: `User role has been successfully changed to ${newRole}.` });
+        } catch (error) {
+            console.error("Error updating user role:", error);
+            toast({ variant: 'destructive', title: 'Update Failed', description: 'Could not update the user role.' });
+        }
+    };
+
+    const handleDeleteUser = async (userId: string, userName: string) => {
+        if (!firestore) return;
+        if (!confirm(`Are you sure you want to delete the user "${userName}"? This action cannot be undone.`)) {
+            return;
+        }
+
+        const userRef = doc(firestore, 'users', userId);
+        try {
+            await deleteDoc(userRef);
+            toast({ title: 'User Deleted', description: `User "${userName}" has been successfully deleted.` });
+        } catch (error) {
+            console.error("Error deleting user:", error);
+            toast({ variant: 'destructive', title: 'Deletion Failed', description: 'Could not delete the user.' });
+        }
+    };
+    
+    const sortedUsers = useMemo(() => {
+        if (!users) return [];
+        return [...users].sort((a, b) => a.name.localeCompare(b.name));
+    }, [users]);
+
+
+    if (areUsersLoading) {
+        return (
+            <div className="space-y-6">
+                <div>
+                    <Skeleton className="h-10 w-1/3" />
+                    <Skeleton className="h-4 w-1/2 mt-2" />
+                </div>
+                <Card>
+                    <CardHeader>
+                        <Skeleton className="h-8 w-1/4" />
+                        <Skeleton className="h-4 w-1/2" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {[...Array(5)].map((_, i) => (
+                            <div key={i} className="flex items-center justify-between">
+                                <div className="w-1/4"><Skeleton className="h-6 w-full" /></div>
+                                <div className="w-1/4"><Skeleton className="h-6 w-full" /></div>
+                                <div className="w-1/4"><Skeleton className="h-10 w-full" /></div>
+                                <div className="w-1/6 flex gap-2"><Skeleton className="h-10 w-1/2" /><Skeleton className="h-10 w-1/2" /></div>
+                            </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                </Card>
+            </div>
+        )
     }
-  };
 
-  if (!currentUser || areUsersLoading) {
-     return (
-       <div className="space-y-6">
-        <div className="flex justify-between items-start">
-            <Skeleton className="h-12 w-1/2" />
-            <Skeleton className="h-10 w-28" />
+    return (
+        <div className="space-y-6">
+            <div>
+                <h1 className="text-3xl font-headline font-bold">User Management</h1>
+                <p className="text-muted-foreground">Manage user accounts and roles.</p>
+            </div>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>All Users</CardTitle>
+                    <CardDescription>View and manage all registered users in the system.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Name</TableHead>
+                                <TableHead>Email</TableHead>
+                                <TableHead>Current Role</TableHead>
+                                <TableHead>Change Role</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {sortedUsers.map(user => (
+                                <TableRow key={user.id}>
+                                    <TableCell className="font-medium">{user.name}</TableCell>
+                                    <TableCell>{user.email}</TableCell>
+                                    <TableCell className="capitalize">{user.role}</TableCell>
+                                    <TableCell>
+                                        <Select onValueChange={(value: UserRole) => handleRoleChange(user.id, value)} defaultValue={user.role}>
+                                            <SelectTrigger className="w-[180px]">
+                                                <SelectValue placeholder="Select a role" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {ROLES.map(role => (
+                                                    <SelectItem key={role} value={role} className="capitalize">{role}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </TableCell>
+                                    <TableCell className="text-right space-x-2">
+                                        <Button size="sm" onClick={() => handleSaveChanges(user.id)} disabled={!userRoles[user.id] || userRoles[user.id] === user.role}>
+                                            <Save className="mr-2 h-4 w-4"/> Save
+                                        </Button>
+                                        <Button size="sm" variant="destructive" onClick={() => handleDeleteUser(user.id, user.name)}>
+                                            <Trash2 className="mr-2 h-4 w-4"/> Delete
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
         </div>
-        <Card>
-            <CardHeader>
-                <Skeleton className="h-8 w-1/4" />
-                <Skeleton className="h-4 w-1/2" />
-            </CardHeader>
-            <CardContent>
-              <Skeleton className="h-48 w-full" />
-            </CardContent>
-        </Card>
-      </div>
-     )
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-start">
-        <div>
-            <h1 className="text-3xl font-headline font-bold">User Management</h1>
-            <p className="text-muted-foreground">Manage all staff members in one place.</p>
-        </div>
-        <Dialog open={isDialogOpen} onOpenChange={(open) => {
-          if (!open) setEditingUser(null);
-          setIsDialogOpen(open);
-        }}>
-            <DialogTrigger asChild>
-                <Button onClick={handleAddUserClick} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                    <UserPlus className="mr-2 h-4 w-4" /> Add User
-                </Button>
-            </DialogTrigger>
-            <DialogContent className="max-h-screen overflow-y-auto">
-                <DialogHeader>
-                    <DialogTitle>{editingUser ? 'Edit User' : 'Add New User'}</DialogTitle>
-                </DialogHeader>
-                <UserForm
-                    user={editingUser}
-                    onSubmit={handleFormSubmit}
-                />
-            </DialogContent>
-        </Dialog>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Staff List</CardTitle>
-          <CardDescription>A list of all users in the system.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Birthday</TableHead>
-                <TableHead>Updated At</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {areUsersLoading && (
-                <>
-                  {[...Array(ITEMS_PER_PAGE)].map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell>
-                    </TableRow>
-                  ))}
-                </>
-              )}
-              {!areUsersLoading && paginatedUsers && paginatedUsers.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.name}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className={`capitalize ${roleColors[user.role]}`}>
-                        {user.role}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{user.birthday ? new Date(user.birthday).toLocaleDateString() : 'N/A'}</TableCell>
-                   <TableCell>{user.updatedAt ? new Date((user.updatedAt as any).seconds * 1000).toLocaleString() : 'N/A'}</TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Open menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEditUserClick(user)}>
-                            <Edit className="mr-2 h-4 w-4"/>
-                            Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-500 hover:!text-red-500" onClick={() => handleDeleteUser(user.id)}>
-                            <Trash2 className="mr-2 h-4 w-4"/>
-                            Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-               {!areUsersLoading && (!paginatedUsers || paginatedUsers.length === 0) && (
-                <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground py-10">
-                        No users found.
-                    </TableCell>
-                </TableRow>
-               )}
-            </TableBody>
-          </Table>
-        </CardContent>
-        {totalPages > 1 && (
-            <CardFooter>
-                <Pagination>
-                    <PaginationContent>
-                        <PaginationItem>
-                            <Button variant="outline" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>Previous</Button>
-                        </PaginationItem>
-                        <PaginationItem>
-                            <span className="p-2 text-sm text-muted-foreground">Page {currentPage} of {totalPages}</span>
-                        </PaginationItem>
-                        <PaginationItem>
-                            <Button variant="outline" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>Next</Button>
-                        </PaginationItem>
-                    </PaginationContent>
-                </Pagination>
-            </CardFooter>
-        )}
-      </Card>
-    </div>
-  );
+    );
 }

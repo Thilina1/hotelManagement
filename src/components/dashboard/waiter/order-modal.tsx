@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
@@ -147,7 +148,7 @@ export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
   const filteredMenuItems = useMemo(() => {
     if (!localMenuItems) return [];
     return localMenuItems
-      .filter((item) => item.availability)
+      .filter((item) => item.availability && item.sellType !== 'Indirect')
       .filter((item) => (selectedCategory ? item.category === selectedCategory : true))
       .filter((item) => (selectedVariety ? item.varietyOfDishesh === selectedVariety : true))
       .filter((item) => item.name.toLowerCase().includes(searchTerm.toLowerCase()));

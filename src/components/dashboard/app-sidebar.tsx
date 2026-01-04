@@ -115,7 +115,7 @@ export default function AppSidebar() {
             <SidebarHeader>
                 <Link href="/dashboard" className="flex items-center gap-2">
                     <Logo className="w-7 h-7 text-primary" />
-                    <h2 className="text-lg font-headline font-bold text-sidebar-foreground group-data-[collapsible=icon]:hidden">Victoria Retreat</h2>
+                    <h2 className="text-lg font-headline font-bold text-sidebar-foreground group-data-[collapsible=icon]:hidden">Victoria Retreat1</h2>
                 </Link>
             </SidebarHeader>
             <SidebarContent>

@@ -1,3 +1,4 @@
+
 'use client';
  
 import { useEffect, useMemo, useState } from 'react';
@@ -23,7 +24,7 @@ export default function TableOrderPage() {
 
     // Fetch table details
     const tableRef = useMemoFirebase(() => firestore && tableId ? doc(firestore, 'tables', tableId) : null, [firestore, tableId]);
-    const { data: table, isLoading: isTableLoading, error: tableError } = useDoc<TableType>(tableRef);
+    const { data: table, isLoading: isTableLoading, error: tableError } = useDoc<TableType>(tableRef, { listen: true });
 
     // Fetch menu items
     const menuItemsRef = useMemoFirebase(() => firestore ? collection(firestore, 'menuItems') : null, [firestore]);
@@ -47,6 +48,15 @@ export default function TableOrderPage() {
     const { data: orderItems, isLoading: areOrderItemsLoading } = useCollection<OrderItem>(orderItemsRef);
 
     const [localOrder, setLocalOrder] = useState<Record<string, number>>({});
+    const [billNumber, setBillNumber] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (openOrder?.billNumber) {
+            setBillNumber(openOrder.billNumber);
+        } else {
+            setBillNumber(null);
+        }
+    }, [openOrder]);
 
     const handleAddItem = (menuItem: MenuItem) => {
         if (menuItem.stockType === 'Inventoried' && (menuItem.stock ?? 0) <= 0) {
@@ -74,13 +84,14 @@ export default function TableOrderPage() {
         if (!firestore || !table || !currentUser || Object.keys(localOrder).length === 0) return;
 
         const batch = writeBatch(firestore);
-        let currentOrder = openOrder;
         let currentOrderId;
+        let newBillNumber = billNumber;
 
         try {
             // If no open order exists, create one
-            if (!currentOrder) {
+            if (!openOrder) {
                 const newOrderRef = doc(collection(firestore, 'orders'));
+                newBillNumber = `BILL-${Date.now()}`;
                 batch.set(newOrderRef, {
                     tableId,
                     status: 'open',
@@ -89,10 +100,14 @@ export default function TableOrderPage() {
                     waiterName: currentUser.name,
                     createdAt: serverTimestamp(),
                     updatedAt: serverTimestamp(),
+                    billNumber: newBillNumber,
                 });
                 currentOrderId = newOrderRef.id;
             } else {
-                currentOrderId = currentOrder.id;
+                currentOrderId = openOrder.id;
+                if (!openOrder.billNumber) {
+                    newBillNumber = `BILL-${Date.now()}`;
+                }
             }
 
             if (!currentOrderId) throw new Error("Failed to create or find order.");
@@ -123,13 +138,18 @@ export default function TableOrderPage() {
             }
 
             const orderRef = doc(firestore, 'orders', currentOrderId);
-            batch.update(orderRef, { 
-                totalPrice: orderTotalPrice, 
+            const orderUpdateData: any = {
+                totalPrice: orderTotalPrice,
                 updatedAt: serverTimestamp(),
-                // Also update waiter info in case a different user adds items
                 waiterId: currentUser.id,
                 waiterName: currentUser.name,
-             });
+            };
+
+            if (newBillNumber && newBillNumber !== billNumber) {
+                orderUpdateData.billNumber = newBillNumber;
+            }
+
+            batch.update(orderRef, orderUpdateData);
             
             if (table.status === 'available') {
                 const tableDocRef = doc(firestore, 'tables', tableId);
@@ -138,6 +158,9 @@ export default function TableOrderPage() {
 
             await batch.commit();
 
+            if (newBillNumber) {
+                setBillNumber(newBillNumber);
+            }
             setLocalOrder({});
             toast({ title: 'Items Added', description: 'New items have been added to the bill.' });
 
@@ -148,25 +171,22 @@ export default function TableOrderPage() {
     };
     
     const handleProcessPayment = async () => {
-        if (!firestore || !openOrder || !table) {
-            toast({ variant: 'destructive', title: 'Cannot Process Payment', description: 'There is no open order for this table.' });
+        if (!firestore || !openOrder || !table || !openOrder.billNumber) {
+            toast({ variant: 'destructive', title: 'Cannot Process Payment', description: 'There is no open bill for this table.' });
             return;
         }
         
         try {
             const batch = writeBatch(firestore);
 
-            // Fetch all items for the bill.
             const allItemsSnapshot = await getDocs(collection(firestore, 'orders', openOrder.id, 'items'));
             const allOrderItems: OrderItem[] = allItemsSnapshot.docs.map(doc => ({id: doc.id, ...doc.data()} as OrderItem));
             
-            // Generate a unique, readable bill number
-            const billNumber = `BILL-${Date.now()}`;
+            const currentBillNumber = openOrder.billNumber;
 
-            // Create the bill document with all items.
             const billRef = doc(collection(firestore, 'bills'));
             batch.set(billRef, {
-                billNumber,
+                billNumber: currentBillNumber,
                 orderId: openOrder.id,
                 tableId: table.id,
                 tableNumber: table.tableNumber,
@@ -179,14 +199,12 @@ export default function TableOrderPage() {
                 createdAt: serverTimestamp(),
             });
 
-            // Update order status to 'billed'
             const orderRef = doc(firestore, 'orders', openOrder.id);
             batch.update(orderRef, { status: 'billed', updatedAt: serverTimestamp() });
             
-            // Table status remains 'occupied' until payment is made
-            
             await batch.commit();
             
+            setBillNumber(null);
             toast({ title: 'Bill Sent for Payment', description: `The bill for Table ${table.tableNumber} is now pending payment.`});
         } catch (error) {
             console.error('Error processing payment:', error);
@@ -248,7 +266,7 @@ export default function TableOrderPage() {
     return (
         <div className="container mx-auto p-4 space-y-6 flex flex-col h-[calc(100vh_-_theme(spacing.24))]">
             <header className="flex-shrink-0">
-                <h1 className="text-3xl font-headline font-bold">Table {table?.tableNumber} - Order</h1>
+                <h1 className="text-3xl font-headline font-bold">Table {table?.tableNumber} - Order {billNumber ? `(${billNumber})` : ''}</h1>
                 <p className="text-muted-foreground">Add items to the order and manage the bill.</p>
             </header>
 
@@ -262,7 +280,7 @@ export default function TableOrderPage() {
                         <div className="relative h-full">
                             <ScrollArea className="absolute inset-0">
                                 <div className="space-y-2 pr-4">
-                                    {menuItems?.filter(item => item.availability).map(item => (
+                                    {menuItems?.filter(item => item.availability && item.sellType !== 'Indirect').map(item => (
                                         <div key={item.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted">
                                             <div>
                                                 <p className="font-semibold">{item.name}</p>
@@ -282,7 +300,7 @@ export default function TableOrderPage() {
 
                 <Card className="h-full flex flex-col">
                     <CardHeader className="flex-shrink-0">
-                        <CardTitle className="flex items-center"><ShoppingCart className="mr-2"/> Current Bill</CardTitle>
+                        <CardTitle className="flex items-center"><ShoppingCart className="mr-2"/> Current Bill {billNumber ? `- ${billNumber}` : ''}</CardTitle>
                          {table && <Badge className="capitalize w-fit">{table.status}</Badge>}
                          {openOrder?.waiterName && <p className="text-sm text-muted-foreground pt-1">Waiter: {openOrder.waiterName}</p>}
                     </CardHeader>

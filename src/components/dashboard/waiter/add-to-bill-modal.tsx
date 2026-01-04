@@ -71,8 +71,7 @@ export function AddToBillModal({ table, isOpen, onClose }: AddToBillModalProps) 
     const filteredMenuItems = useMemo(() => {
         if (!menuItems) return [];
         return menuItems
-            .filter(item => item.availability)
-            .filter(item => item.sellType !== 'Indirect')
+            .filter(item => item.availability && item.sellType !== 'Indirect')
             .filter(item => selectedCategory ? item.category === selectedCategory : true)
             .filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
     }, [menuItems, searchTerm, selectedCategory]);

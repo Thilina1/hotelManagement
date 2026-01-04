@@ -124,7 +124,7 @@ export default function POSPage() {
   const filteredMenuItems = useMemo(() => {
     if (!menuItems) return [];
     return menuItems
-      .filter((item) => item.availability)
+      .filter((item) => item.availability && item.sellType !== 'Indirect')
       .filter((item) =>
         selectedCategory ? item.category === selectedCategory : true
       )

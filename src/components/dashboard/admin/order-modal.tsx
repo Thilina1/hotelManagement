@@ -18,7 +18,6 @@ import type {
   MenuItem,
   Order,
   OrderItem,
-  MenuCategory,
 } from '@/lib/types';
 import {
   Card,
@@ -65,14 +64,14 @@ interface OrderModalProps {
   onClose: () => void;
 }
 
-const menuCategories: MenuCategory[] = ['Sri Lankan', 'Western', 'Bar'];
+const menuCategories: MenuItem['category'][] = ['Sri Lankan', 'Western', 'Bar'];
 
 export function OrderModal({ table, isOpen, onClose }: OrderModalProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
   const { user: currentUser } = useUserContext();
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<MenuCategory | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<MenuItem['category'] | null>(null);
   const [selectedVariety, setSelectedVariety] = useState<string | null>(null);
   const fallbackImage = PlaceHolderImages.find((p) => p.id === 'login-background');
   const [refetchToggle, setRefetchToggle] = useState(false);
